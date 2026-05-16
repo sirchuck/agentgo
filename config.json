@@ -1,0 +1,22 @@
+{
+  "agentgo_file": "config",
+  "file_version": 1,
+  "bind_host": "0.0.0.0",
+  "http_port": 5226,
+  "https_port": 0,
+  "tls_cert_file": "",
+  "tls_key_file": "",
+  "work_root": "work",
+  "max_response_history": 50,
+  "risk_mode_max_iterations": 10,
+  "outfit_run_retention": 50,
+  "auto_merge_single_builder_waves": true,
+  "prompt_version": 1,
+  "wiretap": {
+    "max_wiretap_entries": 200,
+    "default_runtime_slice_entries": 75,
+    "max_runtime_slice_entries": 150
+  }
+}
+
+
