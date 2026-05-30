@@ -106,6 +106,7 @@ type ModelConfig struct {
 	VideoPromptOnly        bool              `json:"video_prompt_only,omitempty"`
 	VideoStartFrame        bool              `json:"video_start_frame,omitempty"`
 	VideoEndFrame          bool              `json:"video_end_frame,omitempty"`
+	VideoIngredients       bool              `json:"video_ingredients,omitempty"`
 	VideoDuration          string            `json:"video_duration,omitempty"`
 	VideoAspectRatio       string            `json:"video_aspect_ratio,omitempty"`
 	VideoResolution        string            `json:"video_resolution,omitempty"`
@@ -138,6 +139,8 @@ type ModelConfig struct {
 	CapabilityMode         string            `json:"capability_mode,omitempty"`
 	Capabilities           ModelCapabilities `json:"capabilities"`
 	RunOrder               int               `json:"run_order,omitempty"`
+	MasterMindMemory       string            `json:"mastermind_memory,omitempty"`
+	MasterMindIdentity     string            `json:"mastermind_identity,omitempty"`
 	Notes                  string            `json:"notes"`
 	CreatedAt              string            `json:"created_at"`
 	UpdatedAt              string            `json:"updated_at"`
@@ -628,6 +631,13 @@ type workModeAIResponse struct {
 	Artifacts []builderArtifact `json:"artifacts,omitempty"`
 	Memory    string            `json:"memory,omitempty"`
 	Warnings  []string          `json:"warnings,omitempty"`
+}
+
+type workModeJSONErrorResponse struct {
+	Error       string `json:"error"`
+	Message     string `json:"message"`
+	ParseError  string `json:"parseError"`
+	RawResponse string `json:"rawResponse"`
 }
 
 type promptHelperResponse struct {
@@ -1798,8 +1808,9 @@ type mergeSummaryFiles struct {
 }
 
 type mergeSummaryPost struct {
-	ProjectworkUpdated       bool `json:"projectwork_updated"`
-	AllModelProjectsResynced bool `json:"all_model_projects_resynced"`
+	ProjectworkUpdated            bool `json:"projectwork_updated"`
+	ActiveBuilderProjectsResynced bool `json:"active_builder_projects_resynced"`
+	AllModelProjectsResynced      bool `json:"all_model_projects_resynced,omitempty"`
 }
 
 type aiRequest struct {
@@ -2162,6 +2173,10 @@ func main() {
 	mux.HandleFunc("/api/models/run-order", app.handleModelRunOrder)
 	mux.HandleFunc("/api/reviewer", app.handleReviewerToggle)
 	mux.HandleFunc("/api/model-meta", app.handleModelMeta)
+	mux.HandleFunc("/api/mastermind", app.handleMasterMindState)
+	mux.HandleFunc("/api/mastermind/folder", app.handleMasterMindFolder)
+	mux.HandleFunc("/api/mastermind/delete", app.handleMasterMindDelete)
+	mux.HandleFunc("/api/mastermind/selection", app.handleMasterMindSelection)
 	mux.HandleFunc("/api/video/jobs", app.handleVideoJobs)
 	mux.HandleFunc("/api/video/jobs/promote", app.handleVideoJobPromote)
 	mux.HandleFunc("/api/mesh/jobs", app.handleMeshJobs)
@@ -2503,7 +2518,7 @@ func normalizeProtectedFolderPath(rel string) string {
 func isProtectedFileManagerFolder(rel string) bool {
 	clean := normalizeProtectedFolderPath(rel)
 	switch clean {
-	case "projects", "outfits":
+	case "projects", "outfits", "mastermind", "mastermind/memories", "mastermind/identities":
 		return true
 	}
 	parts := strings.Split(clean, "/")
@@ -2579,6 +2594,9 @@ func loadConfig(filename string) AppConfig {
 func ensureWorkDirs(cfg AppConfig) {
 	mustMkdir(cfg.WorkRoot)
 	mustMkdir(filepath.Join(cfg.WorkRoot, "projects"))
+	mustMkdir(filepath.Join(cfg.WorkRoot, "mastermind"))
+	mustMkdir(filepath.Join(cfg.WorkRoot, "mastermind", "memories"))
+	mustMkdir(filepath.Join(cfg.WorkRoot, "mastermind", "identities"))
 	for _, model := range cfg.Models {
 		if model.WorkDir != "" {
 			mustMkdir(filepath.Join(cfg.WorkRoot, model.WorkDir))
@@ -3696,20 +3714,71 @@ func workModeJSONSchema() map[string]any {
 	}
 }
 
+func stripSingleFullMarkdownJSONFence(raw string) (string, bool) {
+	trimmed := strings.TrimSpace(raw)
+	if !strings.HasPrefix(trimmed, "```") {
+		return "", false
+	}
+	lines := strings.Split(trimmed, "\n")
+	if len(lines) < 2 {
+		return "", false
+	}
+	opener := strings.TrimSpace(lines[0])
+	language := strings.TrimSpace(strings.TrimPrefix(opener, "```"))
+	if language != "" && !strings.EqualFold(language, "json") {
+		return "", false
+	}
+	if strings.TrimSpace(lines[len(lines)-1]) != "```" {
+		return "", false
+	}
+	return strings.TrimSpace(strings.Join(lines[1:len(lines)-1], "\n")), true
+}
+
+func workModeJSONCandidate(raw string) (string, error) {
+	if strings.TrimSpace(raw) == "" {
+		return "", errors.New("empty Work Mode response")
+	}
+	if json.Valid([]byte(raw)) {
+		return raw, nil
+	}
+	trimmed := strings.TrimSpace(raw)
+	trimmed = strings.TrimSpace(strings.TrimPrefix(trimmed, "\ufeff"))
+	if trimmed == "" {
+		return "", errors.New("empty Work Mode response")
+	}
+	if json.Valid([]byte(trimmed)) {
+		return trimmed, nil
+	}
+	if unfenced, ok := stripSingleFullMarkdownJSONFence(trimmed); ok {
+		if unfenced == "" {
+			return "", errors.New("empty JSON inside Work Mode markdown fence")
+		}
+		if json.Valid([]byte(unfenced)) {
+			return unfenced, nil
+		}
+		if err := explainInvalidJSON(unfenced); err != nil {
+			return "", fmt.Errorf("invalid JSON inside Work Mode markdown fence: %w", err)
+		}
+		return "", errors.New("invalid JSON inside Work Mode markdown fence")
+	}
+	if jsonText, _, _, ok := extractJSONObjectFromText(trimmed); ok {
+		return jsonText, nil
+	}
+	if candidate, _, _, ok := extractBalancedJSONObjectCandidate(trimmed); ok {
+		if err := explainInvalidJSON(candidate); err != nil {
+			return "", fmt.Errorf("no valid JSON object found in Work Mode response: %w", err)
+		}
+	}
+	return "", errors.New("no valid JSON object found in Work Mode response")
+}
+
 func parseWorkModeAIResponse(raw string) (workModeAIResponse, error) {
 	var resp workModeAIResponse
-	trimmed := sanitizeModelJSONText(raw)
-	if trimmed == "" {
-		return resp, errors.New("empty Work Mode response")
+	jsonText, err := workModeJSONCandidate(raw)
+	if err != nil {
+		return resp, err
 	}
-	if !json.Valid([]byte(trimmed)) {
-		jsonText, _, _, ok := extractJSONObjectFromText(trimmed)
-		if !ok {
-			return resp, errors.New("no valid JSON object found in Work Mode response")
-		}
-		trimmed = jsonText
-	}
-	if err := json.Unmarshal([]byte(trimmed), &resp); err != nil {
+	if err := json.Unmarshal([]byte(jsonText), &resp); err != nil {
 		return resp, err
 	}
 	if resp.Files == nil {
@@ -4405,7 +4474,7 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 	parsed, err := parseWorkModeAdapterResponse(adapterResp, projectworkRoot, projectName)
 	if err != nil {
 		a.logf(modelIDString(model.ID), "warn", "Work Mode response parse failed: %v", err)
-		http.Error(w, "Work Mode AI returned unreadable JSON: "+err.Error(), http.StatusBadGateway)
+		writeWorkModeJSONError(w, err, adapterResp.Text)
 		return
 	}
 	limits, err := a.loadProjectLimits(projectName)
@@ -4450,6 +4519,20 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 	agentMessage := workModeOutputLimitWarning(model, adapterResp)
 	a.logf(modelIDString(model.ID), "info", "Work Mode prompt completed for project %s; changed=%d skipped=%d", projectName, len(changed), len(skipped))
 	writeJSON(w, http.StatusOK, workModeResponse{Reply: parsed.Reply, ChangedFiles: changed, SkippedFiles: skipped, BlockedFiles: blocked, InlineFiles: inlineFiles, DiffFiles: diffFiles, AgentMessage: agentMessage, MemoryUpdated: memoryUpdated, MemoryWarning: memoryWarning})
+}
+
+func writeWorkModeJSONError(w http.ResponseWriter, parseErr error, rawResponse string) {
+	message := "AgentGO could not read the AI's Work Mode JSON response. Expand details to inspect the parse error and raw AI response."
+	parseText := "unknown JSON parse error"
+	if parseErr != nil {
+		parseText = parseErr.Error()
+	}
+	writeJSON(w, http.StatusBadGateway, workModeJSONErrorResponse{
+		Error:       "work_mode_json_parse_failed",
+		Message:     message,
+		ParseError:  parseText,
+		RawResponse: rawResponse,
+	})
 }
 
 func (a *App) savePromptHelperRawResponse(model ModelConfig, projectName, responseText string) string {
@@ -7013,7 +7096,7 @@ func (a *App) mergeModelIntoProjectworkDetailed(modelID string, files []string) 
 	if err != nil {
 		return 0, mergeSummary{}, err
 	}
-	if _, err := a.syncAllBuilderProjectsFromProjectwork(projectName); err != nil {
+	if _, err := a.syncActiveBuilderProjectsFromProjectwork(projectName); err != nil {
 		return copied, summary, err
 	}
 	if propagated, err := a.propagateMergedAIContextToBuilders(projectName, model); err != nil {
@@ -7113,10 +7196,10 @@ func (a *App) applyMergeToProjectwork(model ModelConfig, projectName string, fil
 			Skipped:  []string{},
 		},
 		PostMerge: mergeSummaryPost{
-			ProjectworkUpdated:       true,
-			AllModelProjectsResynced: true,
+			ProjectworkUpdated:            true,
+			ActiveBuilderProjectsResynced: true,
 		},
-		Instruction: "Use /projects/<project>/projectwork as the source of truth. Only the listed added, modified, and deleted files were kept.",
+		Instruction: "Use /projects/<project>/projectwork as the source of truth. Only the listed added, modified, and deleted files were kept. Active Builder workspaces are synchronized after merge; inactive models sync when activated.",
 	}
 	lastMergedFiles := []string{}
 	seenLast := map[string]bool{}
@@ -7749,6 +7832,7 @@ func toAdapterModelConfig(model ModelConfig) adapters.ModelConfig {
 		VideoPromptOnly:        model.VideoPromptOnly,
 		VideoStartFrame:        model.VideoStartFrame,
 		VideoEndFrame:          model.VideoEndFrame,
+		VideoIngredients:       model.VideoIngredients,
 		VideoDuration:          model.VideoDuration,
 		VideoAspectRatio:       model.VideoAspectRatio,
 		VideoResolution:        model.VideoResolution,
@@ -8503,8 +8587,10 @@ func (a *App) handleListFiles(w http.ResponseWriter, r *http.Request) {
 					return 0
 				case "outfits":
 					return 1
-				default:
+				case "mastermind":
 					return 2
+				default:
+					return 3
 				}
 			}
 			rankI := rank(out[i], nameI)
@@ -16306,7 +16392,7 @@ func (a *App) handleMerge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := a.syncAllBuilderProjectsFromProjectwork(projectName); err != nil {
+	if _, err := a.syncActiveBuilderProjectsFromProjectwork(projectName); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -16328,7 +16414,7 @@ func (a *App) handleMerge(w http.ResponseWriter, r *http.Request) {
 		a.logf(req.ModelID, "info", "Cleared %d Observer report(s) after merge for project %s", clearedReviewerReports, projectName)
 	}
 
-	a.logf(req.ModelID, "info", "Merged %d file changes from %s/%s/project into %s and synchronized builder workspaces", copied, model.WorkDir, projectName, filepath.ToSlash(filepath.Join("projects", projectName, "projectwork")))
+	a.logf(req.ModelID, "info", "Merged %d file changes from %s/%s/project into %s and synchronized active builder workspaces", copied, model.WorkDir, projectName, filepath.ToSlash(filepath.Join("projects", projectName, "projectwork")))
 	completedWave := 0
 	if waveState, ok := a.currentWaveExecution(projectName); ok {
 		completedWave = waveState.CurrentWave
@@ -16414,7 +16500,7 @@ func (a *App) handleBypassMerge(w http.ResponseWriter, r *http.Request) {
 	} else if restored > 0 {
 		a.logf("system", "info", "Restored ai_context.json for %d Builder model(s) after bypassing merge candidates in project %s", restored, projectName)
 	}
-	if _, err := a.syncAllBuilderProjectsFromProjectwork(projectName); err != nil {
+	if _, err := a.syncActiveBuilderProjectsFromProjectwork(projectName); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -16629,10 +16715,6 @@ func (a *App) handleCreateProject(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if _, err := a.syncAllBuilderProjectsFromProjectwork(name); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 	if clearedBuilderResponses, clearErr := a.clearAllBuilderResponseStatesForProject(name); clearErr != nil {
 		a.logf("system", "warn", "Failed clearing Builder response cards after creating project %s: %v", name, clearErr)
 	} else if clearedBuilderResponses > 0 {
@@ -16681,10 +16763,6 @@ func (a *App) handleSelectProject(w http.ResponseWriter, r *http.Request) {
 	}
 	a.resetProjectSessionState()
 	if err := a.setActiveProject(name); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if _, err := a.syncAllBuilderProjectsFromProjectwork(name); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -17219,7 +17297,29 @@ func logSyncResult(src, dst string, stats syncStats) {
 	log.Printf("[INFO] sync complete: src=%s dst=%s writes=%d deletes=%d skips=%d", src, dst, stats.Writes, stats.Deletes, stats.Skips)
 }
 
+type workspaceCollectOptions struct {
+	SkipGeneratedMediaDirs bool
+}
+
+func isGeneratedMediaSyncDir(rel string) bool {
+	rel = strings.Trim(filepath.ToSlash(filepath.Clean(strings.TrimSpace(rel))), "/")
+	if rel == "" || rel == "." {
+		return false
+	}
+	first, _, _ := strings.Cut(rel, "/")
+	switch strings.ToLower(first) {
+	case "videos", "3dmesh":
+		return true
+	default:
+		return false
+	}
+}
+
 func collectWorkspaceFiles(root string) (map[string][]byte, error) {
+	return collectWorkspaceFilesWithOptions(root, workspaceCollectOptions{})
+}
+
+func collectWorkspaceFilesWithOptions(root string, opts workspaceCollectOptions) (map[string][]byte, error) {
 	files := map[string][]byte{}
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -17231,33 +17331,49 @@ func collectWorkspaceFiles(root string) (map[string][]byte, error) {
 			}
 			return nil
 		}
+		rel := ""
+		if path != root {
+			var relErr error
+			rel, relErr = filepath.Rel(root, path)
+			if relErr != nil {
+				return relErr
+			}
+			rel = filepath.ToSlash(rel)
+		}
 		if d.IsDir() {
+			if opts.SkipGeneratedMediaDirs && isGeneratedMediaSyncDir(rel) {
+				return filepath.SkipDir
+			}
 			return nil
 		}
 		base := filepath.Base(path)
 		if shouldSkipWorkspaceFile(base) {
 			return nil
 		}
-		rel, err := filepath.Rel(root, path)
-		if err != nil {
-			return err
-		}
 		data, err := readFileUnderRoot(root, path)
 		if err != nil {
 			return nil
 		}
-		files[filepath.ToSlash(rel)] = data
+		files[rel] = data
 		return nil
 	})
 	return files, err
 }
 
 func syncDirContents(src, dst string) (int, error) {
-	srcFiles, err := collectWorkspaceFiles(src)
+	return syncDirContentsWithOptions(src, dst, workspaceCollectOptions{})
+}
+
+func syncDirContentsForProjectSync(src, dst string) (int, error) {
+	return syncDirContentsWithOptions(src, dst, workspaceCollectOptions{SkipGeneratedMediaDirs: true})
+}
+
+func syncDirContentsWithOptions(src, dst string, opts workspaceCollectOptions) (int, error) {
+	srcFiles, err := collectWorkspaceFilesWithOptions(src, opts)
 	if err != nil {
 		return 0, err
 	}
-	dstFiles, err := collectWorkspaceFiles(dst)
+	dstFiles, err := collectWorkspaceFilesWithOptions(dst, opts)
 	if err != nil {
 		return 0, err
 	}
@@ -17425,7 +17541,7 @@ func (a *App) syncBuilderProjectsFromProjectwork(projectName string, models []Mo
 			targetLabel = modelID
 		}
 		a.logf("system", "info", "Synchronizing projectwork into active model %s (%s) for project %s", targetLabel, modelID, projectName)
-		n, err := syncDirContents(projectworkRoot, projectRoot)
+		n, err := syncDirContentsForProjectSync(projectworkRoot, projectRoot)
 		if err != nil {
 			return count, fmt.Errorf("sync projectwork -> %s failed: %w", modelID, err)
 		}
@@ -19678,6 +19794,7 @@ type modelDefinitionView struct {
 	VideoPromptOnly        bool              `json:"video_prompt_only,omitempty"`
 	VideoStartFrame        bool              `json:"video_start_frame,omitempty"`
 	VideoEndFrame          bool              `json:"video_end_frame,omitempty"`
+	VideoIngredients       bool              `json:"video_ingredients,omitempty"`
 	VideoDuration          string            `json:"video_duration,omitempty"`
 	VideoAspectRatio       string            `json:"video_aspect_ratio,omitempty"`
 	VideoResolution        string            `json:"video_resolution,omitempty"`
@@ -19707,6 +19824,8 @@ type modelDefinitionView struct {
 	CapabilityMode         string            `json:"capability_mode,omitempty"`
 	Capabilities           ModelCapabilities `json:"capabilities"`
 	RunOrder               int               `json:"run_order,omitempty"`
+	MasterMindMemory       string            `json:"mastermind_memory,omitempty"`
+	MasterMindIdentity     string            `json:"mastermind_identity,omitempty"`
 	Notes                  string            `json:"notes"`
 	CreatedAt              string            `json:"created_at"`
 	UpdatedAt              string            `json:"updated_at"`
@@ -19726,6 +19845,7 @@ type modelMutationRequest struct {
 	VideoPromptOnly        bool              `json:"video_prompt_only,omitempty"`
 	VideoStartFrame        bool              `json:"video_start_frame,omitempty"`
 	VideoEndFrame          bool              `json:"video_end_frame,omitempty"`
+	VideoIngredients       bool              `json:"video_ingredients,omitempty"`
 	VideoDuration          string            `json:"video_duration,omitempty"`
 	VideoAspectRatio       string            `json:"video_aspect_ratio,omitempty"`
 	VideoResolution        string            `json:"video_resolution,omitempty"`
@@ -19800,7 +19920,7 @@ func normalizeModelMutation(req modelMutationRequest) modelMutationRequest {
 	req.UseLowWeightPrompts = req.PromptMode == promptModeLow
 	req.Capabilities = normalizeModelCapabilities(req.Capabilities)
 	if req.VideoGeneration {
-		if !req.VideoPromptOnly && !req.VideoStartFrame && !req.VideoEndFrame {
+		if !req.VideoPromptOnly && !req.VideoStartFrame && !req.VideoEndFrame && !req.VideoIngredients {
 			req.VideoPromptOnly = true
 			req.VideoStartFrame = true
 			req.VideoEndFrame = true
@@ -19868,7 +19988,7 @@ func validateModelMutation(req modelMutationRequest) error {
 		return errors.New("choose either Video Generation or 3D Mesh Generation, not both. Create a separate model card for the other mode")
 	}
 	switch req.AuthType {
-	case "none", "bearer", "basic", "header_key":
+	case "none", "bearer", "basic", "header_key", "google_adc":
 		return nil
 	default:
 		return errors.New("auth type is required")
@@ -20456,6 +20576,7 @@ func sanitizeModelDefinition(model ModelConfig) modelDefinitionView {
 		VideoPromptOnly:        model.VideoPromptOnly,
 		VideoStartFrame:        model.VideoStartFrame,
 		VideoEndFrame:          model.VideoEndFrame,
+		VideoIngredients:       model.VideoIngredients,
 		VideoDuration:          model.VideoDuration,
 		VideoAspectRatio:       model.VideoAspectRatio,
 		VideoResolution:        model.VideoResolution,
@@ -20485,6 +20606,8 @@ func sanitizeModelDefinition(model ModelConfig) modelDefinitionView {
 		CapabilityMode:         model.CapabilityMode,
 		Capabilities:           model.Capabilities,
 		RunOrder:               model.RunOrder,
+		MasterMindMemory:       model.MasterMindMemory,
+		MasterMindIdentity:     model.MasterMindIdentity,
 		Notes:                  model.Notes,
 		CreatedAt:              model.CreatedAt,
 		UpdatedAt:              model.UpdatedAt,
@@ -20514,6 +20637,385 @@ func (a *App) handleModelDefinitions(w http.ResponseWriter, r *http.Request) {
 	defer a.mu.RUnlock()
 	models := cloneModelDefinitions(a.cfg.Models)
 	writeJSON(w, http.StatusOK, modelDefinitionResponse{SchemaVersion: a.modelSchemaVersion, TopID: a.modelTopID, Models: models})
+}
+
+const (
+	masterMindRootDir       = "mastermind"
+	masterMindMemoriesDir   = "memories"
+	masterMindIdentitiesDir = "identities"
+)
+
+type masterMindFolderView struct {
+	Name string `json:"name"`
+	Path string `json:"path"`
+}
+
+type masterMindStateResponse struct {
+	ModelID        string                 `json:"modelId"`
+	ModelLabel     string                 `json:"modelLabel"`
+	ActiveMemory   string                 `json:"activeMemory"`
+	ActiveIdentity string                 `json:"activeIdentity"`
+	Memories       []masterMindFolderView `json:"memories"`
+	Identities     []masterMindFolderView `json:"identities"`
+}
+
+func normalizeMasterMindKind(kind string) (string, string, error) {
+	switch strings.ToLower(strings.TrimSpace(kind)) {
+	case "memory", "memories":
+		return "memory", masterMindMemoriesDir, nil
+	case "identity", "identities":
+		return "identity", masterMindIdentitiesDir, nil
+	default:
+		return "", "", errors.New("kind must be memory or identity")
+	}
+}
+
+func normalizeMasterMindFolderName(raw string) (string, error) {
+	name := strings.TrimSpace(raw)
+	if name == "" {
+		return "", errors.New("folder name is required")
+	}
+	if utf8.RuneCountInString(name) > 100 {
+		return "", errors.New("folder name must be 100 characters or fewer")
+	}
+	if name == "." || name == ".." || strings.Contains(name, "/") || strings.Contains(name, "\\") || filepath.IsAbs(name) || filepath.VolumeName(name) != "" {
+		return "", errors.New("folder name must not include path separators or traversal")
+	}
+	if strings.HasPrefix(name, ".") {
+		return "", errors.New("hidden MasterMind folders are not supported")
+	}
+	for _, r := range name {
+		if r == 0 || unicode.IsControl(r) {
+			return "", errors.New("folder name contains an unsupported character")
+		}
+	}
+	return name, nil
+}
+
+func (a *App) ensureMasterMindDirs() error {
+	root, err := safeJoin(a.cfg.WorkRoot, masterMindRootDir)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		return err
+	}
+	memories, err := safeJoin(root, masterMindMemoriesDir)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(memories, 0o755); err != nil {
+		return err
+	}
+	identities, err := safeJoin(root, masterMindIdentitiesDir)
+	if err != nil {
+		return err
+	}
+	return os.MkdirAll(identities, 0o755)
+}
+
+func (a *App) masterMindKindRoot(kind string) (string, string, string, error) {
+	normalizedKind, dirName, err := normalizeMasterMindKind(kind)
+	if err != nil {
+		return "", "", "", err
+	}
+	if err := a.ensureMasterMindDirs(); err != nil {
+		return "", "", "", err
+	}
+	full, err := safeJoin(a.cfg.WorkRoot, masterMindRootDir, dirName)
+	if err != nil {
+		return "", "", "", err
+	}
+	return normalizedKind, dirName, full, nil
+}
+
+func (a *App) listMasterMindFolders(kind string) ([]masterMindFolderView, error) {
+	_, dirName, root, err := a.masterMindKindRoot(kind)
+	if err != nil {
+		return nil, err
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return nil, err
+	}
+	out := []masterMindFolderView{}
+	for _, entry := range entries {
+		if !entry.IsDir() || isSymlinkDirEntry(entry) {
+			continue
+		}
+		name := entry.Name()
+		out = append(out, masterMindFolderView{Name: name, Path: filepath.ToSlash(filepath.Join(masterMindRootDir, dirName, name))})
+	}
+	sort.Slice(out, func(i, j int) bool { return strings.ToLower(out[i].Name) < strings.ToLower(out[j].Name) })
+	return out, nil
+}
+
+func masterMindFolderExists(folders []masterMindFolderView, name string) bool {
+	name = strings.TrimSpace(name)
+	for _, folder := range folders {
+		if folder.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *App) buildMasterMindState(modelID string) (masterMindStateResponse, error) {
+	modelID = strings.TrimSpace(modelID)
+	if modelID == "" {
+		return masterMindStateResponse{}, errors.New("missing modelId")
+	}
+	memories, err := a.listMasterMindFolders("memory")
+	if err != nil {
+		return masterMindStateResponse{}, err
+	}
+	identities, err := a.listMasterMindFolders("identity")
+	if err != nil {
+		return masterMindStateResponse{}, err
+	}
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	for _, model := range a.cfg.Models {
+		if modelIDString(model.ID) != modelID {
+			continue
+		}
+		activeMemory := strings.TrimSpace(model.MasterMindMemory)
+		activeIdentity := strings.TrimSpace(model.MasterMindIdentity)
+		if !masterMindFolderExists(memories, activeMemory) {
+			activeMemory = ""
+		}
+		if !masterMindFolderExists(identities, activeIdentity) {
+			activeIdentity = ""
+		}
+		return masterMindStateResponse{ModelID: modelID, ModelLabel: model.Label, ActiveMemory: activeMemory, ActiveIdentity: activeIdentity, Memories: memories, Identities: identities}, nil
+	}
+	return masterMindStateResponse{}, errors.New("unknown model")
+}
+
+func (a *App) handleMasterMindState(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	state, err := a.buildMasterMindState(r.URL.Query().Get("modelId"))
+	if err != nil {
+		status := http.StatusBadRequest
+		if err.Error() == "unknown model" {
+			status = http.StatusNotFound
+		}
+		http.Error(w, err.Error(), status)
+		return
+	}
+	writeJSON(w, http.StatusOK, state)
+}
+
+func (a *App) handleMasterMindFolder(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		Kind string `json:"kind"`
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8192)).Decode(&req); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	normalizedKind, dirName, root, err := a.masterMindKindRoot(req.Kind)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	name, err := normalizeMasterMindFolderName(req.Name)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	target, err := safeJoin(root, name)
+	if err != nil {
+		http.Error(w, "invalid folder name", http.StatusBadRequest)
+		return
+	}
+	if err := rejectSymlinkPath(a.cfg.WorkRoot, root); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if _, err := os.Lstat(target); err == nil {
+		http.Error(w, "MasterMind folder already exists", http.StatusConflict)
+		return
+	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := os.MkdirAll(target, 0o755); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	a.logf("system", "info", "MasterMind %s folder created: %s", normalizedKind, filepath.ToSlash(filepath.Join(masterMindRootDir, dirName, name)))
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "name": name})
+}
+
+func (a *App) handleMasterMindDelete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		Kind    string `json:"kind"`
+		Name    string `json:"name"`
+		ModelID string `json:"modelId"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8192)).Decode(&req); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	normalizedKind, dirName, root, err := a.masterMindKindRoot(req.Kind)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	name, err := normalizeMasterMindFolderName(req.Name)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	target, err := safeJoin(root, name)
+	if err != nil {
+		http.Error(w, "invalid folder name", http.StatusBadRequest)
+		return
+	}
+	if err := rejectSymlinkPath(a.cfg.WorkRoot, target); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	info, err := os.Stat(target)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			http.Error(w, "MasterMind folder not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !info.IsDir() {
+		http.Error(w, "MasterMind item is not a folder", http.StatusBadRequest)
+		return
+	}
+	if err := os.RemoveAll(target); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	a.mu.Lock()
+	changed := false
+	for i := range a.cfg.Models {
+		if normalizedKind == "memory" && a.cfg.Models[i].MasterMindMemory == name {
+			a.cfg.Models[i].MasterMindMemory = ""
+			a.cfg.Models[i].UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+			changed = true
+		}
+		if normalizedKind == "identity" && a.cfg.Models[i].MasterMindIdentity == name {
+			a.cfg.Models[i].MasterMindIdentity = ""
+			a.cfg.Models[i].UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+			changed = true
+		}
+	}
+	if changed {
+		if err := a.persistModelsLocked(); err != nil {
+			a.mu.Unlock()
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+	a.mu.Unlock()
+	a.logf("system", "warn", "MasterMind %s folder deleted: %s", normalizedKind, filepath.ToSlash(filepath.Join(masterMindRootDir, dirName, name)))
+	state, err := a.buildMasterMindState(req.ModelID)
+	if err != nil {
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+		return
+	}
+	writeJSON(w, http.StatusOK, state)
+}
+
+func (a *App) handleMasterMindSelection(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		ModelID string `json:"modelId"`
+		Kind    string `json:"kind"`
+		Name    string `json:"name"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8192)).Decode(&req); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	modelID := strings.TrimSpace(req.ModelID)
+	if modelID == "" {
+		http.Error(w, "missing modelId", http.StatusBadRequest)
+		return
+	}
+	normalizedKind, _, _, err := a.masterMindKindRoot(req.Kind)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	name := strings.TrimSpace(req.Name)
+	if name != "" {
+		var err error
+		name, err = normalizeMasterMindFolderName(name)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		folders, err := a.listMasterMindFolders(normalizedKind)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if !masterMindFolderExists(folders, name) {
+			http.Error(w, "MasterMind folder not found", http.StatusNotFound)
+			return
+		}
+	}
+	a.mu.Lock()
+	found := false
+	for i := range a.cfg.Models {
+		if modelIDString(a.cfg.Models[i].ID) != modelID {
+			continue
+		}
+		found = true
+		if normalizedKind == "memory" {
+			a.cfg.Models[i].MasterMindMemory = name
+		} else {
+			a.cfg.Models[i].MasterMindIdentity = name
+		}
+		a.cfg.Models[i].UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+		break
+	}
+	if !found {
+		a.mu.Unlock()
+		http.Error(w, "unknown model", http.StatusNotFound)
+		return
+	}
+	if err := a.persistModelsLocked(); err != nil {
+		a.mu.Unlock()
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	a.mu.Unlock()
+	if name == "" {
+		a.logf("system", "info", "MasterMind %s unset for model %s", normalizedKind, modelID)
+	} else {
+		a.logf("system", "info", "MasterMind %s set for model %s: %s", normalizedKind, modelID, name)
+	}
+	state, err := a.buildMasterMindState(modelID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, state)
 }
 
 func (a *App) handleCreateModel(w http.ResponseWriter, r *http.Request) {
@@ -20550,6 +21052,7 @@ func (a *App) handleCreateModel(w http.ResponseWriter, r *http.Request) {
 		VideoPromptOnly:        req.VideoPromptOnly,
 		VideoStartFrame:        req.VideoStartFrame,
 		VideoEndFrame:          req.VideoEndFrame,
+		VideoIngredients:       req.VideoIngredients,
 		VideoDuration:          req.VideoDuration,
 		VideoAspectRatio:       req.VideoAspectRatio,
 		VideoResolution:        req.VideoResolution,
@@ -20582,6 +21085,8 @@ func (a *App) handleCreateModel(w http.ResponseWriter, r *http.Request) {
 		CapabilityMode:         req.CapabilityMode,
 		Capabilities:           req.Capabilities,
 		RunOrder:               0,
+		MasterMindMemory:       "",
+		MasterMindIdentity:     "",
 		Notes:                  req.Notes,
 		CreatedAt:              now,
 		UpdatedAt:              now,
@@ -20655,6 +21160,7 @@ func (a *App) handleUpdateModel(w http.ResponseWriter, r *http.Request) {
 		a.cfg.Models[i].VideoPromptOnly = req.VideoPromptOnly
 		a.cfg.Models[i].VideoStartFrame = req.VideoStartFrame
 		a.cfg.Models[i].VideoEndFrame = req.VideoEndFrame
+		a.cfg.Models[i].VideoIngredients = req.VideoIngredients
 		a.cfg.Models[i].VideoDuration = req.VideoDuration
 		a.cfg.Models[i].VideoAspectRatio = req.VideoAspectRatio
 		a.cfg.Models[i].VideoResolution = req.VideoResolution

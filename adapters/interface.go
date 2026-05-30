@@ -33,6 +33,7 @@ type ModelConfig struct {
 	VideoPromptOnly        bool              `json:"video_prompt_only,omitempty"`
 	VideoStartFrame        bool              `json:"video_start_frame,omitempty"`
 	VideoEndFrame          bool              `json:"video_end_frame,omitempty"`
+	VideoIngredients       bool              `json:"video_ingredients,omitempty"`
 	VideoDuration          string            `json:"video_duration,omitempty"`
 	VideoAspectRatio       string            `json:"video_aspect_ratio,omitempty"`
 	VideoResolution        string            `json:"video_resolution,omitempty"`

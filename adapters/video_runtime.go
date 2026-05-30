@@ -24,28 +24,55 @@ type VideoBinary struct {
 }
 
 type VideoRequest struct {
-	JobID        string
-	Prompt       string
-	StartFrame   *VideoBinary
-	EndFrame     *VideoBinary
-	Duration     string
-	AspectRatio  string
-	Resolution   string
-	OutputFormat string
-	FPS          string
-	Quality      string
-	PollInterval time.Duration
+	JobID           string
+	Prompt          string
+	StartFrame      *VideoBinary
+	EndFrame        *VideoBinary
+	ReferenceImages []VideoBinary
+	Duration        string
+	AspectRatio     string
+	Resolution      string
+	OutputFormat    string
+	FPS             string
+	Quality         string
+	PollInterval    time.Duration
+	PollUpdate      func(VideoProgress)
+}
+
+type VideoProgress struct {
+	Status            string
+	ProviderJobID     string
+	RemoteStatus      string
+	PollCount         int
+	LastPollAt        string
+	SubmitRequestURL  string
+	SubmitRequestBody string
+	SubmitRawBody     string
+	PollRequestURL    string
+	PollRequestBody   string
+	LastPollRawBody   string
+	Error             string
 }
 
 type VideoResult struct {
-	Status        string
-	ProviderJobID string
-	RemoteStatus  string
-	VideoData     []byte
-	VideoMIMEType string
-	VideoFilename string
-	RawBody       string
-	Error         string
+	Status                   string
+	ProviderJobID            string
+	RemoteStatus             string
+	VideoData                []byte
+	VideoMIMEType            string
+	VideoFilename            string
+	VideoSourceURI           string
+	VideoDownloadContentType string
+	RawBody                  string
+	SubmitRequestURL         string
+	SubmitRequestBody        string
+	SubmitRawBody            string
+	PollRequestURL           string
+	PollRequestBody          string
+	LastPollRawBody          string
+	PollCount                int
+	LastPollAt               string
+	Error                    string
 }
 
 func ExecuteVideo(ctx context.Context, model ModelConfig, req VideoRequest) (VideoResult, error) {
@@ -58,18 +85,21 @@ func ExecuteVideo(ctx context.Context, model ModelConfig, req VideoRequest) (Vid
 			statusPath:         "done",
 			successValue:       "true",
 			errorPath:          "error.message",
-			videoURLPath:       "response.generatedVideos.0.video.uri",
-			videoMimePath:      "response.generatedVideos.0.video.mimeType",
+			videoURLPath:       "response.generateVideoResponse.generatedSamples.0.video.uri",
+			videoMimePath:      "response.generateVideoResponse.generatedSamples.0.video.mimeType",
 			submitBodyTemplate: map[string]any{"instances": []any{map[string]any{}}, "parameters": map[string]any{}},
 			promptFieldPath:    "instances.0.prompt",
-			startFieldPath:     "instances.0.image.bytesBase64Encoded",
-			startMimeFieldPath: "instances.0.image.mimeType",
-			endFieldPath:       "instances.0.lastFrame.bytesBase64Encoded",
-			endMimeFieldPath:   "instances.0.lastFrame.mimeType",
+			startFieldPath:     "instances.0.image.inlineData.data",
+			startMimeFieldPath: "instances.0.image.inlineData.mimeType",
+			endFieldPath:       "instances.0.lastFrame.inlineData.data",
+			endMimeFieldPath:   "instances.0.lastFrame.inlineData.mimeType",
+			refFieldPath:       "instances.0.referenceImages",
 			durationFieldPath:  "parameters.durationSeconds",
 			aspectFieldPath:    "parameters.aspectRatio",
 			resFieldPath:       "parameters.resolution",
 		})
+	case "vertex_veo_video":
+		return executeVertexVeoVideo(ctx, model, req)
 	case "kling_video":
 		return executeConfiguredVideo(ctx, model, req, videoAdapterDefaults{
 			submitPath:         "/v1/videos/generations",
@@ -115,6 +145,7 @@ type videoAdapterDefaults struct {
 	startMimeFieldPath string
 	endFieldPath       string
 	endMimeFieldPath   string
+	refFieldPath       string
 	durationFieldPath  string
 	aspectFieldPath    string
 	resFieldPath       string
@@ -659,6 +690,222 @@ func defaultVideoFilename(name, fallbackExt string) string {
 	return base
 }
 
+func reportVideoProgress(req VideoRequest, progress VideoProgress) {
+	if req.PollUpdate != nil {
+		req.PollUpdate(progress)
+	}
+}
+
+func setVideoRequestField(root map[string]any, path string, value any) {
+	clean := strings.TrimSpace(path)
+	if clean == "" || root == nil || value == nil {
+		return
+	}
+	parts := strings.Split(clean, ".")
+	updated := setVideoRequestPath(root, parts, value)
+	if mapped, ok := updated.(map[string]any); ok {
+		replacement := make(map[string]any, len(mapped))
+		for key, child := range mapped {
+			replacement[key] = child
+		}
+		for key := range root {
+			delete(root, key)
+		}
+		for key, child := range replacement {
+			root[key] = child
+		}
+	}
+}
+
+func setVideoRequestPath(current any, parts []string, value any) any {
+	if len(parts) == 0 {
+		return value
+	}
+	segment := strings.TrimSpace(parts[0])
+	if segment == "" {
+		return current
+	}
+	if idx, err := strconv.Atoi(segment); err == nil && idx >= 0 {
+		var arr []any
+		if typed, ok := current.([]any); ok && typed != nil {
+			arr = typed
+		}
+		for len(arr) <= idx {
+			arr = append(arr, nil)
+		}
+		arr[idx] = setVideoRequestPath(arr[idx], parts[1:], value)
+		return arr
+	}
+	mapped, _ := current.(map[string]any)
+	if mapped == nil {
+		mapped = map[string]any{}
+	}
+	mapped[segment] = setVideoRequestPath(mapped[segment], parts[1:], value)
+	return mapped
+}
+
+func coerceJSONScalar(value string) any {
+	clean := strings.TrimSpace(value)
+	if clean == "" {
+		return value
+	}
+	if i, err := strconv.Atoi(clean); err == nil {
+		return i
+	}
+	if f, err := strconv.ParseFloat(clean, 64); err == nil {
+		return f
+	}
+	return value
+}
+
+func sanitizedVideoRequestBody(body map[string]any) string {
+	if body == nil {
+		return ""
+	}
+	payload, err := json.MarshalIndent(sanitizeVideoDiagnosticValue(body, "", nil), "", "  ")
+	if err != nil {
+		return ""
+	}
+	return string(payload)
+}
+
+func sanitizeVideoDiagnosticValue(value any, key string, parent map[string]any) any {
+	switch typed := value.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(typed))
+		for childKey, child := range typed {
+			out[childKey] = sanitizeVideoDiagnosticValue(child, childKey, typed)
+		}
+		return out
+	case []any:
+		out := make([]any, len(typed))
+		for idx, child := range typed {
+			out[idx] = sanitizeVideoDiagnosticValue(child, key, parent)
+		}
+		return out
+	case string:
+		if shouldRedactVideoBase64Field(key, typed) {
+			mimeType := "binary"
+			if parent != nil {
+				if val := strings.TrimSpace(asString(parent["mimeType"])); val != "" {
+					mimeType = val
+				} else if val := strings.TrimSpace(asString(parent["mime_type"])); val != "" {
+					mimeType = val
+				}
+			}
+			return fmt.Sprintf("[base64 %s, approx %d bytes]", mimeType, approximateBase64DecodedBytes(typed))
+		}
+		return typed
+	default:
+		return typed
+	}
+}
+
+func shouldRedactVideoBase64Field(key, value string) bool {
+	cleanKey := strings.ToLower(strings.TrimSpace(key))
+	if len(strings.TrimSpace(value)) < 96 {
+		return false
+	}
+	switch cleanKey {
+	case "bytesbase64encoded", "data", "base64", "b64_json", "content":
+		return looksLikeBase64(value)
+	default:
+		return false
+	}
+}
+
+func looksLikeBase64(value string) bool {
+	clean := strings.TrimSpace(value)
+	if clean == "" {
+		return false
+	}
+	if strings.Contains(clean, " ") || strings.Contains(clean, "\t") || strings.Contains(clean, "\n") || strings.Contains(clean, "\r") {
+		return false
+	}
+	for _, ch := range clean {
+		if (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '+' || ch == '/' || ch == '=' || ch == '-' || ch == '_' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func approximateBase64DecodedBytes(value string) int {
+	clean := strings.TrimSpace(value)
+	if decoded, err := base64.StdEncoding.DecodeString(clean); err == nil {
+		return len(decoded)
+	}
+	padding := 0
+	for strings.HasSuffix(clean, "=") {
+		padding++
+		clean = strings.TrimSuffix(clean, "=")
+	}
+	return len(clean)*3/4 - padding
+}
+
+func sanitizeDiagnosticURL(raw string) string {
+	clean := strings.TrimSpace(raw)
+	if clean == "" {
+		return ""
+	}
+	parsed, err := url.Parse(clean)
+	if err != nil || parsed == nil {
+		return clean
+	}
+	query := parsed.Query()
+	for key := range query {
+		lower := strings.ToLower(key)
+		if strings.Contains(lower, "key") || strings.Contains(lower, "token") || strings.Contains(lower, "secret") || strings.Contains(lower, "credential") || strings.Contains(lower, "auth") {
+			query.Set(key, "[redacted]")
+		}
+	}
+	parsed.RawQuery = query.Encode()
+	return parsed.String()
+}
+
+func buildGenericVideoReferenceImages(images []VideoBinary) []any {
+	refs := []any{}
+	for _, image := range images {
+		if len(refs) >= 3 {
+			break
+		}
+		if len(image.Data) == 0 {
+			continue
+		}
+		refs = append(refs, map[string]any{
+			"image": map[string]any{
+				"inlineData": map[string]any{
+					"mimeType": defaultVideoMIME(image.Name, image.MIMEType),
+					"data":     base64.StdEncoding.EncodeToString(image.Data),
+				},
+			},
+			"referenceType": "asset",
+		})
+	}
+	return refs
+}
+
+func buildVertexVideoReferenceImages(images []VideoBinary) []any {
+	refs := []any{}
+	for _, image := range images {
+		if len(refs) >= 3 {
+			break
+		}
+		if len(image.Data) == 0 {
+			continue
+		}
+		refs = append(refs, map[string]any{
+			"image": map[string]any{
+				"bytesBase64Encoded": base64.StdEncoding.EncodeToString(image.Data),
+				"mimeType":           defaultVideoMIME(image.Name, image.MIMEType),
+			},
+			"referenceType": "asset",
+		})
+	}
+	return refs
+}
+
 func executeConfiguredVideo(ctx context.Context, model ModelConfig, req VideoRequest, defs videoAdapterDefaults) (VideoResult, error) {
 	prepared := model
 	authType := normalizedAuthType(prepared.AuthType, "bearer")
@@ -687,58 +934,65 @@ func executeConfiguredVideo(ctx context.Context, model ModelConfig, req VideoReq
 		}
 	}
 	if prompt := strings.TrimSpace(req.Prompt); prompt != "" {
-		setNestedField(body, providerOptionString(prepared, "video_prompt_path", defs.promptFieldPath), prompt)
+		setVideoRequestField(body, providerOptionString(prepared, "video_prompt_path", defs.promptFieldPath), prompt)
 	}
 	if strings.TrimSpace(prepared.ModelName) != "" {
 		field := providerOptionString(prepared, "video_model_path", defs.modelFieldPath)
 		if strings.TrimSpace(field) != "" {
-			setNestedField(body, field, strings.TrimSpace(prepared.ModelName))
+			setVideoRequestField(body, field, strings.TrimSpace(prepared.ModelName))
 		}
 	}
 	if req.StartFrame != nil && len(req.StartFrame.Data) > 0 {
-		setNestedField(body, providerOptionString(prepared, "video_start_frame_path", defs.startFieldPath), base64.StdEncoding.EncodeToString(req.StartFrame.Data))
-		setNestedField(body, providerOptionString(prepared, "video_start_frame_mime_path", defs.startMimeFieldPath), defaultVideoMIME(req.StartFrame.Name, req.StartFrame.MIMEType))
+		setVideoRequestField(body, providerOptionString(prepared, "video_start_frame_path", defs.startFieldPath), base64.StdEncoding.EncodeToString(req.StartFrame.Data))
+		setVideoRequestField(body, providerOptionString(prepared, "video_start_frame_mime_path", defs.startMimeFieldPath), defaultVideoMIME(req.StartFrame.Name, req.StartFrame.MIMEType))
 	}
 	if req.EndFrame != nil && len(req.EndFrame.Data) > 0 {
-		setNestedField(body, providerOptionString(prepared, "video_end_frame_path", defs.endFieldPath), base64.StdEncoding.EncodeToString(req.EndFrame.Data))
-		setNestedField(body, providerOptionString(prepared, "video_end_frame_mime_path", defs.endMimeFieldPath), defaultVideoMIME(req.EndFrame.Name, req.EndFrame.MIMEType))
+		setVideoRequestField(body, providerOptionString(prepared, "video_end_frame_path", defs.endFieldPath), base64.StdEncoding.EncodeToString(req.EndFrame.Data))
+		setVideoRequestField(body, providerOptionString(prepared, "video_end_frame_mime_path", defs.endMimeFieldPath), defaultVideoMIME(req.EndFrame.Name, req.EndFrame.MIMEType))
+	}
+	if refs := buildGenericVideoReferenceImages(req.ReferenceImages); len(refs) > 0 {
+		if field := providerOptionString(prepared, "video_reference_images_path", defs.refFieldPath); field != "" {
+			setVideoRequestField(body, field, refs)
+		}
 	}
 	if val := strings.TrimSpace(req.Duration); val != "" {
 		field := providerOptionString(prepared, "video_duration_path", defs.durationFieldPath)
 		if field != "" {
-			setNestedField(body, field, val)
+			setVideoRequestField(body, field, val)
 		}
 	}
 	if val := strings.TrimSpace(req.AspectRatio); val != "" {
 		field := providerOptionString(prepared, "video_aspect_ratio_path", defs.aspectFieldPath)
 		if field != "" {
-			setNestedField(body, field, val)
+			setVideoRequestField(body, field, val)
 		}
 	}
 	if val := strings.TrimSpace(req.Resolution); val != "" {
 		field := providerOptionString(prepared, "video_resolution_path", defs.resFieldPath)
 		if field != "" {
-			setNestedField(body, field, val)
+			setVideoRequestField(body, field, val)
 		}
 	}
 	if val := strings.TrimSpace(req.OutputFormat); val != "" {
 		field := providerOptionString(prepared, "video_output_format_path", defs.formatFieldPath)
 		if field != "" {
-			setNestedField(body, field, val)
+			setVideoRequestField(body, field, val)
 		}
 	}
 	if val := strings.TrimSpace(req.FPS); val != "" {
 		field := providerOptionString(prepared, "video_fps_path", defs.fpsFieldPath)
 		if field != "" {
-			setNestedField(body, field, val)
+			setVideoRequestField(body, field, val)
 		}
 	}
 	if val := strings.TrimSpace(req.Quality); val != "" {
 		field := providerOptionString(prepared, "video_quality_path", defs.qualityFieldPath)
 		if field != "" {
-			setNestedField(body, field, val)
+			setVideoRequestField(body, field, val)
 		}
 	}
+	submitRequestBody := sanitizedVideoRequestBody(body)
+	submitRequestURL := sanitizeDiagnosticURL(endpoint)
 	payload, err := json.Marshal(body)
 	if err != nil {
 		return VideoResult{}, err
@@ -751,14 +1005,15 @@ func executeConfiguredVideo(ctx context.Context, model ModelConfig, req VideoReq
 	applyModelHeaders(request, prepared)
 	respBody, status, statusCode, err := doAdapterRequest(request, modelTimeout(prepared, 20*time.Minute))
 	if err != nil {
-		return VideoResult{}, err
+		return VideoResult{SubmitRequestURL: submitRequestURL, SubmitRequestBody: submitRequestBody}, err
 	}
+	submitRaw := string(respBody)
 	if statusCode >= 300 {
-		return VideoResult{RawBody: string(respBody)}, fmt.Errorf("video submit returned %s: %s", status, strings.TrimSpace(string(respBody)))
+		return VideoResult{RawBody: submitRaw, SubmitRequestURL: submitRequestURL, SubmitRequestBody: submitRequestBody, SubmitRawBody: submitRaw}, fmt.Errorf("video submit returned %s: %s", status, strings.TrimSpace(submitRaw))
 	}
 	var submitPayload any
 	if err := json.Unmarshal(respBody, &submitPayload); err != nil {
-		return VideoResult{RawBody: string(respBody)}, fmt.Errorf("video submit response was not valid JSON")
+		return VideoResult{RawBody: submitRaw, SubmitRequestURL: submitRequestURL, SubmitRequestBody: submitRequestBody, SubmitRawBody: submitRaw}, fmt.Errorf("video submit response was not valid JSON")
 	}
 	jobID := strings.TrimSpace(asString(lookupPath(submitPayload, providerOptionString(prepared, "video_job_id_path", defs.jobIDPath))))
 	if jobID == "" {
@@ -767,8 +1022,9 @@ func executeConfiguredVideo(ctx context.Context, model ModelConfig, req VideoReq
 		}
 	}
 	if jobID == "" {
-		return VideoResult{RawBody: string(respBody)}, errors.New("video submit response did not include a job id")
+		return VideoResult{RawBody: submitRaw, SubmitRequestURL: submitRequestURL, SubmitRequestBody: submitRequestBody, SubmitRawBody: submitRaw}, errors.New("video submit response did not include a job id")
 	}
+	reportVideoProgress(req, VideoProgress{Status: "running", ProviderJobID: jobID, SubmitRequestURL: submitRequestURL, SubmitRequestBody: submitRequestBody, SubmitRawBody: submitRaw})
 	pollEvery := req.PollInterval
 	if pollEvery <= 0 {
 		pollEvery = 8 * time.Second
@@ -781,35 +1037,55 @@ func executeConfiguredVideo(ctx context.Context, model ModelConfig, req VideoReq
 	successValue := strings.ToLower(strings.TrimSpace(providerOptionString(prepared, "video_success_value", defs.successValue)))
 	failedValues := strings.Split(strings.ToLower(strings.TrimSpace(providerOptionString(prepared, "video_failure_values", "failed,error,cancelled,canceled,stopped"))), ",")
 
-	lastBody := string(respBody)
+	lastBody := submitRaw
+	pollCount := 0
+	lastPollAt := ""
+	resultWithProgress := func(result VideoResult) VideoResult {
+		result.PollCount = pollCount
+		result.LastPollAt = lastPollAt
+		result.SubmitRequestURL = submitRequestURL
+		result.SubmitRequestBody = submitRequestBody
+		result.SubmitRawBody = submitRaw
+		result.LastPollRawBody = lastBody
+		if result.RawBody == "" {
+			result.RawBody = lastBody
+		}
+		return result
+	}
 	for {
 		if ctx.Err() != nil {
-			return VideoResult{ProviderJobID: jobID, RawBody: lastBody, Status: "stopped"}, ctx.Err()
+			return resultWithProgress(VideoResult{ProviderJobID: jobID, RawBody: lastBody, Status: "stopped"}), ctx.Err()
 		}
 		pollURL := buildVideoPollURL(prepared, jobID, pollPathTemplate)
 		pollReq, err := http.NewRequestWithContext(ctx, http.MethodGet, pollURL, nil)
 		if err != nil {
-			return VideoResult{ProviderJobID: jobID, RawBody: lastBody}, err
+			return resultWithProgress(VideoResult{ProviderJobID: jobID, RawBody: lastBody}), err
 		}
 		applyModelHeaders(pollReq, prepared)
 		pollBody, pollStatus, pollCode, err := doAdapterRequest(pollReq, modelTimeout(prepared, 20*time.Minute))
+		pollCount++
+		lastPollAt = time.Now().UTC().Format(time.RFC3339)
 		if err != nil {
-			return VideoResult{ProviderJobID: jobID, RawBody: lastBody}, err
+			return resultWithProgress(VideoResult{ProviderJobID: jobID, RawBody: lastBody}), err
 		}
 		lastBody = string(pollBody)
 		if pollCode >= 300 {
-			return VideoResult{ProviderJobID: jobID, RawBody: lastBody}, fmt.Errorf("video polling returned %s: %s", pollStatus, strings.TrimSpace(lastBody))
+			reportVideoProgress(req, VideoProgress{Status: "running", ProviderJobID: jobID, PollCount: pollCount, LastPollAt: lastPollAt, SubmitRequestURL: submitRequestURL, SubmitRequestBody: submitRequestBody, SubmitRawBody: submitRaw, LastPollRawBody: lastBody, Error: strings.TrimSpace(lastBody)})
+			return resultWithProgress(VideoResult{ProviderJobID: jobID, RawBody: lastBody}), fmt.Errorf("video polling returned %s: %s", pollStatus, strings.TrimSpace(lastBody))
 		}
 		var pollPayload any
 		if err := json.Unmarshal(pollBody, &pollPayload); err != nil {
-			return VideoResult{ProviderJobID: jobID, RawBody: lastBody}, fmt.Errorf("video poll response was not valid JSON")
+			reportVideoProgress(req, VideoProgress{Status: "running", ProviderJobID: jobID, PollCount: pollCount, LastPollAt: lastPollAt, SubmitRequestURL: submitRequestURL, SubmitRequestBody: submitRequestBody, SubmitRawBody: submitRaw, LastPollRawBody: lastBody, Error: "video poll response was not valid JSON"})
+			return resultWithProgress(VideoResult{ProviderJobID: jobID, RawBody: lastBody}), fmt.Errorf("video poll response was not valid JSON")
 		}
 		remoteStatusRaw := lookupPath(pollPayload, statusPath)
 		remoteStatus := strings.ToLower(strings.TrimSpace(asString(remoteStatusRaw)))
+		reportVideoProgress(req, VideoProgress{Status: "running", ProviderJobID: jobID, RemoteStatus: remoteStatus, PollCount: pollCount, LastPollAt: lastPollAt, SubmitRequestURL: submitRequestURL, SubmitRequestBody: submitRequestBody, SubmitRawBody: submitRaw, LastPollRawBody: lastBody})
 		if successValue == "true" || successValue == "false" {
 			if b, ok := remoteStatusRaw.(bool); ok {
 				if fmt.Sprint(b) == successValue {
-					return fetchVideoResult(ctx, prepared, jobID, remoteStatus, pollPayload, videoURLPath, videoMimePath, lastBody)
+					result, err := fetchVideoResult(ctx, prepared, jobID, remoteStatus, pollPayload, videoURLPath, videoMimePath, lastBody)
+					return resultWithProgress(result), err
 				}
 				if !b {
 					time.Sleep(pollEvery)
@@ -819,7 +1095,8 @@ func executeConfiguredVideo(ctx context.Context, model ModelConfig, req VideoReq
 		}
 		if remoteStatus != "" {
 			if remoteStatus == successValue {
-				return fetchVideoResult(ctx, prepared, jobID, remoteStatus, pollPayload, videoURLPath, videoMimePath, lastBody)
+				result, err := fetchVideoResult(ctx, prepared, jobID, remoteStatus, pollPayload, videoURLPath, videoMimePath, lastBody)
+				return resultWithProgress(result), err
 			}
 			for _, failed := range failedValues {
 				if strings.TrimSpace(failed) != "" && remoteStatus == strings.TrimSpace(failed) {
@@ -827,13 +1104,14 @@ func executeConfiguredVideo(ctx context.Context, model ModelConfig, req VideoReq
 					if errText == "" {
 						errText = remoteStatus
 					}
-					return VideoResult{ProviderJobID: jobID, RemoteStatus: remoteStatus, RawBody: lastBody, Error: errText, Status: "failed"}, errors.New(errText)
+					return resultWithProgress(VideoResult{ProviderJobID: jobID, RemoteStatus: remoteStatus, RawBody: lastBody, Error: errText, Status: "failed"}), errors.New(errText)
 				}
 			}
 		}
 		if payloadMap, ok := pollPayload.(map[string]any); ok {
 			if done, ok := payloadMap["done"].(bool); ok && done && successValue != "true" {
-				return fetchVideoResult(ctx, prepared, jobID, remoteStatus, pollPayload, videoURLPath, videoMimePath, lastBody)
+				result, err := fetchVideoResult(ctx, prepared, jobID, remoteStatus, pollPayload, videoURLPath, videoMimePath, lastBody)
+				return resultWithProgress(result), err
 			}
 		}
 		time.Sleep(pollEvery)
@@ -844,39 +1122,354 @@ func fetchVideoResult(ctx context.Context, model ModelConfig, jobID, remoteStatu
 	videoURL := strings.TrimSpace(asString(lookupPath(pollPayload, videoURLPath)))
 	videoMime := strings.TrimSpace(asString(lookupPath(pollPayload, videoMimePath)))
 	if videoURL == "" {
-		videoURL = strings.TrimSpace(asString(lookupPath(pollPayload, "response.generated_videos.0.video.uri")))
+		for _, fallback := range []string{
+			"response.generateVideoResponse.generatedSamples.0.video.uri",
+			"response.generatedVideos.0.video.uri",
+			"response.generated_videos.0.video.uri",
+			"response.videos.0.gcsUri",
+			"response.videos.0.uri",
+			"response.videos.0.video.uri",
+		} {
+			videoURL = strings.TrimSpace(asString(lookupPath(pollPayload, fallback)))
+			if videoURL != "" {
+				break
+			}
+		}
+	}
+	if videoMime == "" {
+		for _, fallback := range []string{
+			"response.generateVideoResponse.generatedSamples.0.video.mimeType",
+			"response.generatedVideos.0.video.mimeType",
+			"response.generated_videos.0.video.mimeType",
+			"response.videos.0.mimeType",
+			"response.videos.0.video.mimeType",
+		} {
+			videoMime = strings.TrimSpace(asString(lookupPath(pollPayload, fallback)))
+			if videoMime != "" {
+				break
+			}
+		}
 	}
 	if videoURL == "" {
+		if b64 := strings.TrimSpace(asString(lookupPath(pollPayload, "response.videos.0.bytesBase64Encoded"))); b64 != "" {
+			body, err := base64.StdEncoding.DecodeString(b64)
+			if err != nil {
+				return VideoResult{ProviderJobID: jobID, RemoteStatus: remoteStatus, RawBody: raw, Status: "completed"}, err
+			}
+			if videoMime == "" {
+				videoMime = http.DetectContentType(body)
+			}
+			filename := providerOptionString(model, "video_result_filename", "")
+			if strings.TrimSpace(filename) == "" {
+				filename = "output" + extensionForMIME(videoMime)
+			}
+			return VideoResult{Status: "completed", ProviderJobID: jobID, RemoteStatus: remoteStatus, VideoData: body, VideoMIMEType: videoMime, VideoFilename: filename, RawBody: raw}, nil
+		}
 		return VideoResult{ProviderJobID: jobID, RemoteStatus: remoteStatus, RawBody: raw, Status: "completed"}, errors.New("video job completed but no video URL was returned")
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, videoURL, nil)
+	downloadURL := normalizeVideoDownloadURL(videoURL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
 	if err != nil {
 		return VideoResult{ProviderJobID: jobID, RemoteStatus: remoteStatus, RawBody: raw}, err
 	}
 	applyModelHeaders(req, model)
-	body, status, statusCode, err := doAdapterRequest(req, modelTimeout(model, 20*time.Minute))
+	body, status, statusCode, headers, err := doAdapterRequestWithHeaders(req, modelTimeout(model, 20*time.Minute))
 	if err != nil {
-		return VideoResult{ProviderJobID: jobID, RemoteStatus: remoteStatus, RawBody: raw}, err
+		return VideoResult{ProviderJobID: jobID, RemoteStatus: remoteStatus, RawBody: raw, VideoSourceURI: sanitizeDiagnosticURL(videoURL)}, err
 	}
 	if statusCode >= 300 {
-		return VideoResult{ProviderJobID: jobID, RemoteStatus: remoteStatus, RawBody: raw}, fmt.Errorf("video download returned %s", status)
+		return VideoResult{ProviderJobID: jobID, RemoteStatus: remoteStatus, RawBody: raw, VideoSourceURI: sanitizeDiagnosticURL(videoURL)}, fmt.Errorf("video download returned %s", status)
 	}
+	downloadContentType := strings.TrimSpace(headers.Get("Content-Type"))
 	if videoMime == "" {
+		videoMime = strings.TrimSpace(downloadContentType)
+	}
+	if videoMime == "" || strings.EqualFold(videoMime, "application/octet-stream") {
 		videoMime = http.DetectContentType(body)
 	}
 	filename := providerOptionString(model, "video_result_filename", "")
 	if strings.TrimSpace(filename) == "" {
+		filename = filenameFromVideoURL(videoURL)
+	}
+	if strings.TrimSpace(filename) == "" {
 		filename = "output" + extensionForMIME(videoMime)
 	}
 	return VideoResult{
-		Status:        "completed",
-		ProviderJobID: jobID,
-		RemoteStatus:  remoteStatus,
-		VideoData:     body,
-		VideoMIMEType: videoMime,
-		VideoFilename: filename,
-		RawBody:       raw,
+		Status:                   "completed",
+		ProviderJobID:            jobID,
+		RemoteStatus:             remoteStatus,
+		VideoData:                body,
+		VideoMIMEType:            videoMime,
+		VideoFilename:            filename,
+		VideoSourceURI:           sanitizeDiagnosticURL(videoURL),
+		VideoDownloadContentType: downloadContentType,
+		RawBody:                  raw,
 	}, nil
+}
+
+func buildVertexVeoSubmitBody(model ModelConfig, req VideoRequest) map[string]any {
+	body := map[string]any{
+		"instances":  []any{map[string]any{}},
+		"parameters": map[string]any{},
+	}
+	if extra := providerOptionMap(model, "extra_body"); len(extra) > 0 {
+		for k, v := range extra {
+			body[k] = deepCloneAny(v)
+		}
+	}
+	instance := ensureFirstObjectInArray(body, "instances")
+	parameters := ensureObjectField(body, "parameters")
+	prompt := strings.TrimSpace(req.Prompt)
+	if prompt != "" {
+		setVideoRequestField(body, providerOptionString(model, "video_prompt_path", "instances.0.prompt"), prompt)
+		if strings.TrimSpace(asString(lookupPath(body, "instances.0.prompt"))) == "" {
+			instance["prompt"] = prompt
+		}
+	}
+	if req.StartFrame != nil && len(req.StartFrame.Data) > 0 {
+		mimeType := defaultVideoMIME(req.StartFrame.Name, req.StartFrame.MIMEType)
+		encoded := base64.StdEncoding.EncodeToString(req.StartFrame.Data)
+		setVideoRequestField(body, providerOptionString(model, "video_start_frame_path", "instances.0.image.bytesBase64Encoded"), encoded)
+		setVideoRequestField(body, providerOptionString(model, "video_start_frame_mime_path", "instances.0.image.mimeType"), mimeType)
+		if strings.TrimSpace(asString(lookupPath(body, "instances.0.image.bytesBase64Encoded"))) == "" {
+			image := ensureObjectField(instance, "image")
+			image["bytesBase64Encoded"] = encoded
+			image["mimeType"] = mimeType
+		}
+	}
+	if req.EndFrame != nil && len(req.EndFrame.Data) > 0 {
+		mimeType := defaultVideoMIME(req.EndFrame.Name, req.EndFrame.MIMEType)
+		encoded := base64.StdEncoding.EncodeToString(req.EndFrame.Data)
+		setVideoRequestField(body, providerOptionString(model, "video_end_frame_path", "instances.0.lastFrame.bytesBase64Encoded"), encoded)
+		setVideoRequestField(body, providerOptionString(model, "video_end_frame_mime_path", "instances.0.lastFrame.mimeType"), mimeType)
+		if strings.TrimSpace(asString(lookupPath(body, "instances.0.lastFrame.bytesBase64Encoded"))) == "" {
+			lastFrame := ensureObjectField(instance, "lastFrame")
+			lastFrame["bytesBase64Encoded"] = encoded
+			lastFrame["mimeType"] = mimeType
+		}
+	}
+	if refs := buildVertexVideoReferenceImages(req.ReferenceImages); len(refs) > 0 {
+		setVideoRequestField(body, providerOptionString(model, "video_reference_images_path", "instances.0.referenceImages"), refs)
+		if existing, ok := lookupPath(body, "instances.0.referenceImages").([]any); !ok || len(existing) == 0 {
+			instance["referenceImages"] = refs
+		}
+	}
+	duration := firstNonEmpty(req.Duration, model.VideoDuration, providerOptionString(model, "default_duration_seconds", ""), "4")
+	if duration != "" {
+		setVideoRequestField(body, providerOptionString(model, "video_duration_path", "parameters.durationSeconds"), coerceJSONScalar(duration))
+	}
+	aspectRatio := firstNonEmpty(req.AspectRatio, model.VideoAspectRatio, providerOptionString(model, "default_aspect_ratio", ""), "16:9")
+	if aspectRatio != "" {
+		setVideoRequestField(body, providerOptionString(model, "video_aspect_ratio_path", "parameters.aspectRatio"), aspectRatio)
+	}
+	resolution := firstNonEmpty(req.Resolution, model.VideoResolution, providerOptionString(model, "default_resolution", ""), "720p")
+	if resolution != "" {
+		setVideoRequestField(body, providerOptionString(model, "video_resolution_path", "parameters.resolution"), resolution)
+	}
+	if val := strings.TrimSpace(firstProviderOptionString(model, "video_storage_uri", "storage_uri", "vertex_storage_uri")); val != "" {
+		setVideoRequestField(body, providerOptionString(model, "video_storage_uri_path", "parameters.storageUri"), val)
+	}
+	if lookupPath(body, "parameters.sampleCount") == nil {
+		parameters["sampleCount"] = 1
+	}
+	ensureFirstObjectInArray(body, "instances")
+	ensureObjectField(body, "parameters")
+	return body
+}
+
+func ensureObjectField(parent map[string]any, key string) map[string]any {
+	if parent == nil {
+		return map[string]any{}
+	}
+	if existing, ok := parent[key].(map[string]any); ok && existing != nil {
+		return existing
+	}
+	created := map[string]any{}
+	parent[key] = created
+	return created
+}
+
+func ensureFirstObjectInArray(parent map[string]any, key string) map[string]any {
+	if parent == nil {
+		return map[string]any{}
+	}
+	var arr []any
+	if existing, ok := parent[key].([]any); ok && existing != nil {
+		arr = existing
+	}
+	if len(arr) == 0 {
+		arr = []any{map[string]any{}}
+	}
+	first, ok := arr[0].(map[string]any)
+	if !ok || first == nil {
+		first = map[string]any{}
+		arr[0] = first
+	}
+	parent[key] = arr
+	return first
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if clean := strings.TrimSpace(value); clean != "" {
+			return clean
+		}
+	}
+	return ""
+}
+
+func validateVertexVeoSubmitBody(body map[string]any) error {
+	instances, _ := lookupPath(body, "instances").([]any)
+	if len(instances) == 0 {
+		return errors.New("Vertex Veo request was not sent because AgentGO did not build any instances from the prompt/start frame")
+	}
+	instance, _ := instances[0].(map[string]any)
+	if instance == nil {
+		return errors.New("Vertex Veo request was not sent because AgentGO built an invalid first instance")
+	}
+	if strings.TrimSpace(asString(instance["prompt"])) != "" {
+		return nil
+	}
+	if strings.TrimSpace(asString(lookupPath(instance, "image.bytesBase64Encoded"))) != "" {
+		return nil
+	}
+	if strings.TrimSpace(asString(lookupPath(instance, "lastFrame.bytesBase64Encoded"))) != "" {
+		return nil
+	}
+	if refs, ok := lookupPath(instance, "referenceImages").([]any); ok && len(refs) > 0 {
+		return nil
+	}
+	return errors.New("Vertex Veo request was not sent because AgentGO did not attach a prompt, start frame, end frame, or reference image to instances[0]")
+}
+
+func executeVertexVeoVideo(ctx context.Context, model ModelConfig, req VideoRequest) (VideoResult, error) {
+	prepared := model
+	prepared.AuthType = normalizedAuthType(prepared.AuthType, "google_adc")
+	switch prepared.AuthType {
+	case "google_adc", "adc":
+		var err error
+		prepared, err = applyGoogleADC(ctx, prepared)
+		if err != nil {
+			return VideoResult{}, err
+		}
+	case "bearer", "header_key":
+		prepared.APIKey = resolveConfiguredAPIKey(prepared)
+		if strings.TrimSpace(prepared.APIKey) == "" {
+			return VideoResult{}, errors.New("missing Vertex bearer token for this model")
+		}
+	}
+	if strings.TrimSpace(prepared.BaseURL) == "" {
+		prepared.BaseURL = "https://us-central1-aiplatform.googleapis.com"
+	}
+	if strings.TrimSpace(prepared.APIPath) == "" {
+		prepared.APIPath = "/v1/projects/{project}/locations/{location}/publishers/google/models/{model}:predictLongRunning"
+	}
+	submitURL, err := vertexVeoURL(ctx, prepared, "predictLongRunning")
+	if err != nil {
+		return VideoResult{}, err
+	}
+	body := buildVertexVeoSubmitBody(prepared, req)
+	submitRequestBody := sanitizedVideoRequestBody(body)
+	submitRequestURL := sanitizeDiagnosticURL(submitURL)
+	if err := validateVertexVeoSubmitBody(body); err != nil {
+		return VideoResult{SubmitRequestURL: submitRequestURL, SubmitRequestBody: submitRequestBody}, err
+	}
+	payload, err := json.Marshal(body)
+	if err != nil {
+		return VideoResult{SubmitRequestURL: submitRequestURL, SubmitRequestBody: submitRequestBody}, err
+	}
+	submitReq, err := http.NewRequestWithContext(ctx, http.MethodPost, submitURL, bytes.NewReader(payload))
+	if err != nil {
+		return VideoResult{SubmitRequestURL: submitRequestURL, SubmitRequestBody: submitRequestBody}, err
+	}
+	submitReq.Header.Set("Content-Type", "application/json")
+	applyModelHeaders(submitReq, prepared)
+	respBody, status, statusCode, err := doAdapterRequest(submitReq, modelTimeout(prepared, 20*time.Minute))
+	if err != nil {
+		return VideoResult{SubmitRequestURL: submitRequestURL, SubmitRequestBody: submitRequestBody}, err
+	}
+	submitRaw := string(respBody)
+	if statusCode >= 300 {
+		return VideoResult{RawBody: submitRaw, SubmitRequestURL: submitRequestURL, SubmitRequestBody: submitRequestBody, SubmitRawBody: submitRaw}, fmt.Errorf("video submit returned %s: %s", status, strings.TrimSpace(submitRaw))
+	}
+	var submitPayload any
+	if err := json.Unmarshal(respBody, &submitPayload); err != nil {
+		return VideoResult{RawBody: submitRaw, SubmitRequestURL: submitRequestURL, SubmitRequestBody: submitRequestBody, SubmitRawBody: submitRaw}, errors.New("video submit response was not valid JSON")
+	}
+	operationName := strings.TrimSpace(asString(lookupPath(submitPayload, providerOptionString(prepared, "video_job_id_path", "name"))))
+	if operationName == "" {
+		return VideoResult{RawBody: submitRaw, SubmitRequestURL: submitRequestURL, SubmitRequestBody: submitRequestBody, SubmitRawBody: submitRaw}, errors.New("video submit response did not include an operation name")
+	}
+	reportVideoProgress(req, VideoProgress{Status: "running", ProviderJobID: operationName, SubmitRequestURL: submitRequestURL, SubmitRequestBody: submitRequestBody, SubmitRawBody: submitRaw})
+	pollURL, err := vertexVeoURL(ctx, prepared, "fetchPredictOperation")
+	if err != nil {
+		return VideoResult{ProviderJobID: operationName, RawBody: submitRaw, SubmitRequestURL: submitRequestURL, SubmitRequestBody: submitRequestBody, SubmitRawBody: submitRaw}, err
+	}
+	pollEvery := req.PollInterval
+	if pollEvery <= 0 {
+		pollEvery = 10 * time.Second
+	}
+	lastBody := submitRaw
+	pollCount := 0
+	lastPollAt := ""
+	resultWithProgress := func(result VideoResult) VideoResult {
+		result.ProviderJobID = operationName
+		result.PollCount = pollCount
+		result.LastPollAt = lastPollAt
+		result.SubmitRequestURL = submitRequestURL
+		result.SubmitRequestBody = submitRequestBody
+		result.SubmitRawBody = submitRaw
+		result.LastPollRawBody = lastBody
+		if result.RawBody == "" {
+			result.RawBody = lastBody
+		}
+		return result
+	}
+	for {
+		if ctx.Err() != nil {
+			return resultWithProgress(VideoResult{Status: "stopped", RawBody: lastBody}), ctx.Err()
+		}
+		pollPayload, err := json.Marshal(map[string]any{"operationName": operationName})
+		if err != nil {
+			return resultWithProgress(VideoResult{RawBody: lastBody}), err
+		}
+		pollReq, err := http.NewRequestWithContext(ctx, http.MethodPost, pollURL, bytes.NewReader(pollPayload))
+		if err != nil {
+			return resultWithProgress(VideoResult{RawBody: lastBody}), err
+		}
+		pollReq.Header.Set("Content-Type", "application/json")
+		applyModelHeaders(pollReq, prepared)
+		pollBody, pollStatus, pollCode, err := doAdapterRequest(pollReq, modelTimeout(prepared, 20*time.Minute))
+		pollCount++
+		lastPollAt = time.Now().UTC().Format(time.RFC3339)
+		if err != nil {
+			return resultWithProgress(VideoResult{RawBody: lastBody}), err
+		}
+		lastBody = string(pollBody)
+		if pollCode >= 300 {
+			reportVideoProgress(req, VideoProgress{Status: "running", ProviderJobID: operationName, PollCount: pollCount, LastPollAt: lastPollAt, SubmitRequestURL: submitRequestURL, SubmitRequestBody: submitRequestBody, SubmitRawBody: submitRaw, LastPollRawBody: lastBody, Error: strings.TrimSpace(lastBody)})
+			return resultWithProgress(VideoResult{RawBody: lastBody}), fmt.Errorf("video polling returned %s: %s", pollStatus, strings.TrimSpace(lastBody))
+		}
+		var response any
+		if err := json.Unmarshal(pollBody, &response); err != nil {
+			return resultWithProgress(VideoResult{RawBody: lastBody}), errors.New("video poll response was not valid JSON")
+		}
+		remoteStatus := strings.TrimSpace(asString(lookupPath(response, providerOptionString(prepared, "video_status_path", "metadata.state"))))
+		if remoteStatus == "" {
+			if done, _ := lookupPath(response, "done").(bool); done {
+				remoteStatus = "done"
+			}
+		}
+		reportVideoProgress(req, VideoProgress{Status: "running", ProviderJobID: operationName, RemoteStatus: strings.ToLower(remoteStatus), PollCount: pollCount, LastPollAt: lastPollAt, SubmitRequestURL: submitRequestURL, SubmitRequestBody: submitRequestBody, SubmitRawBody: submitRaw, LastPollRawBody: lastBody})
+		if errMsg := strings.TrimSpace(asString(lookupPath(response, providerOptionString(prepared, "video_error_path", "error.message")))); errMsg != "" {
+			return resultWithProgress(VideoResult{Status: "failed", RemoteStatus: strings.ToLower(remoteStatus), RawBody: lastBody, Error: errMsg}), errors.New(errMsg)
+		}
+		if done, _ := lookupPath(response, "done").(bool); done {
+			result, err := fetchVideoResult(ctx, prepared, operationName, strings.ToLower(remoteStatus), response, providerOptionString(prepared, "video_result_url_path", "response.videos.0.gcsUri"), providerOptionString(prepared, "video_result_mime_path", "response.videos.0.mimeType"), lastBody)
+			return resultWithProgress(result), err
+		}
+		time.Sleep(pollEvery)
+	}
 }
 
 func buildVideoPollURL(model ModelConfig, jobID, pollTemplate string) string {
@@ -896,6 +1489,81 @@ func buildVideoPollURL(model ModelConfig, jobID, pollTemplate string) string {
 		return clean
 	}
 	return base + "/" + clean
+}
+
+func firstProviderOptionString(model ModelConfig, keys ...string) string {
+	for _, key := range keys {
+		if value := strings.TrimSpace(providerOptionString(model, key, "")); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func vertexVeoURL(ctx context.Context, model ModelConfig, operation string) (string, error) {
+	base := strings.TrimRight(strings.TrimSpace(model.BaseURL), "/")
+	if base == "" {
+		base = "https://us-central1-aiplatform.googleapis.com"
+	}
+	path := strings.TrimSpace(model.APIPath)
+	if path == "" {
+		path = "/v1/projects/{project}/locations/{location}/publishers/google/models/{model}:predictLongRunning"
+	}
+	if operation == "fetchPredictOperation" {
+		if idx := strings.LastIndex(path, ":"); idx >= 0 {
+			path = path[:idx] + ":fetchPredictOperation"
+		} else {
+			path += ":fetchPredictOperation"
+		}
+	}
+	project := firstProviderOptionString(model, "vertex_project_id", "project_id", "project")
+	if project == "" {
+		project = googleADCProjectID(ctx, model)
+	}
+	location := firstProviderOptionString(model, "vertex_location", "location", "region")
+	if location == "" {
+		location = "us-central1"
+	}
+	path = strings.ReplaceAll(path, "{project}", project)
+	path = strings.ReplaceAll(path, "{project_id}", project)
+	path = strings.ReplaceAll(path, "{location}", location)
+	path = strings.ReplaceAll(path, "{region}", location)
+	path = strings.ReplaceAll(path, "{model}", strings.TrimSpace(model.ModelName))
+	if strings.Contains(path, "{project}") || strings.Contains(path, "{project_id}") || strings.Contains(path, "//") || strings.Contains(path, "/projects//") {
+		return "", errors.New("Vertex Veo needs a Google Cloud Project ID. Add provider_options.project_id, set GOOGLE_CLOUD_PROJECT, or use Google ADC credentials that include a project_id/quota_project_id")
+	}
+	if strings.Contains(path, "{model}") || strings.TrimSpace(model.ModelName) == "" {
+		return "", errors.New("Vertex Veo requires a model name")
+	}
+	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
+		return path, nil
+	}
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	return base + path, nil
+}
+
+func normalizeVideoDownloadURL(raw string) string {
+	clean := strings.TrimSpace(raw)
+	if !strings.HasPrefix(clean, "gs://") {
+		return clean
+	}
+	withoutScheme := strings.TrimPrefix(clean, "gs://")
+	parts := strings.SplitN(withoutScheme, "/", 2)
+	if len(parts) == 0 || strings.TrimSpace(parts[0]) == "" {
+		return clean
+	}
+	bucket := url.PathEscape(parts[0])
+	object := ""
+	if len(parts) > 1 {
+		segments := strings.Split(parts[1], "/")
+		for i, segment := range segments {
+			segments[i] = url.PathEscape(segment)
+		}
+		object = "/" + strings.Join(segments, "/")
+	}
+	return "https://storage.googleapis.com/" + bucket + object
 }
 
 func deepCloneAny(v any) any {
@@ -930,11 +1598,35 @@ func asString(value any) string {
 	}
 }
 
+func filenameFromVideoURL(raw string) string {
+	clean := strings.TrimSpace(raw)
+	if clean == "" {
+		return ""
+	}
+	pathValue := clean
+	if parsed, err := url.Parse(clean); err == nil && parsed != nil && strings.TrimSpace(parsed.Path) != "" {
+		pathValue = parsed.Path
+	}
+	name := strings.TrimSpace(filepath.Base(pathValue))
+	if name == "" || name == "." || name == string(filepath.Separator) {
+		return ""
+	}
+	return name
+}
+
 func extensionForMIME(contentType string) string {
-	if exts, _ := mime.ExtensionsByType(strings.TrimSpace(contentType)); len(exts) > 0 {
+	mediaType := strings.ToLower(strings.TrimSpace(contentType))
+	if parsed, _, err := mime.ParseMediaType(mediaType); err == nil && strings.TrimSpace(parsed) != "" {
+		mediaType = strings.ToLower(strings.TrimSpace(parsed))
+	}
+	switch mediaType {
+	case "video/mp4", "application/mp4":
+		return ".mp4"
+	}
+	if exts, _ := mime.ExtensionsByType(mediaType); len(exts) > 0 {
 		return exts[0]
 	}
-	switch strings.ToLower(strings.TrimSpace(contentType)) {
+	switch mediaType {
 	case "video/mp4":
 		return ".mp4"
 	case "video/quicktime":

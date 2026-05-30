@@ -475,7 +475,14 @@ func (a *App) persistMeshArtifacts(projectName, jobID string, record *meshJobRec
 }
 
 func extForMIMEOrDefault(contentType, fallback string) string {
-	if exts, _ := mime.ExtensionsByType(strings.TrimSpace(contentType)); len(exts) > 0 && strings.TrimSpace(exts[0]) != "" {
+	mediaType := strings.ToLower(strings.TrimSpace(contentType))
+	if parsed, _, err := mime.ParseMediaType(mediaType); err == nil && strings.TrimSpace(parsed) != "" {
+		mediaType = strings.ToLower(strings.TrimSpace(parsed))
+	}
+	if mediaType == "video/mp4" || mediaType == "application/mp4" {
+		return ".mp4"
+	}
+	if exts, _ := mime.ExtensionsByType(mediaType); len(exts) > 0 && strings.TrimSpace(exts[0]) != "" {
 		return exts[0]
 	}
 	return fallback

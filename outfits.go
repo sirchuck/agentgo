@@ -946,7 +946,7 @@ func (a *App) applyOutfitState(outfit OutfitRecord) (string, string, error) {
 	a.mu.Unlock()
 
 	if projectName != "" {
-		if _, err := a.syncAllBuilderProjectsFromProjectwork(projectName); err != nil {
+		if _, err := a.syncActiveBuilderProjectsFromProjectwork(projectName); err != nil {
 			return "", missingProjectName, err
 		}
 		if _, err := a.resetProjectAIContextsToEmpty(projectName); err != nil {

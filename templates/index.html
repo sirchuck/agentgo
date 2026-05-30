@@ -1063,7 +1063,10 @@ select:focus {
   z-index: 2400;
   bottom: calc(100% + 12px);
   left: 50%;
-  width: min(440px, calc(100vw - 24px));
+  width: min(560px, calc(100vw - 24px));
+  max-height: min(70vh, 520px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 16px;
   border-radius: 20px;
   border: 1px solid rgba(23,53,95,.16);
@@ -1106,6 +1109,13 @@ select:focus {
   50% { filter: brightness(1.08); transform: translateY(-1px); }
 }
 
+.wiretap-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
 .wiretap-btn {
   position: relative;
   width: 52px;
@@ -1225,19 +1235,42 @@ select:focus {
 .wiretap-popover {
   position: absolute;
   z-index: 2400;
-  top: calc(100% + 10px);
-  left: 0;
-  width: min(440px, calc(100vw - 40px));
+  bottom: calc(100% + 12px);
+  left: 50%;
+  width: min(720px, calc(100vw - 32px));
+  overflow: visible;
   padding: 16px;
   border-radius: 20px;
   border: 1px solid rgba(23,53,95,.16);
   background: rgba(255,255,255,.98);
   box-shadow: 0 22px 48px rgba(23,53,95,.20);
   display: none;
+  transform: translateX(-50%);
 }
 
 .wiretap-popover.open { display: block; }
-.wiretap-popover-title { font-size: 1rem; font-weight: 900; color: #17325c; margin-bottom: 6px; }
+.wiretap-popover-body { overflow: visible; }
+.wiretap-popover.is-scrollable .wiretap-popover-body {
+  max-height: var(--wiretap-body-max-height, min(70vh, 520px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 6px;
+}
+.wiretap-popover::before {
+  content: "";
+  position: absolute;
+  left: var(--wiretap-arrow-left, 50%);
+  width: 14px;
+  height: 14px;
+  background: rgba(255,255,255,.98);
+  border-left: 1px solid rgba(23,53,95,.16);
+  border-top: 1px solid rgba(23,53,95,.16);
+  transform: translateX(-50%) rotate(45deg);
+}
+.wiretap-popover.is-below { top: calc(100% + 12px); bottom: auto; }
+.wiretap-popover.is-below::before { top: -8px; }
+.wiretap-popover.is-above::before { bottom: -8px; transform: translateX(-50%) rotate(225deg); }
+.wiretap-popover-title { font-size: 1rem; font-weight: 900; color: #17325c; margin-bottom: 6px; text-align: right; }
 .wiretap-popover-helper { color: #59708f; font-size: .82rem; line-height: 1.35; margin-bottom: 12px; }
 .wiretap-field { display: grid; gap: 6px; margin-bottom: 12px; color: #17325c; font-size: .78rem; font-weight: 900; text-transform: uppercase; letter-spacing: .03em; }
 .wiretap-settings-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
@@ -2116,6 +2149,9 @@ body.deaddrop-popover-open {
 }
 #confirmModal {
   z-index: 2200;
+}
+#confirmModal.confirm-modal-above-media {
+  z-index: 2600;
 }
 #projectSettingsModal {
   z-index: 1200;
@@ -3189,6 +3225,7 @@ body.deaddrop-popover-open {
 .work-mode-agent-details-toggle.is-open svg{transform:rotate(180deg)}
 .work-mode-agent-details{margin-top:12px;border:1px solid rgba(209,75,160,.30);border-radius:14px;background:rgba(0,0,0,.24);padding:10px}
 .work-mode-agent-details-label{margin-bottom:6px;color:#ffd7f0;font-size:.78rem;font-weight:900}
+.work-mode-agent-details-section+.work-mode-agent-details-section{margin-top:12px}
 .work-mode-agent-details-pre{margin:0;max-height:360px;overflow:auto;color:#f5f7fb;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word}
 .work-mode-message-kicker{font-size:.78rem;font-weight:950;letter-spacing:.02em;color:var(--work-pink);margin-bottom:5px}
 .work-mode-file-card{display:grid;gap:12px;width:100%;justify-self:stretch;border:1px solid rgba(209,75,160,.72);border-radius:22px;background:rgba(12,14,20,.82);box-shadow:0 20px 46px rgba(0,0,0,.30);padding:14px;min-height:220px}
@@ -6456,21 +6493,28 @@ body.deaddrop-popover-open {
 .video-jobs-modal.open,.mesh-jobs-modal.open{display:flex}
 .video-jobs-backdrop,.mesh-jobs-backdrop{position:absolute;inset:0;background:rgba(8,16,30,.58);backdrop-filter:blur(4px)}
 .video-jobs-dialog,.mesh-jobs-dialog{position:relative;width:min(1320px,calc(100vw - 34px));max-height:calc(100vh - 46px);overflow:auto;padding:18px 20px;border-radius:28px;background:linear-gradient(180deg,rgba(252,254,255,.99),rgba(235,242,250,.97));box-shadow:0 36px 80px rgba(7,22,45,.34);border:1px solid rgba(110,132,170,.18)}
+.video-jobs-dialog{height:min(860px,calc(100vh - 46px));overflow:hidden;display:flex;flex-direction:column}
 .video-jobs-grid,.mesh-jobs-grid{display:grid;grid-template-columns:minmax(500px,540px) minmax(520px,1fr);gap:20px;align-items:stretch}
+.video-jobs-grid{min-height:0;flex:1 1 auto}
 .video-jobs-form,.mesh-jobs-form,.video-jobs-results,.mesh-jobs-results{padding:14px;border-radius:22px;background:linear-gradient(180deg,rgba(248,251,255,.94),rgba(236,244,253,.88));border:1px solid rgba(117,137,171,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.85)}
 .video-jobs-form,.mesh-jobs-form{display:flex;flex-direction:column;min-height:430px}
 .video-jobs-results,.mesh-jobs-results{display:flex;flex-direction:column;min-height:430px}
+.video-jobs-results{min-height:0;overflow:hidden}
 .video-jobs-form textarea,.video-jobs-form input,.video-jobs-form select,.mesh-jobs-form textarea,.mesh-jobs-form input,.mesh-jobs-form select{width:100%;border-radius:14px;border:1px solid rgba(116,136,170,.22);background:rgba(255,255,255,.95);padding:10px 12px;font:inherit;color:#17325c}
 .video-jobs-form label,.mesh-jobs-form label{display:block;font-size:.85rem;font-weight:800;color:#35517c;margin:0 0 6px}
 .video-jobs-form .field,.mesh-jobs-form .field{margin-bottom:10px}
 .media-job-section{padding:0 0 10px;margin:0 0 10px;border-bottom:1px solid rgba(117,137,171,.13)}
 .media-job-section:first-child{flex:1 1 auto;display:flex;flex-direction:column}
 .media-job-section:first-child .field{display:flex;flex-direction:column;flex:1 1 auto}
-.media-job-section:first-child textarea{flex:1 1 auto;min-height:196px;resize:vertical}
+.media-job-section:first-child textarea{flex:1 1 auto;min-height:148px;resize:vertical}
 .media-job-section:last-of-type{border-bottom:0;margin-bottom:8px;padding-bottom:0}
 .media-job-section-title,.media-job-results-title{display:flex;align-items:center;justify-content:space-between;margin:0 0 8px;font-size:.76rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#6f83a8}
-.media-job-prompt-head{display:flex;align-items:center;gap:8px;margin:0 0 8px}
-.media-job-prompt-head label{margin:0;flex:1}
+.media-job-prompt-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:0 0 8px}
+.media-job-prompt-head>label{margin:0;flex:1 1 auto}
+.media-job-inline-settings{display:flex;justify-content:flex-end;align-items:flex-end;gap:8px;flex:0 0 auto;max-width:72%}
+.media-job-inline-settings .field{width:96px;margin-bottom:0}
+.media-job-inline-settings label{font-size:.72rem;margin:0 0 4px;white-space:nowrap}
+.media-job-inline-settings input{padding:7px 9px;font-size:.82rem}
 .media-job-settings-wrap{position:relative;margin-left:auto}
 .media-job-settings-btn{width:34px;height:34px;border:1px solid rgba(116,136,170,.22);border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(229,238,249,.96));color:#17325c;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
 .media-job-settings-btn:hover{transform:translateY(-1px)}
@@ -6481,13 +6525,22 @@ body.deaddrop-popover-open {
 .mesh-jobs-form .media-job-option-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 .media-frame-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .media-frame-grid.single{grid-template-columns:minmax(0,1fr)}
+.media-reference-section{display:none;grid-column:1 / -1;margin-top:10px}
+.media-reference-section.is-visible{display:block}
+.media-reference-title{font-size:.76rem;font-weight:900;letter-spacing:.04em;color:#35517c;margin:0 0 8px}
+.media-reference-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.media-reference-grid .media-frame-picker{min-height:120px}
+.media-reference-grid .media-frame-picker img{height:92px}
 .media-frame-picker{appearance:none;border:1px dashed rgba(116,136,170,.34);border-radius:18px;background:rgba(255,255,255,.72);min-height:148px;padding:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#516a8f;cursor:pointer;overflow:hidden}
-.media-frame-picker:hover{border-color:rgba(155,45,113,.32);background:rgba(255,249,253,.88);transform:translateY(-1px)}
+.media-frame-picker:hover,.media-frame-picker.is-drag-over{border-color:rgba(155,45,113,.32);background:rgba(255,249,253,.88);transform:translateY(-1px)}
+.media-frame-picker.has-error{border-color:rgba(194,43,106,.46);background:rgba(255,238,248,.82)}
 .media-frame-picker img{display:none;width:100%;height:118px;object-fit:cover;border-radius:12px;background:#fff}
 .media-frame-picker.has-preview img{display:block}
 .media-frame-picker.has-preview .media-frame-empty{display:none}
 .media-frame-empty{font-size:.78rem;font-weight:800;text-align:center;color:#6a7f9d}
 .media-frame-label{font-size:.75rem;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:#35517c;text-align:center}
+.media-frame-error{display:none;font-size:.72rem;font-weight:800;color:#9b2d71;text-align:center}
+.media-frame-picker.has-error .media-frame-error{display:block}
 .media-frame-file{display:none!important}
 .media-job-subtitle.is-warning{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(255,238,248,.94);color:#9b2d71;font-weight:900}
 .media-job-results-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
@@ -6499,17 +6552,32 @@ body.deaddrop-popover-open {
 .media-job-empty strong{color:#172a4d}
 .video-jobs-actions,.mesh-jobs-actions{display:flex;gap:10px;justify-content:flex-end;align-items:center;margin-top:auto;padding-top:8px}
 .video-jobs-list,.mesh-jobs-list{display:grid;gap:12px;flex:1 1 auto}
+.video-jobs-list{min-height:0;overflow:auto;padding-right:6px;align-content:start}
 .video-job-card,.mesh-job-card{padding:14px;border-radius:18px;background:linear-gradient(180deg,rgba(248,251,255,.98),rgba(232,239,248,.96));border:1px solid rgba(117,137,171,.16)}
+.video-job-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.video-job-delete-btn{border:0;border-radius:12px;background:rgba(155,45,113,.1);color:#9b2d71;font-size:.78rem;font-weight:900;padding:7px 10px;cursor:pointer;white-space:nowrap}
+.video-job-delete-btn:hover{background:rgba(155,45,113,.16);transform:translateY(-1px)}
+.video-job-card.is-active{border-color:rgba(35,75,128,.24);box-shadow:0 16px 30px rgba(23,53,95,.10)}
 .video-job-card video,.mesh-job-preview img{width:100%;max-height:260px;border-radius:14px;background:#0f1827;object-fit:cover}
+.video-job-waiting{display:flex;align-items:center;gap:10px;margin:10px 0;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.64);border:1px solid rgba(117,137,171,.16);color:#35517c;font-size:.82rem;font-weight:800}
+.video-job-wait-dot{width:10px;height:10px;border-radius:999px;background:#17325c;box-shadow:0 0 0 rgba(23,53,95,.18);animation:videoJobBreath 1.7s ease-in-out infinite}
+@keyframes videoJobBreath{0%,100%{opacity:.42;transform:scale(.86);box-shadow:0 0 0 0 rgba(23,53,95,.18)}50%{opacity:1;transform:scale(1.12);box-shadow:0 0 0 9px rgba(23,53,95,.06)}}
+.video-job-diagnostics{margin-top:8px;border-radius:14px;border:1px solid rgba(117,137,171,.18);background:rgba(255,255,255,.72);padding:8px 10px}
+.video-job-diagnostics summary{cursor:pointer;font-weight:900;color:#17325c;font-size:.8rem}
+.video-job-diagnostics pre{white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto;margin:8px 0 0;padding:8px;border-radius:10px;background:rgba(16,32,58,.06);font-size:.76rem;color:#243d64}
 .video-job-meta,.mesh-job-meta{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 10px}
 .video-job-meta span,.mesh-job-meta span{padding:4px 8px;border-radius:999px;background:rgba(23,50,92,.08);font-size:.75rem;color:#28466d}
+.video-job-saved-file{margin:4px 0 10px;font-size:.78rem;font-weight:900;color:#28466d;word-break:break-word}
 .video-job-actions,.mesh-job-actions{display:flex;gap:8px;flex-wrap:wrap}
 .video-job-thumb-row{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}
 .video-job-thumb-row img{width:120px;height:84px;object-fit:cover;border-radius:12px;border:1px solid rgba(110,132,170,.18);background:#fff}
 .video-small-note,.mesh-small-note{font-size:.8rem;color:#516a8f}
 .media-active-model{padding:10px 12px;border-radius:14px;background:rgba(194,43,106,.08);border:1px solid rgba(194,43,106,.16);color:#743653;font-size:.84rem;font-weight:800}
 @media (max-width: 1080px){.prompt-actions,.prompt-wave-controls{flex-wrap:wrap}.execute-status-wrap{width:100%;flex-basis:100%;grid-template-columns:minmax(0,1fr);grid-template-areas:"buttons" "status" "helper"}.execute-meta{justify-content:flex-end}}
-@media (max-width: 900px){.video-jobs-grid,.mesh-jobs-grid{grid-template-columns:1fr}.media-job-option-grid{grid-template-columns:1fr}}
+@media (max-width: 900px){.video-jobs-grid,.mesh-jobs-grid{grid-template-columns:1fr}.media-reference-grid{grid-template-columns:1fr}.media-job-option-grid{grid-template-columns:1fr}.media-job-prompt-head{align-items:stretch;flex-direction:column}.media-job-inline-settings{max-width:none;width:100%;justify-content:stretch}.media-job-inline-settings .field{width:auto;flex:1 1 0}}
+
+
+.mastermind-modal{position:fixed;inset:0;z-index:2140;display:none;align-items:center;justify-content:center;padding:18px;color:#10203a}.mastermind-modal.open{display:flex}.mastermind-backdrop{position:absolute;inset:0;background:rgba(6,9,16,.58);backdrop-filter:blur(4px)}.mastermind-dialog{position:relative;width:min(920px,94vw);max-height:min(84vh,860px);display:flex;flex-direction:column;border-radius:24px;overflow:hidden;background:rgba(255,255,255,.97);box-shadow:0 28px 70px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.86);border:1px solid rgba(255,255,255,.74)}.mastermind-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:20px 22px;border-bottom:1px solid rgba(23,53,95,.12);background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(236,244,254,.94))}.mastermind-title{margin:0;font-size:1.35rem;color:#17304d}.mastermind-subtitle{margin:5px 0 0;color:#4c6381;font-weight:700;line-height:1.4}.mastermind-body{padding:18px 22px 22px;display:grid;gap:16px;overflow:auto}.mastermind-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.mastermind-actions .model-primary-btn,.mastermind-actions .model-secondary-btn{min-height:38px}.mastermind-status{border:1px solid rgba(23,53,95,.12);border-radius:16px;background:rgba(241,246,252,.78);padding:10px 12px;color:#2e4360;font-weight:800}.mastermind-status strong{color:#17304d}.mastermind-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.mastermind-section{border:1px solid rgba(23,53,95,.13);border-radius:20px;background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(244,248,253,.92));box-shadow:0 12px 26px rgba(15,36,70,.08);overflow:hidden}.mastermind-section-head{padding:14px 15px 11px;border-bottom:1px solid rgba(23,53,95,.10)}.mastermind-section-head h4{margin:0;color:#17304d}.mastermind-section-head p{margin:4px 0 0;color:#5c6f89;font-weight:700;font-size:.86rem}.mastermind-list{padding:10px;display:grid;gap:8px;min-height:96px}.mastermind-folder-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;border:1px solid rgba(23,53,95,.10);border-radius:15px;padding:9px 10px;background:rgba(255,255,255,.78)}.mastermind-folder-row.is-active{border-color:rgba(45,120,217,.35);box-shadow:0 0 0 3px rgba(45,120,217,.10);background:rgba(241,248,255,.95)}.mastermind-radio{appearance:none;width:17px;height:17px;border-radius:999px;border:2px solid rgba(23,53,95,.28);background:transparent;cursor:pointer;box-shadow:inset 0 0 0 3px rgba(255,255,255,.92)}.mastermind-radio.is-active{border-color:var(--ready-blue-bottom);background:linear-gradient(180deg,var(--ready-blue-top),var(--ready-blue-bottom));box-shadow:0 0 0 4px rgba(45,120,217,.14)}.mastermind-folder-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:900;color:#17304d}.mastermind-delete-btn{appearance:none;border:none;border-radius:12px;background:rgba(210,52,78,.10);color:#a4243d;font-weight:900;padding:7px 9px;cursor:pointer}.mastermind-delete-btn:hover{background:rgba(210,52,78,.18)}.mastermind-empty{padding:18px 12px;border:1px dashed rgba(23,53,95,.18);border-radius:15px;color:#5f7189;font-weight:800;text-align:center;background:rgba(255,255,255,.55)}.mastermind-name-layer{position:absolute;inset:0;z-index:2;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(8,11,18,.35);backdrop-filter:blur(2px)}.mastermind-name-layer.open{display:flex}.mastermind-name-card{width:min(460px,92vw);border-radius:20px;background:#fff;box-shadow:0 24px 60px rgba(0,0,0,.30);border:1px solid rgba(255,255,255,.85);overflow:hidden}.mastermind-name-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:15px 16px;border-bottom:1px solid rgba(23,53,95,.10);background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(236,244,254,.94))}.mastermind-name-head strong{color:#17304d}.mastermind-name-body{padding:16px;display:grid;gap:12px}.mastermind-name-body p{margin:0;color:#405671;font-weight:700;line-height:1.45}.mastermind-name-body input{width:100%;border:1px solid rgba(23,53,95,.18);border-radius:14px;padding:12px 14px;font:inherit;font-weight:800;color:#17325c;background:#fff}.mastermind-name-actions{display:flex;justify-content:flex-end;gap:10px}.model-actions-menu .model-actions-btn.mastermind{color:#17355f}@media (max-width:760px){.mastermind-grid{grid-template-columns:1fr}.mastermind-dialog{max-height:90vh}.mastermind-head{align-items:stretch;flex-direction:column}.mastermind-head .modal-close-btn{align-self:flex-end}}
 
 </style>
 </head>
@@ -6573,7 +6641,29 @@ body.deaddrop-popover-open {
     <button class="cypher-primary-btn" id="cypherAcceptBtn" type="button">Accept</button>
   </div>
 </div></div>
-<button aria-label="WireTap" class="context-btn wiretap-btn" id="wireTapBtn" title="WireTap: This builds a research file for your project." type="button"><svg aria-hidden="true" class="context-btn-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewbox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" /></svg></button>
+<div class="wiretap-wrap" id="wireTapWrap"><button aria-label="WireTap" class="context-btn wiretap-btn" id="wireTapBtn" title="WireTap: This builds a research file for your project." type="button"><svg aria-hidden="true" class="context-btn-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewbox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" /></svg></button>
+<div aria-hidden="true" aria-labelledby="wireTapPopoverTitle" class="wiretap-popover" id="wireTapPopover" role="dialog">
+  <div class="wiretap-popover-body">
+    <div class="wiretap-popover-title" id="wireTapPopoverTitle">WireTap</div>
+    <div class="wiretap-popover-helper" id="wireTapPopoverHelper">Enter Research Tags to rebuild the reusable <code>WireTap.json</code>. You do not need to rebuild it for each question. <strong>Leave tags empty and click Arm to use the existing WireTap</strong> during normal Execute Prompt. Max Entries controls how many info-items WireTap collects for the manifest. Default: 200. Runtime Entries controls how many of those entries the AI may use when answering. Default: 75. Lower runtime values are faster and more focused; higher values provide broader context but may reduce focus.</div>
+    <label class="wiretap-field">Research Tags, comma separated
+      <input class="wiretap-input" id="wireTapTagsInput" placeholder="Black Hole Growth, Accretion Limits" type="text" />
+    </label>
+    <div class="wiretap-settings-row">
+      <label class="wiretap-field">Max Entries
+        <input class="wiretap-input" id="wireTapMaxEntriesInput" min="1" max="5000" step="1" type="number" value="200" />
+      </label>
+      <label class="wiretap-field">Runtime Entries
+        <input class="wiretap-input" id="wireTapRuntimeEntriesInput" min="1" max="150" step="1" type="number" value="75" />
+      </label>
+    </div>
+    <div class="wiretap-actions">
+      <button class="wiretap-secondary-btn" id="wireTapCancelBtn" type="button">Cancel</button>
+      <button class="wiretap-primary-btn" id="wireTapBuildBtn" type="button">Build / Arm</button>
+    </div>
+  </div>
+</div>
+</div>
 <div class="doubletap-wrap" id="doubleTapWrap"><button aria-label="DoubleTap" class="context-btn doubletap-btn" id="doubleTapBtn" title="DoubleTap: multi-pass thinking and critique before final answer." type="button"><svg aria-hidden="true" class="context-btn-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewbox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5" /></svg></button>
 <div aria-hidden="true" aria-labelledby="doubleTapPopoverTitle" class="doubletap-popover" id="doubleTapPopover" role="dialog">
   <div class="doubletap-popover-title" id="doubleTapPopoverTitle">DoubleTap</div>
@@ -6586,25 +6676,6 @@ body.deaddrop-popover-open {
     <button class="doubletap-primary-btn" id="doubleTapArmBtn" type="button">OK</button>
   </div>
 </div></div>
-<div aria-hidden="true" aria-labelledby="wireTapPopoverTitle" class="wiretap-popover" id="wireTapPopover" role="dialog">
-  <div class="wiretap-popover-title" id="wireTapPopoverTitle">WireTap</div>
-  <div class="wiretap-popover-helper" id="wireTapPopoverHelper">Enter Research Tags to rebuild the reusable <code>WireTap.json</code>. You do not need to rebuild it for each question. <strong>Leave tags empty and click Arm to use the existing WireTap</strong> during normal Execute Prompt. Max Entries controls how many info-items WireTap collects for the manifest. Default: 200. Runtime Entries controls how many of those entries the AI may use when answering. Default: 75. Lower runtime values are faster and more focused; higher values provide broader context but may reduce focus.</div>
-  <label class="wiretap-field">Research Tags, comma separated
-    <input class="wiretap-input" id="wireTapTagsInput" placeholder="Black Hole Growth, Accretion Limits" type="text" />
-  </label>
-  <div class="wiretap-settings-row">
-    <label class="wiretap-field">Max Entries
-      <input class="wiretap-input" id="wireTapMaxEntriesInput" min="1" max="5000" step="1" type="number" value="200" />
-    </label>
-    <label class="wiretap-field">Runtime Entries
-      <input class="wiretap-input" id="wireTapRuntimeEntriesInput" min="1" max="150" step="1" type="number" value="75" />
-    </label>
-  </div>
-  <div class="wiretap-actions">
-    <button class="wiretap-secondary-btn" id="wireTapCancelBtn" type="button">Cancel</button>
-    <button class="wiretap-primary-btn" id="wireTapBuildBtn" type="button">Build / Arm</button>
-  </div>
-</div>
 </div>
 <div class="execute-status-wrap">
 <div class="execute-meta">
@@ -7279,6 +7350,9 @@ let editingModelCacheIndex = -1;
 let editingModelOriginalFingerprint = "";
 let deleteModelId = "";
 let deleteModelReturnFocus = null;
+let masterMindState = { modelId: "", modelLabel: "", activeMemory: "", activeIdentity: "", memories: [], identities: [] };
+let masterMindCreateKind = "";
+let masterMindReturnFocus = null;
 let riskState = { enabled: false, iterationsRemaining: 0, iterationsTotal: 0, originalPrompt: '', currentIteration: 0, statusTitle: '', statusLines: [], stopReason: '', showBubble: false };
 let yetiMenuOpen = false;
 let workModeOpen = false;
@@ -11673,6 +11747,7 @@ function closeConfirmModal(confirmed = false) {
   const fallback = confirmModalState.trigger || document.activeElement;
   restoreFocusBeforeHide(modal, fallback);
   modal.classList.remove('open');
+  modal.classList.remove('confirm-modal-above-media');
   modal.setAttribute('aria-hidden', 'true');
   const resolve = confirmModalState.resolve;
   confirmModalState.resolve = null;
@@ -11693,7 +11768,8 @@ function openConfirmModal(options = {}) {
     confirmLabel = 'Confirm',
     cancelLabel = 'Cancel',
     destructive = true,
-    trigger = document.activeElement || null
+    trigger = document.activeElement || null,
+    elevated = false
   } = options;
   document.getElementById('confirmModalTitle').textContent = title;
   document.getElementById('confirmModalCopy').textContent = message;
@@ -11703,6 +11779,7 @@ function openConfirmModal(options = {}) {
   confirmBtn.textContent = confirmLabel;
   confirmBtn.className = destructive ? 'delete-model-btn' : 'model-primary-btn';
   confirmModalState.trigger = trigger;
+  modal.classList.toggle('confirm-modal-above-media', !!elevated);
   modal.classList.add('open');
   modal.setAttribute('aria-hidden', 'false');
   window.requestAnimationFrame(() => confirmBtn.focus());
@@ -12617,6 +12694,51 @@ function activeCypherWorkingModelIdFromPayload(payload) {
 }
 
 
+function positionWireTapPopover() {
+  const popover = document.getElementById('wireTapPopover');
+  const wrap = document.getElementById('wireTapWrap');
+  if (!popover) return;
+  popover.style.removeProperty('left');
+  popover.style.removeProperty('right');
+  popover.style.removeProperty('top');
+  popover.style.removeProperty('bottom');
+  popover.style.removeProperty('--wiretap-body-max-height');
+  popover.style.removeProperty('--wiretap-arrow-left');
+  popover.classList.remove('is-below', 'is-scrollable');
+  popover.classList.add('is-above');
+  const viewportPad = 12;
+  const wrapRect = wrap ? wrap.getBoundingClientRect() : null;
+  const viewportHeight = Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);
+  const viewportWidth = Math.max(window.innerWidth || 0, document.documentElement.clientWidth || 0);
+  if (wrapRect && viewportHeight > 0) {
+    const rect = popover.getBoundingClientRect();
+    const aboveSpace = Math.max(0, wrapRect.top - viewportPad - 12);
+    const belowSpace = Math.max(0, viewportHeight - wrapRect.bottom - viewportPad - 12);
+    const preferBelow = rect.top < viewportPad && belowSpace > aboveSpace;
+    if (preferBelow) {
+      popover.classList.remove('is-above');
+      popover.classList.add('is-below');
+    }
+    const availableHeight = preferBelow ? belowSpace : aboveSpace;
+    if (availableHeight > 0 && rect.height > availableHeight) {
+      popover.classList.add('is-scrollable');
+      popover.style.setProperty('--wiretap-body-max-height', `${Math.max(180, Math.min(560, availableHeight - 32))}px`);
+    }
+  }
+  if (wrapRect && viewportWidth > 0) {
+    let rect = popover.getBoundingClientRect();
+    let offset = 0;
+    if (rect.left < viewportPad) offset = viewportPad - rect.left;
+    else if (rect.right > viewportWidth - viewportPad) offset = (viewportWidth - viewportPad) - rect.right;
+    if (offset !== 0) {
+      popover.style.left = `calc(50% + ${offset}px)`;
+      rect = popover.getBoundingClientRect();
+    }
+    const arrowLeft = Math.max(18, Math.min(rect.width - 18, (wrapRect.left + wrapRect.width / 2) - rect.left));
+    popover.style.setProperty('--wiretap-arrow-left', `${arrowLeft}px`);
+  }
+}
+
 function closeWireTapPopover() {
   const popover = document.getElementById('wireTapPopover');
   if (!popover) return;
@@ -12625,7 +12747,8 @@ function closeWireTapPopover() {
     if (button) button.focus();
     else if (document.activeElement && typeof document.activeElement.blur === 'function') document.activeElement.blur();
   }
-  popover.classList.remove('open');
+  popover.classList.remove('open', 'is-above', 'is-below', 'is-scrollable');
+  popover.removeAttribute('style');
   popover.setAttribute('aria-hidden', 'true');
 }
 
@@ -12636,7 +12759,10 @@ function openWireTapPopover() {
   popover.classList.add('open');
   popover.setAttribute('aria-hidden', 'false');
   const input = document.getElementById('wireTapTagsInput');
-  if (input) input.focus();
+  window.requestAnimationFrame(() => {
+    positionWireTapPopover();
+    if (input) input.focus();
+  });
 }
 
 function toggleWireTapPopover() {
@@ -13971,6 +14097,9 @@ const providerCatalog = {
     { value: 'gemini_generate_content', label: 'Gemini Generate Content (Text + Image)', defaults: { base_url: 'https://generativelanguage.googleapis.com', api_path: '/v1beta/models/{model}:generateContent', auth_type: 'header_key', auth_header: 'x-goog-api-key' } },
     { value: 'veo_video', label: 'Veo Video', defaults: { base_url: 'https://generativelanguage.googleapis.com', api_path: '/v1beta/models/{model}:predictLongRunning', auth_type: 'header_key', auth_header: 'x-goog-api-key' } }
   ] },
+  google_vertex: { label: 'Google Vertex AI', adapters: [
+    { value: 'vertex_veo_video', label: 'Vertex Veo Video', defaults: { base_url: 'https://us-central1-aiplatform.googleapis.com', api_path: '/v1/projects/{project}/locations/{location}/publishers/google/models/{model}:predictLongRunning', auth_type: 'google_adc', auth_header: 'Authorization', api_key_env: 'GOOGLE_APPLICATION_CREDENTIALS' } }
+  ] },
   ideogram: { label: 'Ideogram', adapters: [{ value: 'custom_multipart', label: 'Custom Multipart (Ideogram Generate / Remix)', defaults: { base_url: 'https://api.ideogram.ai', api_path: '/v1/ideogram-v3/generate', auth_type: 'header_key', auth_header: 'Api-Key' } }] },
   seedream: { label: 'Seedream', adapters: [{ value: 'custom_json', label: 'Custom JSON (BytePlus ModelArk)', defaults: { base_url: 'https://ark.ap-southeast.bytepluses.com/api/v3', api_path: '/images/generations', auth_type: 'bearer', auth_header: 'Authorization' } }] },
   kling: { label: 'Kling', adapters: [{ value: 'kling_video', label: 'Kling Video', defaults: { base_url: 'https://api.klingai.com', api_path: '/v1/videos/generations', auth_type: 'bearer', auth_header: 'Authorization' } }] },
@@ -13992,7 +14121,8 @@ const authTypeOptions = [
   { value: 'none', label: 'None' },
   { value: 'bearer', label: 'Bearer Token' },
   { value: 'basic', label: 'Basic Auth' },
-  { value: 'header_key', label: 'Header API Key' }
+  { value: 'header_key', label: 'Header API Key' },
+  { value: 'google_adc', label: 'Google ADC' }
 ];
 const baseCapabilityDefaults = {
   supports_text_in: true,
@@ -14007,6 +14137,7 @@ const adapterCapabilityDefaults = {
   anthropic_messages: { supports_image_in: true, supports_file_in: true },
   gemini_generate_content: { supports_image_in: true, supports_audio_in: true, supports_video_in: true, supports_file_in: true },
   veo_video: { supports_image_in: true, supports_binary_out: true },
+  vertex_veo_video: { supports_image_in: true, supports_binary_out: true },
   kling_video: { supports_image_in: true, supports_binary_out: true },
   sora_video: { supports_image_in: true, supports_binary_out: true },
   comfyui_ltx_video: { supports_image_in: true, supports_binary_out: true },
@@ -14036,14 +14167,16 @@ function normalizeProviderForModelEditor(provider) {
   if (clean === 'anthropic') return 'claude';
   return clean || 'openai';
 }
-function providerModelNamePlaceholder(provider) {
+function providerModelNamePlaceholder(provider, adapter = '') {
   switch (normalizeProviderForModelEditor(provider)) {
     case 'claude':
       return 'claude-...';
     case 'openai':
       return 'gpt-4.1-mini';
     case 'google':
-      return 'gemini-2.5-flash-image';
+      return String(adapter || '').toLowerCase() === 'veo_video' ? 'veo-3.1-lite-generate-preview' : 'gemini-2.5-flash-image';
+    case 'google_vertex':
+      return 'veo-3.1-lite-generate-preview';
     case 'ideogram':
       return 'V_3';
     case 'seedream':
@@ -14062,6 +14195,8 @@ function providerApiKeyEnvPlaceholder(provider) {
   switch (normalizeProviderForModelEditor(provider)) {
     case 'google':
       return 'GEMINI_API_KEY';
+    case 'google_vertex':
+      return 'GOOGLE_APPLICATION_CREDENTIALS';
     case 'claude':
       return 'ANTHROPIC_API_KEY';
     case 'ideogram':
@@ -14084,7 +14219,10 @@ function providerGuidanceText(provider, adapter) {
     case 'claude':
       return 'Claude uses the Anthropic Messages adapter. Leave API Key blank to fall back to ANTHROPIC_API_KEY, and enter the Claude model name exactly as Anthropic expects.';
     case 'google':
+      if (String(adapter || '').toLowerCase() === 'veo_video') return 'Gemini Veo uses the Gemini API key with predictLongRunning. Use a Veo model name such as veo-3.1-lite-generate-preview. AgentGO polls the returned operation and downloads the generated video when it is ready.';
       return 'Gemini uses one Gemini API key for both text and image-capable models. For Nano Banana image workflows, enter an image model name such as gemini-2.5-flash-image or gemini-3.1-flash-image-preview. Phase 2 now supports inline Gemini image outputs and optional response_modalities / image_config Provider Options for text-to-image and image-to-image calls.';
+    case 'google_vertex':
+      return 'Vertex Veo uses Google Cloud Vertex AI with Google ADC by default. AgentGO can auto-detect project_id from ADC service-account JSON, local gcloud ADC quota_project_id, GOOGLE_CLOUD_PROJECT/GCLOUD_PROJECT, or attached Google Cloud metadata. Location defaults to us-central1; override project_id, location, or storage_uri in Provider Options when needed.';
     case 'ideogram':
       return 'Ideogram presets Api-Key auth and now uses the Ideogram 3.0 generate/remix workflow. Text-only prompts go to Generate, while one uploaded image switches to Remix for image-to-image changes. Returned result URLs are downloaded automatically into AgentGO.';
     case 'seedream':
@@ -14101,7 +14239,7 @@ function syncModelProviderGuidance() {
   const note = document.getElementById('modelProviderGuidance');
   if (note) note.textContent = providerGuidanceText(provider, adapter);
   const modelNameField = document.getElementById('modelModelName');
-  if (modelNameField) modelNameField.placeholder = providerModelNamePlaceholder(provider);
+  if (modelNameField) modelNameField.placeholder = providerModelNamePlaceholder(provider, adapter);
   const apiKeyEnvField = document.getElementById('modelApiKeyEnv');
   if (apiKeyEnvField) {
     apiKeyEnvField.placeholder = providerApiKeyEnvPlaceholder(provider);
@@ -14191,7 +14329,22 @@ function syncModelUggToggleUI() {
   if (image) image.src = enabled ? 'assets/Ugg2.png' : 'assets/Ugg1.png';
   if (state) state.textContent = enabled ? 'On' : 'Off';
 }
-function isVideoGenerationAdapter(adapter) { return ['veo_video', 'kling_video', 'sora_video', 'comfyui_ltx_video'].includes(String(adapter || '').toLowerCase()); }
+function isVideoGenerationAdapter(adapter) { return ['veo_video', 'vertex_veo_video', 'kling_video', 'sora_video', 'comfyui_ltx_video'].includes(String(adapter || '').toLowerCase()); }
+function isKnownGoogleVeoIngredientsModel(modelName) {
+  const clean = String(modelName || '').trim().toLowerCase();
+  return !!clean && clean.includes('veo-3.1') && !clean.includes('lite');
+}
+function defaultAllowsVideoIngredients(adapter, modelName = '') {
+  const cleanAdapter = String(adapter || '').toLowerCase();
+  return ['veo_video', 'vertex_veo_video'].includes(cleanAdapter) && isKnownGoogleVeoIngredientsModel(modelName);
+}
+function syncVideoIngredientsDefaultFromCurrentModelName() {
+  if (editingModelId) return;
+  const adapter = document.getElementById('modelAdapter')?.value || '';
+  const modelName = document.getElementById('modelModelName')?.value || '';
+  const checkbox = document.getElementById('modelVideoIngredients');
+  if (checkbox && isVideoGenerationAdapter(adapter)) checkbox.checked = defaultAllowsVideoIngredients(adapter, modelName);
+}
 function isVideoGenerationModel(model) { return !!(model && (model.video_generation || isVideoGenerationAdapter(model.adapter))); }
 function isMeshGenerationAdapter(adapter) { return ['meshy_mesh', 'tripo_mesh', 'hyper3d_mesh'].includes(String(adapter || '').toLowerCase()); }
 function isMeshGenerationModel(model) { return !!(model && (model.mesh_generation || isMeshGenerationAdapter(model.adapter))); }
@@ -14279,6 +14432,13 @@ function buildProviderOptionsTemplate(adapter, provider = '') {
         response_file_url_path: 'data.0.url',
         response_file_mime_path: 'data.0.mime_type'
       }, null, 2);
+    case 'vertex_veo_video':
+      return JSON.stringify({
+        project_id: '',
+        location: 'us-central1',
+        storage_uri: '',
+        video_reference_images_path: 'instances.0.referenceImages'
+      }, null, 2);
     case 'veo_video':
       return JSON.stringify({
         video_job_id_path: 'name',
@@ -14292,6 +14452,7 @@ function buildProviderOptionsTemplate(adapter, provider = '') {
         video_start_frame_mime_path: 'instances.0.image.mimeType',
         video_end_frame_path: 'instances.0.lastFrame.bytesBase64Encoded',
         video_end_frame_mime_path: 'instances.0.lastFrame.mimeType',
+        video_reference_images_path: 'instances.0.referenceImages',
         video_duration_path: 'parameters.durationSeconds',
         video_aspect_ratio_path: 'parameters.aspectRatio',
         video_resolution_path: 'parameters.resolution',
@@ -14383,6 +14544,7 @@ function buildTransportHelpText(adapter, provider = '') {
     case 'openai_compatible':
       return 'OpenAI Compatible now reuses the richer Responses image path when the endpoint is /v1/responses, including image_generation_tool support and returned image artifacts. Chat-completions endpoints can now send native image inputs and will try to surface returned image URLs or base64 media from common response shapes or your response_file_* Provider Options.';
     case 'veo_video':
+    case 'vertex_veo_video':
     case 'kling_video':
     case 'sora_video':
       return 'Video adapters submit async media jobs, poll provider status, download the finished video, and save it into project-local video job storage.';
@@ -14511,6 +14673,18 @@ function syncModelAuthFieldVisibility() {
     const visibleTo = (el.getAttribute('data-auth-visible') || '').split(',').map(x => x.trim()).filter(Boolean);
     el.style.display = !visibleTo.length || visibleTo.includes(authType) ? '' : 'none';
   });
+  const envLabel = document.getElementById('modelApiKeyEnvLabelText');
+  const envInput = document.getElementById('modelApiKeyEnv');
+  const envNote = document.getElementById('modelApiKeyEnvNote');
+  if (authType === 'google_adc') {
+    if (envLabel) envLabel.textContent = 'ADC Env Var';
+    if (envInput) envInput.placeholder = 'GOOGLE_APPLICATION_CREDENTIALS';
+    if (envNote) envNote.textContent = 'Optional. GOOGLE_APPLICATION_CREDENTIALS may point to an ADC credential source file. Leave blank or use the default to let AgentGO use normal ADC discovery such as local gcloud application-default credentials, attached Google Cloud service accounts, or supported Workload Identity Federation sources.';
+  } else {
+    if (envLabel) envLabel.textContent = 'API Key Env';
+    if (envInput) envInput.placeholder = providerApiKeyEnvPlaceholder(document.getElementById('modelProvider').value);
+    if (envNote) envNote.textContent = 'Optional env var name. AgentGO checks this first, then falls back to the saved API key.';
+  }
 }
 function populateProviderSelect(selectedProvider = '') {
   const select = document.getElementById('modelProvider');
@@ -14528,7 +14702,7 @@ function applyAdapterDefaults({ force = false } = {}) {
   const choice = ((providerCatalog[provider] || {}).adapters || []).find(item => item.value === adapter);
   if (!choice) return;
   const defaults = choice.defaults || {};
-  [['modelBaseUrl', 'base_url'], ['modelApiPath', 'api_path'], ['modelAuthType', 'auth_type'], ['modelAuthHeader', 'auth_header']].forEach(([id, key]) => {
+  [['modelBaseUrl', 'base_url'], ['modelApiPath', 'api_path'], ['modelAuthType', 'auth_type'], ['modelAuthHeader', 'auth_header'], ['modelApiKeyEnv', 'api_key_env']].forEach(([id, key]) => {
     const field = document.getElementById(id);
     if (!field) return;
     if (force || !field.value.trim()) field.value = defaults[key] || '';
@@ -14540,7 +14714,8 @@ function applyAdapterDefaults({ force = false } = {}) {
     document.getElementById('modelMeshGeneration').checked = false;
     document.getElementById('modelVideoPromptOnly').checked = true;
     document.getElementById('modelVideoStartFrame').checked = true;
-    document.getElementById('modelVideoEndFrame').checked = ['veo_video','kling_video'].includes(adapter);
+    document.getElementById('modelVideoEndFrame').checked = ['veo_video','vertex_veo_video','kling_video'].includes(adapter);
+    document.getElementById('modelVideoIngredients').checked = defaultAllowsVideoIngredients(adapter, document.getElementById('modelModelName')?.value || '');
     document.getElementById('modelCapabilityBinaryOut').checked = true;
   }
   if (isMeshGenerationAdapter(adapter)) {
@@ -14741,7 +14916,8 @@ function fillModelForm(model) {
   document.getElementById('modelVideoGeneration').checked = !!(model && (model.video_generation || isVideoGenerationAdapter(model.adapter)));
   document.getElementById('modelVideoPromptOnly').checked = !!(model ? model.video_prompt_only : isVideoGenerationAdapter(model && model.adapter ? model.adapter : ''));
   document.getElementById('modelVideoStartFrame').checked = !!(model ? model.video_start_frame : isVideoGenerationAdapter(model && model.adapter ? model.adapter : ''));
-  document.getElementById('modelVideoEndFrame').checked = !!(model ? model.video_end_frame : ['veo_video','kling_video'].includes(String(model && model.adapter ? model.adapter : '').toLowerCase()));
+  document.getElementById('modelVideoEndFrame').checked = !!(model ? model.video_end_frame : ['veo_video','vertex_veo_video','kling_video'].includes(String(model && model.adapter ? model.adapter : '').toLowerCase()));
+  document.getElementById('modelVideoIngredients').checked = !!(model ? model.video_ingredients : defaultAllowsVideoIngredients(model && model.adapter ? model.adapter : '', model && model.model_name ? model.model_name : ''));
   document.getElementById('modelVideoDuration').value = model && model.video_duration ? model.video_duration : '';
   document.getElementById('modelVideoAspectRatio').value = model && model.video_aspect_ratio ? model.video_aspect_ratio : '';
   document.getElementById('modelVideoResolution').value = model && model.video_resolution ? model.video_resolution : '';
@@ -14877,6 +15053,7 @@ function collectModelPayload() {
     video_prompt_only: !!document.getElementById('modelVideoPromptOnly').checked,
     video_start_frame: !!document.getElementById('modelVideoStartFrame').checked,
     video_end_frame: !!document.getElementById('modelVideoEndFrame').checked,
+    video_ingredients: !!document.getElementById('modelVideoIngredients').checked,
     video_duration: document.getElementById('modelVideoDuration').value.trim(),
     video_aspect_ratio: document.getElementById('modelVideoAspectRatio').value.trim(),
     video_resolution: document.getElementById('modelVideoResolution').value.trim(),
@@ -15078,17 +15255,22 @@ async function saveModelEditor() {
 }
 function closeModelActionsMenu() {
   const menu = document.getElementById('modelActionsMenu');
-  menu.classList.remove('open');
+  if (menu) {
+    menu.classList.remove('open');
+    delete menu.dataset.modelId;
+    delete menu.dataset.modelLabel;
+  }
   document.querySelectorAll('.agent-card.is-menu-open').forEach(card => card.classList.remove('is-menu-open'));
   activeModelActionId = '';
 }
 function openModelActionsMenu(modelId, modelLabel, anchor) {
   const menu = document.getElementById('modelActionsMenu');
+  if (!menu || !anchor) return;
   document.querySelectorAll('.agent-card.is-menu-open').forEach(card => card.classList.remove('is-menu-open'));
   const card = anchor ? anchor.closest('.agent-card') : null;
   if (card) card.classList.add('is-menu-open');
-  activeModelActionId = String(modelId);
-  menu.dataset.modelId = String(modelId);
+  activeModelActionId = String(modelId || '');
+  menu.dataset.modelId = String(modelId || '');
   menu.dataset.modelLabel = modelLabel || 'this model';
   const rect = anchor.getBoundingClientRect();
   menu.style.top = `${Math.round(rect.bottom + 8)}px`;
@@ -15132,6 +15314,177 @@ async function confirmDeleteModel() {
     showToast('Model deleted.');
   } catch (err) {
     showToast(err.message || 'Could not delete model.');
+  }
+}
+
+
+function masterMindKindLabel(kind) {
+  return String(kind || '').toLowerCase() === 'identity' ? 'Identity' : 'Memory';
+}
+function getMasterMindActiveName(kind) {
+  return String(kind || '').toLowerCase() === 'identity' ? String(masterMindState.activeIdentity || '') : String(masterMindState.activeMemory || '');
+}
+function masterMindFolderList(kind) {
+  return String(kind || '').toLowerCase() === 'identity' ? (masterMindState.identities || []) : (masterMindState.memories || []);
+}
+function closeMasterMindNamePopup() {
+  const layer = document.getElementById('masterMindNameLayer');
+  if (!layer) return;
+  layer.classList.remove('open');
+  layer.setAttribute('aria-hidden', 'true');
+  masterMindCreateKind = '';
+}
+function closeMasterMindModal() {
+  closeMasterMindNamePopup();
+  const modal = document.getElementById('masterMindModal');
+  if (!modal) return;
+  restoreFocusBeforeHide(modal, masterMindReturnFocus || document.querySelector('.settings-btn'));
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden', 'true');
+  masterMindState = { modelId: '', modelLabel: '', activeMemory: '', activeIdentity: '', memories: [], identities: [] };
+  masterMindReturnFocus = null;
+}
+function renderMasterMindStatus() {
+  const el = document.getElementById('masterMindStatus');
+  if (!el) return;
+  const memory = masterMindState.activeMemory ? escapeHtml(masterMindState.activeMemory) : 'None';
+  const identity = masterMindState.activeIdentity ? escapeHtml(masterMindState.activeIdentity) : 'None';
+  el.innerHTML = `<strong>${escapeHtml(masterMindState.modelLabel || 'Model')}</strong> · Active Memory: ${memory} · Active Identity: ${identity}`;
+}
+function renderMasterMindFolderSection(kind) {
+  const listEl = document.getElementById(String(kind || '').toLowerCase() === 'identity' ? 'masterMindIdentityList' : 'masterMindMemoryList');
+  if (!listEl) return;
+  const folders = masterMindFolderList(kind);
+  const activeName = getMasterMindActiveName(kind);
+  const label = masterMindKindLabel(kind);
+  if (!folders.length) {
+    listEl.innerHTML = `<div class="mastermind-empty">No ${escapeHtml(label.toLowerCase())} folders yet.</div>`;
+    return;
+  }
+  listEl.innerHTML = folders.map(folder => {
+    const name = String(folder && folder.name || '');
+    const active = activeName && name === activeName;
+    return `<div class="mastermind-folder-row ${active ? 'is-active' : ''}" data-mastermind-kind="${escapeHtml(kind)}" data-mastermind-name="${escapeHtml(name)}"><button type="button" class="mastermind-radio ${active ? 'is-active' : ''}" title="${active ? `Unset ${escapeHtml(label)}` : `Activate ${escapeHtml(label)}`}" aria-label="${active ? `Unset ${escapeHtml(name)}` : `Activate ${escapeHtml(name)}`}" aria-pressed="${active ? 'true' : 'false'}" data-mastermind-select="true"></button><div class="mastermind-folder-name" title="${escapeHtml(name)}">${escapeHtml(name)}</div><button type="button" class="mastermind-delete-btn" data-mastermind-delete="true" title="Delete ${escapeHtml(name)}">Delete</button></div>`;
+  }).join('');
+}
+function renderMasterMind() {
+  const subtitle = document.getElementById('masterMindSubtitle');
+  if (subtitle) subtitle.textContent = `Folder-level MasterMind setup for ${masterMindState.modelLabel || 'this model'}.`;
+  renderMasterMindStatus();
+  renderMasterMindFolderSection('memory');
+  renderMasterMindFolderSection('identity');
+}
+async function loadMasterMindState(modelId) {
+  const data = await api(`/api/mastermind?modelId=${encodeURIComponent(String(modelId || ''))}`);
+  masterMindState = {
+    modelId: String(data.modelId || modelId || ''),
+    modelLabel: String(data.modelLabel || ''),
+    activeMemory: String(data.activeMemory || ''),
+    activeIdentity: String(data.activeIdentity || ''),
+    memories: Array.isArray(data.memories) ? data.memories : [],
+    identities: Array.isArray(data.identities) ? data.identities : []
+  };
+  renderMasterMind();
+}
+async function openMasterMindModal(modelId, modelLabel) {
+  masterMindReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  masterMindState = { modelId: String(modelId || ''), modelLabel: String(modelLabel || ''), activeMemory: '', activeIdentity: '', memories: [], identities: [] };
+  const modal = document.getElementById('masterMindModal');
+  if (!modal) return;
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden', 'false');
+  renderMasterMindStatus();
+  const memoryList = document.getElementById('masterMindMemoryList');
+  const identityList = document.getElementById('masterMindIdentityList');
+  if (memoryList) memoryList.innerHTML = '<div class="mastermind-empty">Loading memories…</div>';
+  if (identityList) identityList.innerHTML = '<div class="mastermind-empty">Loading identities…</div>';
+  const closeBtn = document.getElementById('masterMindCloseBtn');
+  if (closeBtn) closeBtn.focus({ preventScroll: true });
+  try {
+    await loadMasterMindState(modelId);
+  } catch (err) {
+    closeMasterMindModal();
+    throw err;
+  }
+}
+function openMasterMindNamePopup(kind) {
+  masterMindCreateKind = String(kind || '').toLowerCase() === 'identity' ? 'identity' : 'memory';
+  const label = masterMindKindLabel(masterMindCreateKind);
+  const layer = document.getElementById('masterMindNameLayer');
+  const title = document.getElementById('masterMindNameTitle');
+  const copy = document.getElementById('masterMindNameCopy');
+  const input = document.getElementById('masterMindNameInput');
+  if (!layer || !input) return;
+  if (title) title.textContent = `Create ${label} Folder`;
+  if (copy) copy.textContent = `Create a global ${label.toLowerCase()} folder under /mastermind/${masterMindCreateKind === 'identity' ? 'identities' : 'memories'}/.`;
+  input.value = '';
+  layer.classList.add('open');
+  layer.setAttribute('aria-hidden', 'false');
+  input.focus({ preventScroll: true });
+}
+async function createMasterMindFolder() {
+  const input = document.getElementById('masterMindNameInput');
+  const name = String(input && input.value || '').trim();
+  if (!name) { showToast('Enter a folder name.', 'warning'); if (input) input.focus(); return; }
+  const kind = masterMindCreateKind || 'memory';
+  try {
+    await api('/api/mastermind/folder', { method: 'POST', body: JSON.stringify({ kind, name }) });
+    closeMasterMindNamePopup();
+    await loadMasterMindState(masterMindState.modelId);
+    showToast(`${masterMindKindLabel(kind)} folder created.`);
+    loadFiles(currentPath).catch(() => {});
+  } catch (err) {
+    showToast(err.message || 'Could not create MasterMind folder.', 'warning');
+  }
+}
+async function setMasterMindSelection(kind, name) {
+  const activeName = getMasterMindActiveName(kind);
+  const nextName = activeName === String(name || '') ? '' : String(name || '');
+  try {
+    const data = await api('/api/mastermind/selection', { method: 'POST', body: JSON.stringify({ modelId: masterMindState.modelId, kind, name: nextName }) });
+    masterMindState = {
+      modelId: String(data.modelId || masterMindState.modelId || ''),
+      modelLabel: String(data.modelLabel || masterMindState.modelLabel || ''),
+      activeMemory: String(data.activeMemory || ''),
+      activeIdentity: String(data.activeIdentity || ''),
+      memories: Array.isArray(data.memories) ? data.memories : [],
+      identities: Array.isArray(data.identities) ? data.identities : []
+    };
+    renderMasterMind();
+    showToast(nextName ? `${masterMindKindLabel(kind)} activated for this model.` : `${masterMindKindLabel(kind)} unset for this model.`);
+  } catch (err) {
+    showToast(err.message || 'Could not update MasterMind selection.', 'warning');
+  }
+}
+async function deleteMasterMindFolder(kind, name) {
+  const label = masterMindKindLabel(kind);
+  const confirmed = await openConfirmModal({
+    title: `Delete ${label} Folder?`,
+    message: `Delete /mastermind/${String(kind).toLowerCase() === 'identity' ? 'identities' : 'memories'}/${name}? This removes the whole named folder and unsets it from any model using it.`,
+    confirmLabel: `Delete ${label}`,
+    destructive: true,
+    trigger: document.activeElement || null
+  });
+  if (!confirmed) return;
+  try {
+    const data = await api('/api/mastermind/delete', { method: 'POST', body: JSON.stringify({ modelId: masterMindState.modelId, kind, name }) });
+    if (data && data.modelId) {
+      masterMindState = {
+        modelId: String(data.modelId || masterMindState.modelId || ''),
+        modelLabel: String(data.modelLabel || masterMindState.modelLabel || ''),
+        activeMemory: String(data.activeMemory || ''),
+        activeIdentity: String(data.activeIdentity || ''),
+        memories: Array.isArray(data.memories) ? data.memories : [],
+        identities: Array.isArray(data.identities) ? data.identities : []
+      };
+      renderMasterMind();
+    } else {
+      await loadMasterMindState(masterMindState.modelId);
+    }
+    showToast(`${label} folder deleted.`);
+    loadFiles(currentPath).catch(() => {});
+  } catch (err) {
+    showToast(err.message || 'Could not delete MasterMind folder.', 'warning');
   }
 }
 
@@ -15477,8 +15830,31 @@ function extractWorkModeModelName(text) {
   const match = raw.match(/model\s+[`'\"]?([A-Za-z0-9._:-]+)[`'\"]?/i);
   return match ? match[1] : '';
 }
+function parseWorkModeStructuredErrorPayload(raw) {
+  const text = String(raw || '').trim();
+  if (!text || text[0] !== '{') return null;
+  try {
+    const parsed = JSON.parse(text);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch (_) {
+    return null;
+  }
+}
 function summarizeWorkModeError(err) {
   const raw = String((err && (err.responseText || err.message)) || 'Work Mode request failed.').trim();
+  const structured = parseWorkModeStructuredErrorPayload(raw);
+  if (structured && structured.error === 'work_mode_json_parse_failed') {
+    const parseError = String(structured.parseError || '').trim();
+    const rawResponse = String(structured.rawResponse || '').trim();
+    const detailSections = [];
+    if (parseError) detailSections.push({ label: 'Parse error', text: parseError });
+    if (rawResponse) detailSections.push({ label: 'Raw AI response', text: rawResponse });
+    return {
+      summary: String(structured.message || 'AgentGO could not read the AI response as valid Work Mode data. Raw response details are available below.').trim(),
+      detail: detailSections.length ? '' : raw,
+      detailSections
+    };
+  }
   const providerMessage = extractWorkModeProviderErrorMessage(raw);
   const combined = `${raw} ${providerMessage}`.toLowerCase();
   let summary = '';
@@ -16215,11 +16591,18 @@ function renderWorkModeMessages() {
     const text = formatWorkModeMessageText(msg.text || '');
     if (role === 'agentgo') {
       const detail = String(msg.detail || '').trim();
-      const hasDetails = !!detail;
+      const sections = Array.isArray(msg.detailSections) ? msg.detailSections.filter(section => section && String(section.text || '').trim()) : [];
+      const hasDetails = !!detail || sections.length > 0;
       const openClass = msg.detailsOpen ? ' is-open' : '';
       const label = msg.detailsOpen ? 'Hide raw error details' : 'Show raw error details';
       const toggle = hasDetails ? `<button class="work-mode-agent-details-toggle${openClass}" data-work-agent-detail-toggle="${index}" type="button" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 12.75 3 3m0 0 3-3m-3 3v-7.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"/></svg></button>` : '';
-      const details = hasDetails && msg.detailsOpen ? `<div class="work-mode-agent-details"><div class="work-mode-agent-details-label">Raw details</div><pre class="work-mode-agent-details-pre">${escapeHtml(detail)}</pre></div>` : '';
+      let detailBody = '';
+      if (sections.length) {
+        detailBody = sections.map(section => `<div class="work-mode-agent-details-section"><div class="work-mode-agent-details-label">${escapeHtml(section.label || 'Details')}</div><pre class="work-mode-agent-details-pre">${escapeHtml(section.text || '')}</pre></div>`).join('');
+      } else if (detail) {
+        detailBody = `<div class="work-mode-agent-details-section"><div class="work-mode-agent-details-label">Raw details</div><pre class="work-mode-agent-details-pre">${escapeHtml(detail)}</pre></div>`;
+      }
+      const details = hasDetails && msg.detailsOpen ? `<div class="work-mode-agent-details">${detailBody}</div>` : '';
       return `<div class="work-mode-message agentgo${hasDetails ? ' has-details' : ''}"><div class="work-mode-message-kicker">AgentGO Says:</div><div>${text}</div>${toggle}${details}</div>`;
     }
     if (role === 'ai') {
@@ -16242,8 +16625,12 @@ function appendWorkModeMessage(role, text, options = {}) {
   const clean = String(text || '').trim();
   if (!clean) return;
   const msg = { role, text: clean };
+  const sections = Array.isArray(options.detailSections) ? options.detailSections.map(section => ({ label: String((section && section.label) || 'Details').trim() || 'Details', text: String((section && section.text) || '').trim() })).filter(section => section.text) : [];
   const detail = String(options.detail || options.details || '').trim();
-  if (detail) {
+  if (sections.length) {
+    msg.detailSections = sections;
+    msg.detailsOpen = !!options.detailsOpen;
+  } else if (detail) {
     msg.detail = detail;
     msg.detailsOpen = !!options.detailsOpen;
   }
@@ -16680,7 +17067,7 @@ async function sendWorkModePrompt() {
     else updateWorkModeSettingsStatus();
   } catch (err) {
     const friendly = summarizeWorkModeError(err);
-    appendWorkModeMessage('agentgo', friendly.summary, { detail: friendly.detail });
+    appendWorkModeMessage('agentgo', friendly.summary, { detail: friendly.detail, detailSections: friendly.detailSections });
     updateWorkModeSettingsStatus();
     showErrorToast(friendly.summary);
   } finally {
@@ -17342,9 +17729,13 @@ async function mergeModel(card) {
 
 let videoJobsFilterModelId = '';
 let meshJobsFilterModelId = '';
+let videoJobsAutoRefreshTimer = null;
+let videoJobSubmitInFlight = false;
+const VIDEO_JOB_DEFAULTS = { duration: '8', aspectRatio: '16:9', resolution: '720p' };
 let lastFocusedBeforeVideoJobs = null;
 let lastFocusedBeforeMeshJobs = null;
 function closeVideoJobsModal() {
+  if (videoJobsAutoRefreshTimer) { clearTimeout(videoJobsAutoRefreshTimer); videoJobsAutoRefreshTimer = null; }
   const modal = document.getElementById('videoJobsModal');
   if (!modal) return;
   restoreFocusBeforeHide(modal, lastFocusedBeforeVideoJobs || document.getElementById('videoJobsBtn'));
@@ -17424,13 +17815,27 @@ function toggleMediaSettings(kind, forceOpen = null) {
   pop.classList.toggle('open', open);
   pop.setAttribute('aria-hidden', open ? 'false' : 'true');
 }
+function mediaFrameErrorId(inputId) { return `${inputId}Error`; }
+function setMediaFrameError(inputId, boxId, message = '') {
+  const box = document.getElementById(boxId);
+  const error = document.getElementById(mediaFrameErrorId(inputId));
+  if (error) error.textContent = message;
+  if (box) box.classList.toggle('has-error', !!message);
+}
+function isLikelyImageFile(file) {
+  if (!file) return false;
+  const type = String(file.type || '').toLowerCase();
+  if (type.startsWith('image/')) return true;
+  return /\.(png|jpe?g|webp|gif|avif|bmp|tiff?)$/i.test(String(file.name || ''));
+}
 function clearMediaFramePreview(inputId, previewId, boxId) {
   const input = document.getElementById(inputId);
   const img = document.getElementById(previewId);
   const box = document.getElementById(boxId);
   if (input) input.value = '';
   if (img) { img.removeAttribute('src'); img.alt = ''; }
-  if (box) box.classList.remove('has-preview');
+  if (box) box.classList.remove('has-preview', 'is-drag-over', 'has-error');
+  setMediaFrameError(inputId, boxId, '');
 }
 function triggerMediaFrameInput(inputId, previewId, boxId) {
   clearMediaFramePreview(inputId, previewId, boxId);
@@ -17443,27 +17848,105 @@ function handleMediaFrameSelected(inputId, previewId, boxId) {
   const img = document.getElementById(previewId);
   const box = document.getElementById(boxId);
   if (!file || !img || !box) { clearMediaFramePreview(inputId, previewId, boxId); return; }
+  if (!isLikelyImageFile(file)) {
+    clearMediaFramePreview(inputId, previewId, boxId);
+    setMediaFrameError(inputId, boxId, 'Drop an image file.');
+    return;
+  }
+  setMediaFrameError(inputId, boxId, '');
   img.src = URL.createObjectURL(file);
   img.alt = file.name || 'Selected image';
   box.classList.add('has-preview');
+}
+function handleMediaFrameDragOver(event, boxId) {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'copy';
+  const box = document.getElementById(boxId);
+  if (box) box.classList.add('is-drag-over');
+}
+function handleMediaFrameDragLeave(event, boxId) {
+  event.preventDefault();
+  const box = document.getElementById(boxId);
+  if (box) box.classList.remove('is-drag-over');
+}
+function handleMediaFrameDrop(event, inputId, previewId, boxId) {
+  event.preventDefault();
+  event.stopPropagation();
+  const box = document.getElementById(boxId);
+  if (box) box.classList.remove('is-drag-over');
+  const input = document.getElementById(inputId);
+  const file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0] ? event.dataTransfer.files[0] : null;
+  if (!input || input.disabled) { setMediaFrameError(inputId, boxId, 'This frame is not available for the selected model.'); return; }
+  if (!file) { setMediaFrameError(inputId, boxId, 'Drop an image file.'); return; }
+  if (!isLikelyImageFile(file)) { clearMediaFramePreview(inputId, previewId, boxId); setMediaFrameError(inputId, boxId, 'Drop an image file.'); return; }
+  try {
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    input.files = transfer.files;
+  } catch (err) {
+    setMediaFrameError(inputId, boxId, 'Could not attach dropped file.');
+    return;
+  }
+  handleMediaFrameSelected(inputId, previewId, boxId);
+}
+function setVideoJobSubmitWorking(working) {
+  videoJobSubmitInFlight = !!working;
+  const btn = document.getElementById('videoJobsSubmitBtn');
+  if (!btn) return;
+  btn.disabled = !!working;
+  btn.setAttribute('aria-busy', working ? 'true' : 'false');
+  btn.textContent = working ? 'working...' : 'Create Video Job';
+}
+function resetVideoJobTransientInputs() {
+  const prompt = document.getElementById('videoJobPrompt');
+  if (prompt) prompt.value = '';
+  clearMediaFramePreview('videoJobStartFrame', 'videoJobStartPreview', 'videoJobStartBox');
+  clearMediaFramePreview('videoJobEndFrame', 'videoJobEndPreview', 'videoJobEndBox');
+  clearVideoJobReferenceInputs();
+}
+function clearVideoJobReferenceInputs() {
+  for (let i = 0; i < 3; i += 1) clearMediaFramePreview(`videoJobReference${i}`, `videoJobReferencePreview${i}`, `videoJobReferenceBox${i}`);
+}
+function setVideoJobReferenceInputsEnabled(enabled) {
+  for (let i = 0; i < 3; i += 1) {
+    const input = document.getElementById(`videoJobReference${i}`);
+    if (input) input.disabled = !enabled;
+  }
+}
+function selectedVideoReferenceFiles() {
+  const files = [];
+  for (let i = 0; i < 3; i += 1) {
+    const input = document.getElementById(`videoJobReference${i}`);
+    const file = input && input.files && input.files[0] ? input.files[0] : null;
+    if (file) files.push([i, file]);
+  }
+  return files;
 }
 function syncVideoJobCapabilityUI() {
   const model = requireSingleActiveMediaModel('video', { toast: false });
   setActiveMediaModelLabel('video', model);
   const endInput = document.getElementById('videoJobEndFrame');
   const startInput = document.getElementById('videoJobStartFrame');
+  const referenceSection = document.getElementById('videoJobReferenceSection');
   const hint = document.getElementById('videoJobCapabilityHint');
   if (!hint) return;
   const adapter = String((model && model.adapter) || '').toLowerCase();
-  const startAllowed = !model || !!(model.video_start_frame || ['veo_video', 'kling_video', 'sora_video', 'comfyui_ltx_video'].includes(adapter));
-  const endAllowed = !model || !!(model.video_end_frame || ['veo_video', 'kling_video'].includes(adapter));
+  const startAllowed = !model || !!(model.video_start_frame || ['veo_video', 'vertex_veo_video', 'kling_video', 'sora_video', 'comfyui_ltx_video'].includes(adapter));
+  const endAllowed = !model || !!(model.video_end_frame || ['veo_video', 'vertex_veo_video', 'kling_video'].includes(adapter));
+  const ingredientsAllowed = !!(model && model.video_ingredients);
   if (startInput) { startInput.disabled = false; if (model && !startAllowed) clearMediaFramePreview('videoJobStartFrame', 'videoJobStartPreview', 'videoJobStartBox'); }
   if (endInput) { endInput.disabled = false; if (model && !endAllowed) clearMediaFramePreview('videoJobEndFrame', 'videoJobEndPreview', 'videoJobEndBox'); }
+  if (referenceSection) referenceSection.classList.toggle('is-visible', ingredientsAllowed);
+  setVideoJobReferenceInputsEnabled(ingredientsAllowed);
+  if (!ingredientsAllowed) clearVideoJobReferenceInputs();
   refreshMediaJobSubtitle('video', model);
   if (!model) { hint.textContent = ''; return; }
+  const ingredientNote = ingredientsAllowed ? ' Ingredients/reference image slots are enabled for this model.' : '';
   if (adapter === 'sora_video') { hint.textContent = 'Sora supports text-to-video or single-reference-image video jobs. End frame upload is disabled for Sora models in v1.'; return; }
+  if (adapter === 'vertex_veo_video') { hint.textContent = 'Vertex Veo supports text-to-video and image-guided video jobs through Google Cloud Vertex AI.' + ingredientNote; return; }
+  if (adapter === 'veo_video') { hint.textContent = 'Gemini Veo supports text-to-video and image-guided video jobs through the Gemini API.' + ingredientNote; return; }
   if (adapter === 'comfyui_ltx_video') { hint.textContent = 'ComfyUI LTX supports text-to-video or starter-image video jobs using your local workflow JSON. End frame upload is disabled for this local adapter.'; return; }
-  hint.textContent = 'Text-to-video and image-guided jobs are supported by the active video model.';
+  hint.textContent = 'Text-to-video and image-guided jobs are supported by the active video model.' + ingredientNote;
 }
 function syncMeshJobCapabilityUI() {
   const model = requireSingleActiveMediaModel('mesh', { toast: false });
@@ -17478,9 +17961,12 @@ function syncMeshJobCapabilityUI() {
   hint.textContent = model ? 'Text-to-mesh and image-guided jobs are supported by the active 3D mesh model.' : '';
 }
 function fillVideoJobDefaults(model) {
-  if (!model) return;
-  const pairs = [['videoJobDuration','video_duration'],['videoJobAspectRatio','video_aspect_ratio'],['videoJobResolution','video_resolution']];
-  pairs.forEach(([id, key]) => { const el = document.getElementById(id); if (el) el.value = model[key] || ''; });
+  const values = {
+    videoJobDuration: (model && model.video_duration) || VIDEO_JOB_DEFAULTS.duration,
+    videoJobAspectRatio: (model && model.video_aspect_ratio) || VIDEO_JOB_DEFAULTS.aspectRatio,
+    videoJobResolution: (model && model.video_resolution) || VIDEO_JOB_DEFAULTS.resolution
+  };
+  Object.entries(values).forEach(([id, value]) => { const el = document.getElementById(id); if (el) el.value = value; });
   refreshMediaJobSubtitle('video', model);
 }
 function fillMeshJobDefaults(model) {
@@ -17491,21 +17977,86 @@ function fillMeshJobDefaults(model) {
   if (f) f.value = model.mesh_output_format || '';
   refreshMediaJobSubtitle('mesh', model);
 }
+function videoJobIsActive(job = {}) {
+  const status = String(job.status || '').toLowerCase();
+  return ['accepted', 'running', 'queued', 'submitted', 'processing'].includes(status);
+}
+function videoJobStatusText(job = {}) {
+  const parts = [];
+  if (job.status) parts.push(`Status: ${job.status}`);
+  if (Number(job.pollCount || 0) > 0) parts.push(`polled ${Number(job.pollCount || 0)} time${Number(job.pollCount || 0) === 1 ? '' : 's'}`);
+  if (job.remoteStatus) parts.push(`provider: ${job.remoteStatus}`);
+  if (job.lastPollAt) parts.push(`last check: ${new Date(job.lastPollAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}`);
+  return parts.join(' — ') || 'Waiting for provider output...';
+}
+function renderVideoDiagnostics(job = {}) {
+  const diagnostics = job.providerDiagnostics || {};
+  const entries = Object.entries(diagnostics).filter(([, value]) => String(value || '').trim());
+  if (!entries.length) return '';
+  const blocks = entries.map(([key, value]) => `<strong>${escapeHtml(key.replace(/_/g, ' '))}</strong><pre>${escapeHtml(String(value || ''))}</pre>`).join('');
+  return `<details class="video-job-diagnostics"><summary>Show provider diagnostics</summary>${blocks}</details>`;
+}
+async function deleteVideoJob(jobId, trigger = null) {
+  const cleanId = String(jobId || '').trim();
+  if (!cleanId) return;
+  const confirmed = await openConfirmModal({
+    title: 'Delete Video Job?',
+    message: 'Delete this local video job record and its saved job artifacts? Projectwork videos that were already auto-saved will be left alone.',
+    confirmLabel: 'Delete Job',
+    cancelLabel: 'Cancel',
+    destructive: true,
+    elevated: true,
+    trigger: trigger || document.activeElement
+  });
+  if (!confirmed) return;
+  const res = await fetch(`/api/video/jobs?jobId=${encodeURIComponent(cleanId)}`, { method: 'DELETE', credentials: 'same-origin' });
+  if (!res.ok) throw new Error(await res.text());
+  await refreshVideoJobsList();
+  showToast('Video job deleted.');
+}
+
+function formatVideoDuration(value) {
+  const clean = String(value || '').trim();
+  if (!clean) return '';
+  return /^\d+(\.\d+)?$/.test(clean) ? `${clean}s` : clean;
+}
+function mediaPathBasename(path) {
+  const clean = String(path || '').trim();
+  if (!clean) return '';
+  const parts = clean.split(/[\\/]+/).filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : clean;
+}
 function renderVideoJobs(jobs = []) {
   const root = document.getElementById('videoJobsList');
   if (!root) return;
   if (!jobs.length) {
     root.innerHTML = '<div class="media-job-empty"><strong>No video jobs yet.</strong><span>Create a job to see status, previews, and completed outputs here.</span></div>';
+    scheduleVideoJobsAutoRefresh([]);
     return;
   }
+  const latestPlayableJob = jobs.find(job => job && (job.projectworkBlobUrl || job.artifactBlobUrl));
+  const latestPlayableJobId = latestPlayableJob ? String(latestPlayableJob.jobId || '') : '';
   root.innerHTML = jobs.map(job => {
-    const meta = [job.status ? `<span>Status: ${escapeHtml(job.status)}</span>` : '', job.modelLabel ? `<span>${escapeHtml(job.modelLabel)}</span>` : '', job.aspectRatio ? `<span>${escapeHtml(job.aspectRatio)}</span>` : '', job.resolution ? `<span>${escapeHtml(job.resolution)}</span>` : '', job.projectworkVideoPath ? `<span>Auto-saved</span>` : ''].filter(Boolean).join('');
+    const active = videoJobIsActive(job);
+    const providerMarker = job.providerOperationName || job.providerJobId;
+    const settingsText = [formatVideoDuration(job.duration), job.aspectRatio, job.resolution].filter(Boolean).join(' · ');
+    const savedFile = mediaPathBasename(job.projectworkVideoPath || '');
+    const referenceCount = Array.isArray(job.referenceImagePaths) ? job.referenceImagePaths.length : (Array.isArray(job.referenceImageBlobUrls) ? job.referenceImageBlobUrls.length : 0);
+    const meta = [job.status ? `<span>Status: ${escapeHtml(job.status)}</span>` : '', Number(job.pollCount || 0) > 0 ? `<span>Polled: ${Number(job.pollCount || 0)}</span>` : '', job.remoteStatus ? `<span>Provider: ${escapeHtml(job.remoteStatus)}</span>` : '', providerMarker ? `<span>Operation: ${escapeHtml(String(providerMarker).slice(-28))}</span>` : '', settingsText ? `<span>Settings: ${escapeHtml(settingsText)}</span>` : '', referenceCount ? `<span>References: ${referenceCount}/3</span>` : '', job.projectworkVideoPath ? `<span>Auto-saved</span>` : ''].filter(Boolean).join('');
+    const savedFileLine = savedFile ? `<div class="video-job-saved-file">Saved File: ${escapeHtml(savedFile)}</div>` : '';
     const thumbs = `${job.startFrameBlobUrl ? `<img src="${escapeHtml(job.startFrameBlobUrl)}" alt="Start frame">` : ''}${job.endFrameBlobUrl ? `<img src="${escapeHtml(job.endFrameBlobUrl)}" alt="End frame">` : ''}`;
     const videoSrc = job.projectworkBlobUrl || job.artifactBlobUrl;
-    const video = videoSrc ? `<video controls preload="metadata" src="${escapeHtml(videoSrc)}"></video>` : `<div class="video-small-note">${escapeHtml(job.error || 'Waiting for provider output...')}</div>`;
+    const showInlineVideo = videoSrc && latestPlayableJobId && String(job.jobId || '') === latestPlayableJobId;
+    let video = '';
+    if (showInlineVideo) video = `<video controls preload="metadata" src="${escapeHtml(videoSrc)}"></video>`;
+    else if (active) video = `<div class="video-job-waiting"><span class="video-job-wait-dot" aria-hidden="true"></span><span>${escapeHtml(videoJobStatusText(job))}</span></div>`;
+    else if (!videoSrc) video = `<div class="video-small-note">${escapeHtml(job.error || 'Waiting for provider output...')}</div>`;
+    const diagnostics = renderVideoDiagnostics(job);
+    const deleteAction = active ? '' : `<button class="video-job-delete-btn" type="button" onclick="deleteVideoJob('${escapeHtml(String(job.jobId || ''))}', this).catch(err =&gt; showErrorToast(err.message))">Delete</button>`;
     const actions = `${videoSrc ? `<a class="model-secondary-btn" href="${escapeHtml(videoSrc)}" target="_blank" rel="noopener noreferrer">Open Video</a>` : ''}${videoSrc ? `<a class="model-secondary-btn" href="${escapeHtml(videoSrc)}&download=1" target="_blank" rel="noopener noreferrer">Download</a>` : ''}`;
-    return `<div class="video-job-card"><div><strong>${escapeHtml(job.modelLabel || 'Video Job')}</strong></div><div class="video-small-note">${escapeHtml(job.prompt || '')}</div>${thumbs ? `<div class="video-job-thumb-row">${thumbs}</div>` : ''}${video}<div class="video-job-meta">${meta}</div><div class="video-job-actions">${actions}</div></div>`;
+    return `<div class="video-job-card${active ? ' is-active' : ''}"><div class="video-job-card-head"><strong>${escapeHtml(job.modelLabel || 'Video Job')}</strong>${deleteAction}</div><div class="video-small-note">${escapeHtml(job.prompt || '')}</div>${thumbs ? `<div class="video-job-thumb-row">${thumbs}</div>` : ''}${video}<div class="video-job-meta">${meta}</div>${savedFileLine}${diagnostics}<div class="video-job-actions">${actions}</div></div>`;
   }).join('');
+  scheduleVideoJobsAutoRefresh(jobs);
 }
 function renderMeshJobs(jobs = []) {
   const root = document.getElementById('meshJobsList');
@@ -17520,7 +18071,17 @@ function renderMeshJobs(jobs = []) {
   }).join('');
 }
 function buildBlobUrl(path) { return path ? `/api/blob?path=${encodeURIComponent(path)}` : ''; }
-async function refreshVideoJobsList() {
+function scheduleVideoJobsAutoRefresh(jobs = []) {
+  if (videoJobsAutoRefreshTimer) { clearTimeout(videoJobsAutoRefreshTimer); videoJobsAutoRefreshTimer = null; }
+  const modal = document.getElementById('videoJobsModal');
+  const isOpen = modal && modal.classList.contains('open') && modal.getAttribute('aria-hidden') !== 'true';
+  if (!isOpen || !jobs.some(videoJobIsActive)) return;
+  videoJobsAutoRefreshTimer = setTimeout(() => {
+    videoJobsAutoRefreshTimer = null;
+    refreshVideoJobsList({ silent: true }).catch(() => {});
+  }, 5000);
+}
+async function refreshVideoJobsList({ silent = false } = {}) {
   const query = videoJobsFilterModelId ? `?modelId=${encodeURIComponent(videoJobsFilterModelId)}` : '';
   const data = await api(`/api/video/jobs${query}`);
   renderVideoJobs(Array.isArray(data.jobs) ? data.jobs : []);
@@ -17573,25 +18134,40 @@ async function openMeshJobsModal() {
   if (closeBtn) closeBtn.focus();
 }
 async function submitVideoJob() {
+  if (videoJobSubmitInFlight) return;
   if (!requireActiveProjectSelection()) return;
   const model = requireSingleActiveMediaModel('video', { toast: true });
   if (!model) return;
+  const promptEl = document.getElementById('videoJobPrompt');
+  const durationEl = document.getElementById('videoJobDuration');
+  const aspectEl = document.getElementById('videoJobAspectRatio');
+  const resolutionEl = document.getElementById('videoJobResolution');
+  const startInput = document.getElementById('videoJobStartFrame');
+  const endInput = document.getElementById('videoJobEndFrame');
   const form = new FormData();
   form.append('modelId', String(model.id));
-  form.append('prompt', document.getElementById('videoJobPrompt').value.trim());
-  form.append('duration', document.getElementById('videoJobDuration').value.trim());
-  form.append('aspectRatio', document.getElementById('videoJobAspectRatio').value.trim());
-  form.append('resolution', document.getElementById('videoJobResolution').value.trim());
-  const startFile = document.getElementById('videoJobStartFrame').files[0];
-  const endFile = document.getElementById('videoJobEndFrame').files[0];
+  form.append('prompt', promptEl ? promptEl.value.trim() : '');
+  form.append('duration', durationEl ? durationEl.value.trim() : '');
+  form.append('aspectRatio', aspectEl ? aspectEl.value.trim() : '');
+  form.append('resolution', resolutionEl ? resolutionEl.value.trim() : '');
+  const startFile = startInput && startInput.files && startInput.files[0] ? startInput.files[0] : null;
+  const endFile = endInput && endInput.files && endInput.files[0] ? endInput.files[0] : null;
   if (startFile) form.append('startFrame', startFile);
   if (endFile) form.append('endFrame', endFile);
-  const res = await fetch('/api/video/jobs', { method: 'POST', body: form, credentials: 'same-origin' });
-  if (!res.ok) throw new Error(await res.text());
-  videoJobsFilterModelId = String(model.id);
-  await refreshVideoJobsList();
-  await loadModelStates().catch(() => {});
-  showToast('Video job accepted. Completed output will auto-save to projectwork/videos.');
+  if (model.video_ingredients) selectedVideoReferenceFiles().forEach(([index, file]) => form.append(`referenceImage${index}`, file));
+  setVideoJobSubmitWorking(true);
+  try {
+    const res = await fetch('/api/video/jobs', { method: 'POST', body: form, credentials: 'same-origin' });
+    if (!res.ok) throw new Error(await res.text());
+    videoJobsFilterModelId = String(model.id);
+    resetVideoJobTransientInputs();
+    syncVideoJobCapabilityUI();
+    await refreshVideoJobsList();
+    await loadModelStates().catch(() => {});
+    showToast('Video job accepted. Completed output will auto-save to projectwork/videos.');
+  } finally {
+    setVideoJobSubmitWorking(false);
+  }
 }
 async function submitMeshJob() {
   if (!requireActiveProjectSelection()) return;
@@ -18167,10 +18743,10 @@ const modelFieldHelpText = {
   modelModelName: ['Model Name', 'The exact model string sent to the provider API, such as gpt-4.1-mini or gemini-2.5-flash. This is different from the display label.'],
   modelBaseUrl: ['Base URL', 'The root endpoint for the provider API, without the specific route path. Provider presets usually fill this for you.'],
   modelApiPath: ['API Path', 'The route AgentGO calls under the Base URL, such as /v1/responses. Provider presets usually fill this for you.'],
-  modelAuthType: ['Auth Type', 'How AgentGO authenticates this model. Use None for local unauthenticated endpoints, Bearer Token for most APIs, Basic Auth for username/password, or Header API Key for custom key headers.'],
+  modelAuthType: ['Auth Type', 'How AgentGO authenticates this model. Use None for local unauthenticated endpoints, Bearer Token for most APIs, Basic Auth for username/password, Header API Key for custom key headers, or Google ADC for Vertex AI.'],
   modelApiUser: ['API User', 'The username for Basic Auth providers. Leave it blank when the selected Auth Type does not use Basic Auth.'],
   modelApiPass: ['API Pass', 'Some models require a Basic Auth password. This is hidden after saving; leave it blank to keep the saved password, enter a new one to replace it, or type DELETE and save to remove it.'],
-  modelApiKeyEnv: ['API Key Env', 'Optional environment variable name to check before using a saved API key. This lets you keep secrets outside models.json when the environment is configured.'],
+  modelApiKeyEnv: ['API Key Env / ADC Env', 'Optional environment variable name. For API-key modes AgentGO checks this before using a saved key. For Google ADC, use GOOGLE_APPLICATION_CREDENTIALS or leave blank to use normal ADC discovery such as local gcloud credentials, attached service accounts, or Workload Identity Federation sources.'],
   modelApiKey: ['API Key', 'Some providers require an API key. This is hidden after saving; leave it blank to keep the saved key, enter a new key to replace it, or type DELETE and save to remove it.'],
   modelAuthHeader: ['Auth Header', 'The HTTP header used for bearer or header-key authentication. Authorization is common for bearer tokens; some providers use names like Api-Key.'],
   modelHeaders: ['Headers', 'Extra HTTP headers sent with model requests. Headers may contain secrets, so saved headers are hidden on edit; leave blank to keep them, enter new Header: value lines to replace them, or type DELETE and save to remove them.'],
@@ -18184,7 +18760,7 @@ const modelFieldHelpText = {
   modelNotes: ['Notes', 'Private notes about why this model exists, how to use it, or what configuration choices matter. Notes do not affect API calls.'],
   modelCapabilityMode: ['Capability Mode', 'Auto uses adapter and model hints to decide which inputs and outputs are allowed. Manual Override lets you force the visible IO toggles yourself.'],
   modelCapabilities: ['IO Capabilities', 'These settings describe what AgentGO may send to or receive from the model. In Auto mode they are shown greyed out so you can see the inferred behavior before switching to Manual Override.'],
-  modelVideoGeneration: ['Video Generation', 'Enable this when the model creates video files instead of normal text responses. Text to Video means prompt-only video; Start/End Frame checkboxes describe optional image frame inputs. Video models run from Execute Prompt and require all active models in the run to be video models.'],
+  modelVideoGeneration: ['Video Generation', 'Enable this when the model creates video files instead of normal text responses. Text to Video means prompt-only video; Start/End Frame checkboxes describe optional image frame inputs. Allows Ingredients enables up to three optional reference images for providers/models that support them. Video models run from Execute Prompt and require all active models in the run to be video models.'],
   modelMeshGeneration: ['3D Mesh Generation', 'Enable this when the model creates 3D mesh files instead of normal text responses. Text to Mesh means prompt-only mesh creation; Allows Image Input means image-guided mesh creation. 3D models run from Execute Prompt and require all active models in the run to be 3D models.'],
   modelMeshQuality: ['Mesh Quality', 'Optional provider quality value sent with 3D mesh runs from Execute Prompt. Leave blank to use the provider or adapter default.'],
   modelMeshOutputFormat: ['Mesh Output Format', 'Optional preferred mesh format, such as glb, obj, or fbx. Leave blank to use the provider or adapter default.']
@@ -18240,6 +18816,7 @@ function initializeDeferredModelEditorBindings() {
   if (modelNameEl && !modelNameEl.dataset.bound) {
     modelNameEl.addEventListener('input', () => {
       applyModelCapabilityDefaults();
+      syncVideoIngredientsDefaultFromCurrentModelName();
       syncModelCapabilityUI();
       updateModelEditorValidationState();
     });
@@ -18336,6 +18913,44 @@ function initializeDeferredModelEditorBindings() {
     deleteModelConfirmBtn.addEventListener('click', confirmDeleteModel);
     deleteModelConfirmBtn.dataset.bound = 'true';
   }
+  const masterMindCloseBtn = document.getElementById('masterMindCloseBtn');
+  if (masterMindCloseBtn && !masterMindCloseBtn.dataset.bound) {
+    masterMindCloseBtn.addEventListener('click', closeMasterMindModal);
+    masterMindCloseBtn.dataset.bound = 'true';
+  }
+  const masterMindCreateMemoryBtn = document.getElementById('masterMindCreateMemoryBtn');
+  if (masterMindCreateMemoryBtn && !masterMindCreateMemoryBtn.dataset.bound) {
+    masterMindCreateMemoryBtn.addEventListener('click', () => openMasterMindNamePopup('memory'));
+    masterMindCreateMemoryBtn.dataset.bound = 'true';
+  }
+  const masterMindCreateIdentityBtn = document.getElementById('masterMindCreateIdentityBtn');
+  if (masterMindCreateIdentityBtn && !masterMindCreateIdentityBtn.dataset.bound) {
+    masterMindCreateIdentityBtn.addEventListener('click', () => openMasterMindNamePopup('identity'));
+    masterMindCreateIdentityBtn.dataset.bound = 'true';
+  }
+  const masterMindNameCloseBtn = document.getElementById('masterMindNameCloseBtn');
+  if (masterMindNameCloseBtn && !masterMindNameCloseBtn.dataset.bound) {
+    masterMindNameCloseBtn.addEventListener('click', closeMasterMindNamePopup);
+    masterMindNameCloseBtn.dataset.bound = 'true';
+  }
+  const masterMindNameCancelBtn = document.getElementById('masterMindNameCancelBtn');
+  if (masterMindNameCancelBtn && !masterMindNameCancelBtn.dataset.bound) {
+    masterMindNameCancelBtn.addEventListener('click', closeMasterMindNamePopup);
+    masterMindNameCancelBtn.dataset.bound = 'true';
+  }
+  const masterMindNameCreateBtn = document.getElementById('masterMindNameCreateBtn');
+  if (masterMindNameCreateBtn && !masterMindNameCreateBtn.dataset.bound) {
+    masterMindNameCreateBtn.addEventListener('click', createMasterMindFolder);
+    masterMindNameCreateBtn.dataset.bound = 'true';
+  }
+  const masterMindNameInput = document.getElementById('masterMindNameInput');
+  if (masterMindNameInput && !masterMindNameInput.dataset.bound) {
+    masterMindNameInput.addEventListener('keydown', event => {
+      if (event.key === 'Enter') createMasterMindFolder();
+      if (event.key === 'Escape') closeMasterMindNamePopup();
+    });
+    masterMindNameInput.dataset.bound = 'true';
+  }
 }
 
 if (document.readyState === 'loading') {
@@ -18362,6 +18977,25 @@ document.getElementById('projectNameInput').addEventListener('keydown', e => {
 });
 
 document.addEventListener('click', function (e) {
+  const modelAction = e.target.closest('[data-model-action]');
+  if (modelAction) {
+    e.preventDefault();
+    e.stopPropagation();
+    const action = modelAction.dataset.modelAction;
+    const menu = document.getElementById('modelActionsMenu');
+    const modelId = activeModelActionId || (menu && menu.dataset ? menu.dataset.modelId : '');
+    const modelLabel = (menu && menu.dataset ? menu.dataset.modelLabel : '') || 'this model';
+    closeModelActionsMenu();
+    if (!modelId) { showToast('Could not determine which model to use.', 'warning'); return; }
+    if (action === 'edit') openModelEditor('edit', modelId).catch(err => showToast(err.message || 'Could not open model editor.'));
+    if (action === 'meta') {
+      if (!requireActiveProjectSelection()) return;
+      openSettingsModal(modelId, modelLabel).catch(err => showToast(err.message || 'Could not open model meta files.'));
+    }
+    if (action === 'mastermind') openMasterMindModal(modelId, modelLabel).catch(err => showToast(err.message || 'Could not open MasterMind.'));
+    if (action === 'delete') openDeleteModelModal(modelId);
+    return;
+  }
   const helpBtn = e.target.closest('[data-field-help]');
   if (helpBtn) {
     e.preventDefault();
@@ -18370,6 +19004,8 @@ document.addEventListener('click', function (e) {
     return;
   }
   if (!e.target.closest('#modelFieldHelpPopover')) hideModelFieldHelp();
+  if (!e.target.closest('#modelActionsMenu') && !e.target.closest('.settings-btn')) closeModelActionsMenu();
+  if (!e.target.closest('#runOrderPopover') && !e.target.closest('[data-run-order-trigger]')) closeRunOrderPopover();
   const modelCard = e.target.closest('.agent-card');
   if (modelCard) {
     if (e.target.closest('[data-run-order-trigger]')) {
@@ -18392,25 +19028,21 @@ document.addEventListener('click', function (e) {
     }
   }
   if (e.target.closest('#runOrderSaveBtn')) { saveRunOrder().catch(err => showToast(err.message || 'Could not save run order.')); return; }
-  if (!e.target.closest('#modelActionsMenu') && !e.target.closest('.settings-btn')) closeModelActionsMenu();
-  if (!e.target.closest('#runOrderPopover') && !e.target.closest('[data-run-order-trigger]')) closeRunOrderPopover();
-  const modelAction = e.target.closest('[data-model-action]');
-  if (modelAction) {
-    const action = modelAction.dataset.modelAction;
-    const menu = document.getElementById('modelActionsMenu');
-    const modelId = activeModelActionId || menu.dataset.modelId;
-    const modelLabel = menu.dataset.modelLabel || 'this model';
-    closeModelActionsMenu();
-    if (action === 'edit') openModelEditor('edit', modelId).catch(err => showToast(err.message || 'Could not open model editor.'));
-    if (action === 'meta') {
-      if (!requireActiveProjectSelection()) return;
-      openSettingsModal(modelId, modelLabel).catch(err => showToast(err.message || 'Could not open model meta files.'));
-    }
-    if (action === 'delete') openDeleteModelModal(modelId);
-    return;
-  }
   if (e.target.closest('[data-close-model-editor="true"]') || e.target.closest('#modelEditorCloseX')) { closeModelEditor(); return; }
   if (e.target.closest('[data-close-delete-model="true"]')) { closeDeleteModelModal(); return; }
+  if (e.target.closest('[data-close-mastermind="true"]')) { closeMasterMindModal(); return; }
+  const masterMindSelect = e.target.closest('[data-mastermind-select="true"]');
+  if (masterMindSelect) {
+    const row = masterMindSelect.closest('[data-mastermind-kind][data-mastermind-name]');
+    if (row) setMasterMindSelection(row.dataset.mastermindKind || 'memory', row.dataset.mastermindName || '');
+    return;
+  }
+  const masterMindDelete = e.target.closest('[data-mastermind-delete="true"]');
+  if (masterMindDelete) {
+    const row = masterMindDelete.closest('[data-mastermind-kind][data-mastermind-name]');
+    if (row) deleteMasterMindFolder(row.dataset.mastermindKind || 'memory', row.dataset.mastermindName || '');
+    return;
+  }
   if (e.target.closest('[data-close-settings="true"]') || e.target.closest('#settingsCloseX') || e.target.closest('#settings-close')) { closeSettingsModal(); return; }
 });
 
@@ -18455,6 +19087,8 @@ document.addEventListener('keydown', function (e) {
     closeWireTapPopover();
     closeDiagnosticsModal();
     closeRunOrderPopover();
+    closeMasterMindNamePopup();
+    closeMasterMindModal();
   }
 });
 
@@ -18540,7 +19174,7 @@ initializeApp().catch(() => {
 });
 setInterval(async () => { await refreshLogs(); await loadRiskState().catch(() => {}); await loadWaveState().catch(() => {}); await refreshDeadDropStatus().catch(() => {}); }, 2000);
 </script>
-<div aria-hidden="true" class="run-order-popover" id="runOrderPopover"><div class="run-order-popover-title" id="runOrderPopoverTitle">Run Order</div><div class="run-order-popover-row"><input class="run-order-popover-input" id="runOrderInput" inputmode="numeric" max="99" min="0" step="1" type="number"/></div><div class="run-order-popover-actions"><button class="run-order-popover-btn primary" id="runOrderSaveBtn" type="button">Apply</button></div><div class="run-order-popover-note">Set model run order 0 - 99.</div></div><div class="model-actions-menu" id="modelActionsMenu"><button class="model-actions-btn" data-model-action="edit" type="button">Edit Model</button><button class="model-actions-btn" data-model-action="meta" type="button">Edit Meta Files</button><button class="model-actions-btn delete" data-model-action="delete" type="button">Delete Model</button></div>
+<div aria-hidden="true" class="run-order-popover" id="runOrderPopover"><div class="run-order-popover-title" id="runOrderPopoverTitle">Run Order</div><div class="run-order-popover-row"><input class="run-order-popover-input" id="runOrderInput" inputmode="numeric" max="99" min="0" step="1" type="number"/></div><div class="run-order-popover-actions"><button class="run-order-popover-btn primary" id="runOrderSaveBtn" type="button">Apply</button></div><div class="run-order-popover-note">Set model run order 0 - 99.</div></div><div class="model-actions-menu" id="modelActionsMenu"><button class="model-actions-btn" data-model-action="edit" type="button">Edit Model</button><button class="model-actions-btn" data-model-action="meta" type="button">Edit Meta Files</button><button class="model-actions-btn mastermind" data-model-action="mastermind" type="button">MasterMind</button><button class="model-actions-btn delete" data-model-action="delete" type="button">Delete Model</button></div>
 <div aria-hidden="true" class="video-jobs-modal" id="videoJobsModal">
 <div class="video-jobs-backdrop" data-close-video-jobs="true" onclick="closeVideoJobsModal()"></div>
 <div aria-labelledby="videoJobsTitle" aria-modal="true" class="video-jobs-dialog" role="dialog">
@@ -18550,14 +19184,21 @@ setInterval(async () => { await refreshLogs(); await loadRiskState().catch(() =>
 <div class="video-jobs-grid">
 <div class="video-jobs-form">
 <div class="media-job-section">
-<div class="field"><div class="media-job-prompt-head"><label for="videoJobPrompt">Prompt</label><div class="media-job-settings-wrap"><button aria-label="Video output settings" class="media-job-settings-btn" onclick="toggleMediaSettings('video')" type="button"><svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg></button>
-<div aria-hidden="true" class="media-job-settings-popover" id="videoJobSettingsPopover"><div class="media-job-option-grid"><div class="field"><label for="videoJobDuration">Duration</label><input id="videoJobDuration" placeholder="4, 6, 8" type="text"/></div><div class="field"><label for="videoJobAspectRatio">Aspect Ratio</label><input id="videoJobAspectRatio" placeholder="16:9 or 9:16" type="text"/></div><div class="field"><label for="videoJobResolution">Quality</label><input id="videoJobResolution" placeholder="720p, 1080p" type="text"/></div></div></div></div></div><textarea id="videoJobPrompt" placeholder="Describe the shot, action, and style." rows="8"></textarea></div>
+<div class="field"><div class="media-job-prompt-head"><label for="videoJobPrompt">Prompt</label><div class="media-job-inline-settings" aria-label="Video settings"><div class="field"><label for="videoJobDuration">Duration</label><input id="videoJobDuration" placeholder="8" type="text"/></div><div class="field"><label for="videoJobAspectRatio">Aspect Ratio</label><input id="videoJobAspectRatio" placeholder="16:9" type="text"/></div><div class="field"><label for="videoJobResolution">Quality</label><input id="videoJobResolution" placeholder="720p" type="text"/></div></div></div><textarea id="videoJobPrompt" placeholder="Describe the shot, action, and style." rows="8"></textarea></div>
 </div>
 <div class="media-job-section"><div class="media-frame-grid">
-<button class="media-frame-picker" id="videoJobStartBox" onclick="triggerMediaFrameInput('videoJobStartFrame','videoJobStartPreview','videoJobStartBox')" type="button"><img id="videoJobStartPreview" alt=""/><span class="media-frame-empty">Click to choose image</span><span class="media-frame-label">Start Frame</span></button>
-<button class="media-frame-picker" id="videoJobEndBox" onclick="triggerMediaFrameInput('videoJobEndFrame','videoJobEndPreview','videoJobEndBox')" type="button"><img id="videoJobEndPreview" alt=""/><span class="media-frame-empty">Click to choose image</span><span class="media-frame-label">End Frame</span></button>
+<button class="media-frame-picker" id="videoJobStartBox" onclick="triggerMediaFrameInput('videoJobStartFrame','videoJobStartPreview','videoJobStartBox')" ondragover="handleMediaFrameDragOver(event,'videoJobStartBox')" ondragleave="handleMediaFrameDragLeave(event,'videoJobStartBox')" ondrop="handleMediaFrameDrop(event,'videoJobStartFrame','videoJobStartPreview','videoJobStartBox')" type="button"><img id="videoJobStartPreview" alt=""/><span class="media-frame-empty">Click or drop image</span><span class="media-frame-label">Start Frame (optional)</span><span class="media-frame-error" id="videoJobStartFrameError" aria-live="polite"></span></button>
+<button class="media-frame-picker" id="videoJobEndBox" onclick="triggerMediaFrameInput('videoJobEndFrame','videoJobEndPreview','videoJobEndBox')" ondragover="handleMediaFrameDragOver(event,'videoJobEndBox')" ondragleave="handleMediaFrameDragLeave(event,'videoJobEndBox')" ondrop="handleMediaFrameDrop(event,'videoJobEndFrame','videoJobEndPreview','videoJobEndBox')" type="button"><img id="videoJobEndPreview" alt=""/><span class="media-frame-empty">Click or drop image</span><span class="media-frame-label">End Frame (optional)</span><span class="media-frame-error" id="videoJobEndFrameError" aria-live="polite"></span></button>
 <input accept="image/*" class="media-frame-file" id="videoJobStartFrame" onchange="handleMediaFrameSelected('videoJobStartFrame','videoJobStartPreview','videoJobStartBox')" type="file"/>
 <input accept="image/*" class="media-frame-file" id="videoJobEndFrame" onchange="handleMediaFrameSelected('videoJobEndFrame','videoJobEndPreview','videoJobEndBox')" type="file"/>
+<div class="media-reference-section" id="videoJobReferenceSection"><div class="media-reference-title">Optional Reference Images (Not available in all models)</div><div class="media-reference-grid">
+<button class="media-frame-picker" id="videoJobReferenceBox0" onclick="triggerMediaFrameInput('videoJobReference0','videoJobReferencePreview0','videoJobReferenceBox0')" ondragover="handleMediaFrameDragOver(event,'videoJobReferenceBox0')" ondragleave="handleMediaFrameDragLeave(event,'videoJobReferenceBox0')" ondrop="handleMediaFrameDrop(event,'videoJobReference0','videoJobReferencePreview0','videoJobReferenceBox0')" type="button"><img id="videoJobReferencePreview0" alt=""/><span class="media-frame-empty">Click or drop image</span><span class="media-frame-label">Reference 1</span><span class="media-frame-error" id="videoJobReference0Error" aria-live="polite"></span></button>
+<button class="media-frame-picker" id="videoJobReferenceBox1" onclick="triggerMediaFrameInput('videoJobReference1','videoJobReferencePreview1','videoJobReferenceBox1')" ondragover="handleMediaFrameDragOver(event,'videoJobReferenceBox1')" ondragleave="handleMediaFrameDragLeave(event,'videoJobReferenceBox1')" ondrop="handleMediaFrameDrop(event,'videoJobReference1','videoJobReferencePreview1','videoJobReferenceBox1')" type="button"><img id="videoJobReferencePreview1" alt=""/><span class="media-frame-empty">Click or drop image</span><span class="media-frame-label">Reference 2</span><span class="media-frame-error" id="videoJobReference1Error" aria-live="polite"></span></button>
+<button class="media-frame-picker" id="videoJobReferenceBox2" onclick="triggerMediaFrameInput('videoJobReference2','videoJobReferencePreview2','videoJobReferenceBox2')" ondragover="handleMediaFrameDragOver(event,'videoJobReferenceBox2')" ondragleave="handleMediaFrameDragLeave(event,'videoJobReferenceBox2')" ondrop="handleMediaFrameDrop(event,'videoJobReference2','videoJobReferencePreview2','videoJobReferenceBox2')" type="button"><img id="videoJobReferencePreview2" alt=""/><span class="media-frame-empty">Click or drop image</span><span class="media-frame-label">Reference 3</span><span class="media-frame-error" id="videoJobReference2Error" aria-live="polite"></span></button>
+<input accept="image/*" class="media-frame-file" id="videoJobReference0" onchange="handleMediaFrameSelected('videoJobReference0','videoJobReferencePreview0','videoJobReferenceBox0')" type="file"/>
+<input accept="image/*" class="media-frame-file" id="videoJobReference1" onchange="handleMediaFrameSelected('videoJobReference1','videoJobReferencePreview1','videoJobReferenceBox1')" type="file"/>
+<input accept="image/*" class="media-frame-file" id="videoJobReference2" onchange="handleMediaFrameSelected('videoJobReference2','videoJobReferencePreview2','videoJobReferenceBox2')" type="file"/>
+</div></div>
 </div></div>
 <div class="video-small-note" id="videoJobCapabilityHint">Prompt-only and image-guided jobs are supported for video-capable models configured in the Model Editor.</div>
 <div class="video-jobs-actions">
@@ -18601,6 +19242,31 @@ setInterval(async () => { await refreshLogs(); await loadRiskState().catch(() =>
 </div>
 </div>
 </div>
-<div aria-hidden="true" class="model-editor-modal" id="modelEditorModal"><div class="model-editor-backdrop" data-close-model-editor="true"></div><div aria-labelledby="modelEditorTitle" aria-modal="true" class="model-editor-dialog" role="dialog"><button aria-label="Close" class="modal-close-btn modal-close-floating" id="modelEditorCloseX" type="button">Close</button><div class="model-editor-header"><div class="model-editor-header-copy"><h3 id="modelEditorTitle">Create Model</h3><p id="modelEditorCopy">Create a new model definition.</p></div></div><div class="model-readonly-grid" id="modelReadonlyFields"></div><div class="model-editor-body"><section class="model-editor-section is-open" id="modelSectionIdentity" data-model-panel="identity"><div aria-hidden="false" class="model-section-body" id="modelSectionIdentityBody" style="display:grid"><div class="model-editor-grid"><div class="model-form-field"><label class="model-help-label" for="modelLabel"><button type="button" class="model-field-help-btn" data-field-help="modelLabel" aria-label="Help for Label"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Label</span></label><input id="modelLabel" placeholder="ChatGPT 4.1 Mini" type="text"/></div><div class="model-form-field"><label class="model-help-label" for="modelProvider"><button type="button" class="model-field-help-btn" data-field-help="modelProvider" aria-label="Help for Provider"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Provider</span></label><select id="modelProvider"></select></div><div class="model-form-field"><label class="model-help-label" for="modelAdapter"><button type="button" class="model-field-help-btn" data-field-help="modelAdapter" aria-label="Help for Adapter"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Adapter</span></label><select id="modelAdapter"></select></div><div class="model-form-field"><label class="model-help-label" for="modelModelName"><button type="button" class="model-field-help-btn" data-field-help="modelModelName" aria-label="Help for Model Name"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Model Name</span></label><input id="modelModelName" placeholder="model-name" type="text"/></div><div class="model-form-field"><label class="model-help-label" for="modelBaseUrl"><button type="button" class="model-field-help-btn" data-field-help="modelBaseUrl" aria-label="Help for Base URL"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Base URL</span></label><input id="modelBaseUrl" type="text"/></div><div class="model-form-field"><label class="model-help-label" for="modelApiPath"><button type="button" class="model-field-help-btn" data-field-help="modelApiPath" aria-label="Help for API Path"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>API Path</span></label><input id="modelApiPath" type="text"/></div><div class="model-form-field"><label class="model-help-label" for="modelAuthType"><button type="button" class="model-field-help-btn" data-field-help="modelAuthType" aria-label="Help for Auth Type"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Auth Type</span></label><select id="modelAuthType"></select></div><p aria-live="polite" class="model-identity-validation is-warning" id="modelIdentityValidation">Complete the required setup fields to enable Save Model.</p></div></div></section><section class="model-editor-section" id="modelSectionAuthentication" data-model-panel="authentication"><div aria-hidden="true" class="model-section-body" id="modelSectionAuthenticationBody"><div class="model-editor-grid"><div class="model-form-field" data-auth-visible="basic"><label class="model-help-label" for="modelApiUser"><button type="button" class="model-field-help-btn" data-field-help="modelApiUser" aria-label="Help for API User"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>API User</span></label><input id="modelApiUser" type="text"/></div><div class="model-form-field" data-auth-visible="basic"><label class="model-help-label" for="modelApiPass"><button type="button" class="model-field-help-btn" data-field-help="modelApiPass" aria-label="Help for API Pass"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>API Pass</span></label><input autocomplete="new-password" id="modelApiPass" type="password"/><p class="model-capability-note" id="modelApiPassNote">Optional. Saved on server when provided.</p><p aria-live="polite" class="model-secret-delete-status" id="modelApiPassDeleteStatus">Saved password will be removed when you save.</p></div><div class="model-form-field" data-auth-visible="bearer,header_key"><label class="model-help-label" for="modelApiKeyEnv"><button type="button" class="model-field-help-btn" data-field-help="modelApiKeyEnv" aria-label="Help for API Key Env"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>API Key Env</span></label><input id="modelApiKeyEnv" placeholder="OPENAI_API_KEY" type="text"/><p class="model-capability-note">Optional env var name. AgentGO checks this first, then falls back to the saved API key.</p></div><div class="model-form-field" data-auth-visible="bearer,header_key"><label class="model-help-label" for="modelApiKey"><button type="button" class="model-field-help-btn" data-field-help="modelApiKey" aria-label="Help for API Key"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>API Key</span></label><input autocomplete="new-password" id="modelApiKey" type="password"/><p class="model-capability-note" id="modelApiKeyNote">Optional. Saved on server when provided.</p><p aria-live="polite" class="model-secret-delete-status" id="modelApiKeyDeleteStatus">Saved API key will be removed when you save.</p></div><div class="model-form-field" data-auth-visible="bearer,header_key"><label class="model-help-label" for="modelAuthHeader"><button type="button" class="model-field-help-btn" data-field-help="modelAuthHeader" aria-label="Help for Auth Header"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Auth Header</span></label><input id="modelAuthHeader" placeholder="Authorization" type="text"/></div><div class="model-form-field full"><label class="model-help-label" for="modelHeaders"><button type="button" class="model-field-help-btn" data-field-help="modelHeaders" aria-label="Help for Headers"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Headers</span></label><textarea id="modelHeaders" placeholder="header-name: value"></textarea><p class="model-capability-note" id="modelHeadersNote">Optional. Enter custom headers as key: value pairs.</p><p aria-live="polite" class="model-secret-delete-status" id="modelHeadersDeleteStatus">Saved headers will be removed when you save.</p></div></div></div></section><section class="model-editor-section" id="modelSectionBehavior" data-model-panel="behavior"><div aria-hidden="true" class="model-section-body" id="modelSectionBehaviorBody"><div class="model-editor-grid model-tuning-grid"><div class="model-form-field"><label class="model-help-label" for="modelMaxTokens"><button type="button" class="model-field-help-btn" data-field-help="modelMaxTokens" aria-label="Help for Max Output Tokens"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Max Output Tokens</span></label><input id="modelMaxTokens" min="0" step="1" type="number"/></div><div class="model-form-field"><label class="model-help-label" for="modelTimeout"><button type="button" class="model-field-help-btn" data-field-help="modelTimeout" aria-label="Help for Timeout Seconds"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Timeout Seconds</span></label><input id="modelTimeout" min="0" step="1" type="number"/></div><div class="model-form-field"><label class="model-help-label" for="modelTemperature"><button type="button" class="model-field-help-btn" data-field-help="modelTemperature" aria-label="Help for Temperature"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Temperature</span></label><input id="modelTemperature" min="0" step="0.1" type="number"/></div><div class="model-form-field full"><div class="model-group-label"><button type="button" class="model-field-help-btn" data-field-help="modelPromptMode" aria-label="Help for System Prompt Mode"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>System Prompt Mode</span></div><div aria-label="System Prompt Mode" class="model-prompt-mode-group" id="modelPromptModeGroup" role="radiogroup"><label class="model-prompt-mode-option"><input name="modelPromptMode" type="radio" value="none"/><span class="model-prompt-mode-card"><strong>None</strong><small>Send no system prompt</small></span></label><label class="model-prompt-mode-option"><input name="modelPromptMode" type="radio" value="low"/><span class="model-prompt-mode-card"><strong>Low</strong><small>Lightweight prompt (Local AI)</small></span></label><label class="model-prompt-mode-option"><input name="modelPromptMode" type="radio" value="balanced"/><span class="model-prompt-mode-card"><strong>Balanced</strong><small>Standard balanced prompt</small></span></label></div><p class="model-capability-note">Default: Balanced. Current selection: <strong id="modelPromptModeValue">Balanced</strong>.</p><div class="model-ugg-toggle-row"><label class="model-ugg-toggle" for="modelUggPrompt"><input id="modelUggPrompt" type="checkbox"/><span class="model-ugg-toggle-card"><img id="modelUggPromptImage" src="assets/Ugg1.png" alt="" aria-hidden="true"/><span><strong>Ugg Protocol</strong><small>Optional terse response overlay. Keeps technical substance, trims fluff.</small><span class="model-ugg-state" id="modelUggPromptState">Off</span></span></span></label></div></div><div class="model-form-field full" id="modelResponseCapabilityWrap"><div class="model-group-label"><button type="button" class="model-field-help-btn" data-field-help="modelStrictStructuredOutput" aria-label="Help for Strict Structured Output"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Strict Structured Output</span></div><label class="model-binary-toggle" for="modelStrictStructuredOutput"><input id="modelStrictStructuredOutput" type="checkbox"/><span class="model-binary-toggle-card"><strong>Structured Output</strong><small id="modelStrictStructuredOutputStatus">Unavailable for this adapter.</small></span></label><p class="model-capability-note" id="modelResponseCapabilitySummary">Unavailable for this adapter.</p></div><div class="model-form-field full"><label class="model-help-label" for="modelProviderOptions"><button type="button" class="model-field-help-btn" data-field-help="modelProviderOptions" aria-label="Help for Provider Options (JSON)"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Provider Options (JSON)</span></label><textarea id="modelProviderOptions" placeholder="{}"></textarea><p class="model-capability-note" id="modelTransportHint">Known adapters use built-in transport rules. Provider Options remain optional strict JSON overrides with quoted keys, for example {"options":{"num_ctx":8192}}.</p><p aria-live="polite" class="model-field-error" id="modelProviderOptionsError"></p></div><div class="model-form-field full"><label class="model-help-label" for="modelNotes"><button type="button" class="model-field-help-btn" data-field-help="modelNotes" aria-label="Help for Notes"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Notes</span></label><textarea id="modelNotes" placeholder="Optional notes about this model"></textarea></div></div></div></section><section class="model-editor-section" id="modelSectionCapabilities" data-model-panel="capabilities"><div aria-hidden="true" class="model-section-body" id="modelSectionCapabilitiesBody"><div class="model-editor-grid"><div class="model-form-field"><label class="model-help-label" for="modelCapabilityMode"><button type="button" class="model-field-help-btn" data-field-help="modelCapabilityMode" aria-label="Help for Capability Mode"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Capability Mode</span></label><select id="modelCapabilityMode"><option value="auto">Auto (adapter + model hints)</option><option value="manual">Manual override</option></select></div><div class="model-form-field full"><div class="model-group-label"><button type="button" class="model-field-help-btn" data-field-help="modelCapabilities" aria-label="Help for IO Capabilities"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>IO Capabilities</span></div><p class="model-capability-note" id="modelCapabilitySummary">Auto uses adapter defaults plus known model hints.</p></div><div class="model-form-field full" id="modelCapabilityManualWrap"><div class="model-capability-grid"><label class="model-capability-check" for="modelCapabilityImageIn"><input id="modelCapabilityImageIn" type="checkbox"/>Accept images</label><label class="model-capability-check" for="modelCapabilityAudioIn"><input id="modelCapabilityAudioIn" type="checkbox"/>Accept audio</label><label class="model-capability-check" for="modelCapabilityVideoIn"><input id="modelCapabilityVideoIn" type="checkbox"/>Accept video</label><label class="model-capability-check" for="modelCapabilityFileIn"><input id="modelCapabilityFileIn" type="checkbox"/>Accept files</label><label class="model-capability-check" for="modelCapabilityBinaryOut"><input id="modelCapabilityBinaryOut" type="checkbox"/>Return binary outputs</label></div><p class="model-capability-note">Text input stays enabled because AgentGO always sends instructions and context text.</p></div><div class="model-form-field full"><div class="model-group-label"><button type="button" class="model-field-help-btn" data-field-help="modelVideoGeneration" aria-label="Help for Video Generation"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Video Generation</span></div><div class="model-capability-grid"><label class="model-capability-check" for="modelVideoGeneration"><input id="modelVideoGeneration" type="checkbox"/>Enable video generation mode</label><label class="model-capability-check" for="modelVideoPromptOnly"><input id="modelVideoPromptOnly" type="checkbox"/>Text to Video</label><label class="model-capability-check" for="modelVideoStartFrame"><input id="modelVideoStartFrame" type="checkbox"/>Allows Start Frame</label><label class="model-capability-check" for="modelVideoEndFrame"><input id="modelVideoEndFrame" type="checkbox"/>Allows End Frame</label></div><div class="model-inline-note-grid"><div class="model-form-field"><label for="modelVideoDuration">Duration Seconds</label><input id="modelVideoDuration" placeholder="5, 8, 10" type="text"/></div><div class="model-form-field"><label for="modelVideoAspectRatio">Aspect Ratio</label><input id="modelVideoAspectRatio" placeholder="16:9, 9:16, 1:1" type="text"/></div><div class="model-form-field"><label for="modelVideoResolution">Resolution / Size</label><input id="modelVideoResolution" placeholder="720p, 1080p, 1024x576" type="text"/></div><div class="model-form-field"><label for="modelVideoOutputFormat">Output Format</label><input id="modelVideoOutputFormat" placeholder="mp4, webm, mov" type="text"/></div><div class="model-form-field"><label for="modelVideoFPS">Frames per Second</label><input id="modelVideoFPS" placeholder="24, 30, 60" type="text"/></div><div class="model-form-field"><label for="modelVideoQuality">Quality / Mode</label><input id="modelVideoQuality" placeholder="standard, high, turbo" type="text"/></div></div><p class="model-capability-note">Video models can run in Waves, but every active model in the run must also be a video model.</p></div><div class="model-form-field full"><div class="model-group-label"><button type="button" class="model-field-help-btn" data-field-help="modelMeshGeneration" aria-label="Help for 3D Mesh Generation"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>3D Mesh Generation</span></div><div class="model-capability-grid"><label class="model-capability-check" for="modelMeshGeneration"><input id="modelMeshGeneration" type="checkbox"/>Enable 3D mesh generation mode</label><label class="model-capability-check" for="modelMeshPromptOnly"><input id="modelMeshPromptOnly" type="checkbox"/>Text to Mesh</label><label class="model-capability-check" for="modelMeshImageInput"><input id="modelMeshImageInput" type="checkbox"/>Allows Image Input</label><label class="model-capability-check is-disabled" for="modelMeshMultiImage" title="Coming later"><input id="modelMeshMultiImage" type="checkbox" disabled/>Multi-image input — Coming later</label></div><div class="model-inline-note-grid"><div class="model-form-field"><label class="model-help-label" for="modelMeshQuality"><button type="button" class="model-field-help-btn" data-field-help="modelMeshQuality" aria-label="Help for Mesh Quality"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Quality</span></label><input id="modelMeshQuality" placeholder="standard, high" type="text"/></div><div class="model-form-field"><label class="model-help-label" for="modelMeshOutputFormat"><button type="button" class="model-field-help-btn" data-field-help="modelMeshOutputFormat" aria-label="Help for Mesh Output Format"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Output Format</span></label><input id="modelMeshOutputFormat" placeholder="glb, obj, fbx" type="text"/></div></div><p class="model-capability-note">3D models can run in Waves, but every active model in the run must also be a 3D model.</p></div></div></div></section></div><div class="model-editor-panel-tabs" role="tablist" aria-label="Model editor panels"><button type="button" class="model-editor-panel-tab is-active is-incomplete" data-model-panel-target="modelSectionIdentity" aria-controls="modelSectionIdentityBody" aria-selected="true" role="tab"><span>Identity &amp; Setup</span><small id="modelRequiredTabStatus">Required</small></button><button type="button" class="model-editor-panel-tab" data-model-panel-target="modelSectionAuthentication" aria-controls="modelSectionAuthenticationBody" aria-selected="false" role="tab"><span>Authentication</span><small>Secrets &amp; headers</small></button><button type="button" class="model-editor-panel-tab" data-model-panel-target="modelSectionBehavior" aria-controls="modelSectionBehaviorBody" aria-selected="false" role="tab"><span>Behavior &amp; Tuning</span><small>Runtime defaults</small></button><button type="button" class="model-editor-panel-tab" data-model-panel-target="modelSectionCapabilities" aria-controls="modelSectionCapabilitiesBody" aria-selected="false" role="tab"><span>Media &amp; Capabilities</span><small>IO, video, mesh</small></button></div><div aria-live="polite" class="model-field-help-popover" id="modelFieldHelpPopover" role="status"></div><div class="model-editor-actions"><button class="model-secondary-btn" id="modelEditorCancelBtn" type="button">Cancel</button><button class="model-primary-btn" id="modelEditorSaveBtn" type="button" disabled>Save Model</button></div></div></div>
+<div aria-hidden="true" class="model-editor-modal" id="modelEditorModal"><div class="model-editor-backdrop" data-close-model-editor="true"></div><div aria-labelledby="modelEditorTitle" aria-modal="true" class="model-editor-dialog" role="dialog"><button aria-label="Close" class="modal-close-btn modal-close-floating" id="modelEditorCloseX" type="button">Close</button><div class="model-editor-header"><div class="model-editor-header-copy"><h3 id="modelEditorTitle">Create Model</h3><p id="modelEditorCopy">Create a new model definition.</p></div></div><div class="model-readonly-grid" id="modelReadonlyFields"></div><div class="model-editor-body"><section class="model-editor-section is-open" id="modelSectionIdentity" data-model-panel="identity"><div aria-hidden="false" class="model-section-body" id="modelSectionIdentityBody" style="display:grid"><div class="model-editor-grid"><div class="model-form-field"><label class="model-help-label" for="modelLabel"><button type="button" class="model-field-help-btn" data-field-help="modelLabel" aria-label="Help for Label"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Label</span></label><input id="modelLabel" placeholder="ChatGPT 4.1 Mini" type="text"/></div><div class="model-form-field"><label class="model-help-label" for="modelProvider"><button type="button" class="model-field-help-btn" data-field-help="modelProvider" aria-label="Help for Provider"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Provider</span></label><select id="modelProvider"></select></div><div class="model-form-field"><label class="model-help-label" for="modelAdapter"><button type="button" class="model-field-help-btn" data-field-help="modelAdapter" aria-label="Help for Adapter"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Adapter</span></label><select id="modelAdapter"></select></div><div class="model-form-field"><label class="model-help-label" for="modelModelName"><button type="button" class="model-field-help-btn" data-field-help="modelModelName" aria-label="Help for Model Name"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Model Name</span></label><input id="modelModelName" placeholder="model-name" type="text"/></div><div class="model-form-field"><label class="model-help-label" for="modelBaseUrl"><button type="button" class="model-field-help-btn" data-field-help="modelBaseUrl" aria-label="Help for Base URL"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Base URL</span></label><input id="modelBaseUrl" type="text"/></div><div class="model-form-field"><label class="model-help-label" for="modelApiPath"><button type="button" class="model-field-help-btn" data-field-help="modelApiPath" aria-label="Help for API Path"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>API Path</span></label><input id="modelApiPath" type="text"/></div><div class="model-form-field"><label class="model-help-label" for="modelAuthType"><button type="button" class="model-field-help-btn" data-field-help="modelAuthType" aria-label="Help for Auth Type"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Auth Type</span></label><select id="modelAuthType"></select></div><p aria-live="polite" class="model-identity-validation is-warning" id="modelIdentityValidation">Complete the required setup fields to enable Save Model.</p></div></div></section><section class="model-editor-section" id="modelSectionAuthentication" data-model-panel="authentication"><div aria-hidden="true" class="model-section-body" id="modelSectionAuthenticationBody"><div class="model-editor-grid"><div class="model-form-field" data-auth-visible="basic"><label class="model-help-label" for="modelApiUser"><button type="button" class="model-field-help-btn" data-field-help="modelApiUser" aria-label="Help for API User"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>API User</span></label><input id="modelApiUser" type="text"/></div><div class="model-form-field" data-auth-visible="basic"><label class="model-help-label" for="modelApiPass"><button type="button" class="model-field-help-btn" data-field-help="modelApiPass" aria-label="Help for API Pass"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>API Pass</span></label><input autocomplete="new-password" id="modelApiPass" type="password"/><p class="model-capability-note" id="modelApiPassNote">Optional. Saved on server when provided.</p><p aria-live="polite" class="model-secret-delete-status" id="modelApiPassDeleteStatus">Saved password will be removed when you save.</p></div><div class="model-form-field" data-auth-visible="bearer,header_key,google_adc"><label class="model-help-label" for="modelApiKeyEnv"><button type="button" class="model-field-help-btn" data-field-help="modelApiKeyEnv" aria-label="Help for API Key Env"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span id="modelApiKeyEnvLabelText">API Key Env</span></label><input id="modelApiKeyEnv" placeholder="OPENAI_API_KEY" type="text"/><p class="model-capability-note" id="modelApiKeyEnvNote">Optional env var name. AgentGO checks this first, then falls back to the saved API key.</p></div><div class="model-form-field" data-auth-visible="bearer,header_key"><label class="model-help-label" for="modelApiKey"><button type="button" class="model-field-help-btn" data-field-help="modelApiKey" aria-label="Help for API Key"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>API Key</span></label><input autocomplete="new-password" id="modelApiKey" type="password"/><p class="model-capability-note" id="modelApiKeyNote">Optional. Saved on server when provided.</p><p aria-live="polite" class="model-secret-delete-status" id="modelApiKeyDeleteStatus">Saved API key will be removed when you save.</p></div><div class="model-form-field" data-auth-visible="bearer,header_key"><label class="model-help-label" for="modelAuthHeader"><button type="button" class="model-field-help-btn" data-field-help="modelAuthHeader" aria-label="Help for Auth Header"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Auth Header</span></label><input id="modelAuthHeader" placeholder="Authorization" type="text"/></div><div class="model-form-field full"><label class="model-help-label" for="modelHeaders"><button type="button" class="model-field-help-btn" data-field-help="modelHeaders" aria-label="Help for Headers"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Headers</span></label><textarea id="modelHeaders" placeholder="header-name: value"></textarea><p class="model-capability-note" id="modelHeadersNote">Optional. Enter custom headers as key: value pairs.</p><p aria-live="polite" class="model-secret-delete-status" id="modelHeadersDeleteStatus">Saved headers will be removed when you save.</p></div></div></div></section><section class="model-editor-section" id="modelSectionBehavior" data-model-panel="behavior"><div aria-hidden="true" class="model-section-body" id="modelSectionBehaviorBody"><div class="model-editor-grid model-tuning-grid"><div class="model-form-field"><label class="model-help-label" for="modelMaxTokens"><button type="button" class="model-field-help-btn" data-field-help="modelMaxTokens" aria-label="Help for Max Output Tokens"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Max Output Tokens</span></label><input id="modelMaxTokens" min="0" step="1" type="number"/></div><div class="model-form-field"><label class="model-help-label" for="modelTimeout"><button type="button" class="model-field-help-btn" data-field-help="modelTimeout" aria-label="Help for Timeout Seconds"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Timeout Seconds</span></label><input id="modelTimeout" min="0" step="1" type="number"/></div><div class="model-form-field"><label class="model-help-label" for="modelTemperature"><button type="button" class="model-field-help-btn" data-field-help="modelTemperature" aria-label="Help for Temperature"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Temperature</span></label><input id="modelTemperature" min="0" step="0.1" type="number"/></div><div class="model-form-field full"><div class="model-group-label"><button type="button" class="model-field-help-btn" data-field-help="modelPromptMode" aria-label="Help for System Prompt Mode"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>System Prompt Mode</span></div><div aria-label="System Prompt Mode" class="model-prompt-mode-group" id="modelPromptModeGroup" role="radiogroup"><label class="model-prompt-mode-option"><input name="modelPromptMode" type="radio" value="none"/><span class="model-prompt-mode-card"><strong>None</strong><small>Send no system prompt</small></span></label><label class="model-prompt-mode-option"><input name="modelPromptMode" type="radio" value="low"/><span class="model-prompt-mode-card"><strong>Low</strong><small>Lightweight prompt (Local AI)</small></span></label><label class="model-prompt-mode-option"><input name="modelPromptMode" type="radio" value="balanced"/><span class="model-prompt-mode-card"><strong>Balanced</strong><small>Standard balanced prompt</small></span></label></div><p class="model-capability-note">Default: Balanced. Current selection: <strong id="modelPromptModeValue">Balanced</strong>.</p><div class="model-ugg-toggle-row"><label class="model-ugg-toggle" for="modelUggPrompt"><input id="modelUggPrompt" type="checkbox"/><span class="model-ugg-toggle-card"><img id="modelUggPromptImage" src="assets/Ugg1.png" alt="" aria-hidden="true"/><span><strong>Ugg Protocol</strong><small>Optional terse response overlay. Keeps technical substance, trims fluff.</small><span class="model-ugg-state" id="modelUggPromptState">Off</span></span></span></label></div></div><div class="model-form-field full" id="modelResponseCapabilityWrap"><div class="model-group-label"><button type="button" class="model-field-help-btn" data-field-help="modelStrictStructuredOutput" aria-label="Help for Strict Structured Output"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Strict Structured Output</span></div><label class="model-binary-toggle" for="modelStrictStructuredOutput"><input id="modelStrictStructuredOutput" type="checkbox"/><span class="model-binary-toggle-card"><strong>Structured Output</strong><small id="modelStrictStructuredOutputStatus">Unavailable for this adapter.</small></span></label><p class="model-capability-note" id="modelResponseCapabilitySummary">Unavailable for this adapter.</p></div><div class="model-form-field full"><label class="model-help-label" for="modelProviderOptions"><button type="button" class="model-field-help-btn" data-field-help="modelProviderOptions" aria-label="Help for Provider Options (JSON)"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Provider Options (JSON)</span></label><textarea id="modelProviderOptions" placeholder="{}"></textarea><p class="model-capability-note" id="modelTransportHint">Known adapters use built-in transport rules. Provider Options remain optional strict JSON overrides with quoted keys, for example {"options":{"num_ctx":8192}}.</p><p aria-live="polite" class="model-field-error" id="modelProviderOptionsError"></p></div><div class="model-form-field full"><label class="model-help-label" for="modelNotes"><button type="button" class="model-field-help-btn" data-field-help="modelNotes" aria-label="Help for Notes"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Notes</span></label><textarea id="modelNotes" placeholder="Optional notes about this model"></textarea></div></div></div></section><section class="model-editor-section" id="modelSectionCapabilities" data-model-panel="capabilities"><div aria-hidden="true" class="model-section-body" id="modelSectionCapabilitiesBody"><div class="model-editor-grid"><div class="model-form-field"><label class="model-help-label" for="modelCapabilityMode"><button type="button" class="model-field-help-btn" data-field-help="modelCapabilityMode" aria-label="Help for Capability Mode"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Capability Mode</span></label><select id="modelCapabilityMode"><option value="auto">Auto (adapter + model hints)</option><option value="manual">Manual override</option></select></div><div class="model-form-field full"><div class="model-group-label"><button type="button" class="model-field-help-btn" data-field-help="modelCapabilities" aria-label="Help for IO Capabilities"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>IO Capabilities</span></div><p class="model-capability-note" id="modelCapabilitySummary">Auto uses adapter defaults plus known model hints.</p></div><div class="model-form-field full" id="modelCapabilityManualWrap"><div class="model-capability-grid"><label class="model-capability-check" for="modelCapabilityImageIn"><input id="modelCapabilityImageIn" type="checkbox"/>Accept images</label><label class="model-capability-check" for="modelCapabilityAudioIn"><input id="modelCapabilityAudioIn" type="checkbox"/>Accept audio</label><label class="model-capability-check" for="modelCapabilityVideoIn"><input id="modelCapabilityVideoIn" type="checkbox"/>Accept video</label><label class="model-capability-check" for="modelCapabilityFileIn"><input id="modelCapabilityFileIn" type="checkbox"/>Accept files</label><label class="model-capability-check" for="modelCapabilityBinaryOut"><input id="modelCapabilityBinaryOut" type="checkbox"/>Return binary outputs</label></div><p class="model-capability-note">Text input stays enabled because AgentGO always sends instructions and context text.</p></div><div class="model-form-field full"><div class="model-group-label"><button type="button" class="model-field-help-btn" data-field-help="modelVideoGeneration" aria-label="Help for Video Generation"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Video Generation</span></div><div class="model-capability-grid"><label class="model-capability-check" for="modelVideoGeneration"><input id="modelVideoGeneration" type="checkbox"/>Enable video generation mode</label><label class="model-capability-check" for="modelVideoPromptOnly"><input id="modelVideoPromptOnly" type="checkbox"/>Text to Video</label><label class="model-capability-check" for="modelVideoStartFrame"><input id="modelVideoStartFrame" type="checkbox"/>Allows Start Frame</label><label class="model-capability-check" for="modelVideoEndFrame"><input id="modelVideoEndFrame" type="checkbox"/>Allows End Frame</label><label class="model-capability-check" for="modelVideoIngredients"><input id="modelVideoIngredients" type="checkbox"/>Allows Ingredients</label></div><div class="model-inline-note-grid"><div class="model-form-field"><label for="modelVideoDuration">Duration Seconds</label><input id="modelVideoDuration" placeholder="5, 8, 10" type="text"/></div><div class="model-form-field"><label for="modelVideoAspectRatio">Aspect Ratio</label><input id="modelVideoAspectRatio" placeholder="16:9, 9:16, 1:1" type="text"/></div><div class="model-form-field"><label for="modelVideoResolution">Resolution / Size</label><input id="modelVideoResolution" placeholder="720p, 1080p, 1024x576" type="text"/></div><div class="model-form-field"><label for="modelVideoOutputFormat">Output Format</label><input id="modelVideoOutputFormat" placeholder="mp4, webm, mov" type="text"/></div><div class="model-form-field"><label for="modelVideoFPS">Frames per Second</label><input id="modelVideoFPS" placeholder="24, 30, 60" type="text"/></div><div class="model-form-field"><label for="modelVideoQuality">Quality / Mode</label><input id="modelVideoQuality" placeholder="standard, high, turbo" type="text"/></div></div><p class="model-capability-note">Video models can run in Waves, but every active model in the run must also be a video model.</p></div><div class="model-form-field full"><div class="model-group-label"><button type="button" class="model-field-help-btn" data-field-help="modelMeshGeneration" aria-label="Help for 3D Mesh Generation"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>3D Mesh Generation</span></div><div class="model-capability-grid"><label class="model-capability-check" for="modelMeshGeneration"><input id="modelMeshGeneration" type="checkbox"/>Enable 3D mesh generation mode</label><label class="model-capability-check" for="modelMeshPromptOnly"><input id="modelMeshPromptOnly" type="checkbox"/>Text to Mesh</label><label class="model-capability-check" for="modelMeshImageInput"><input id="modelMeshImageInput" type="checkbox"/>Allows Image Input</label><label class="model-capability-check is-disabled" for="modelMeshMultiImage" title="Coming later"><input id="modelMeshMultiImage" type="checkbox" disabled/>Multi-image input — Coming later</label></div><div class="model-inline-note-grid"><div class="model-form-field"><label class="model-help-label" for="modelMeshQuality"><button type="button" class="model-field-help-btn" data-field-help="modelMeshQuality" aria-label="Help for Mesh Quality"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Quality</span></label><input id="modelMeshQuality" placeholder="standard, high" type="text"/></div><div class="model-form-field"><label class="model-help-label" for="modelMeshOutputFormat"><button type="button" class="model-field-help-btn" data-field-help="modelMeshOutputFormat" aria-label="Help for Mesh Output Format"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Output Format</span></label><input id="modelMeshOutputFormat" placeholder="glb, obj, fbx" type="text"/></div></div><p class="model-capability-note">3D models can run in Waves, but every active model in the run must also be a 3D model.</p></div></div></div></section></div><div class="model-editor-panel-tabs" role="tablist" aria-label="Model editor panels"><button type="button" class="model-editor-panel-tab is-active is-incomplete" data-model-panel-target="modelSectionIdentity" aria-controls="modelSectionIdentityBody" aria-selected="true" role="tab"><span>Identity &amp; Setup</span><small id="modelRequiredTabStatus">Required</small></button><button type="button" class="model-editor-panel-tab" data-model-panel-target="modelSectionAuthentication" aria-controls="modelSectionAuthenticationBody" aria-selected="false" role="tab"><span>Authentication</span><small>Secrets &amp; headers</small></button><button type="button" class="model-editor-panel-tab" data-model-panel-target="modelSectionBehavior" aria-controls="modelSectionBehaviorBody" aria-selected="false" role="tab"><span>Behavior &amp; Tuning</span><small>Runtime defaults</small></button><button type="button" class="model-editor-panel-tab" data-model-panel-target="modelSectionCapabilities" aria-controls="modelSectionCapabilitiesBody" aria-selected="false" role="tab"><span>Media &amp; Capabilities</span><small>IO, video, mesh</small></button></div><div aria-live="polite" class="model-field-help-popover" id="modelFieldHelpPopover" role="status"></div><div class="model-editor-actions"><button class="model-secondary-btn" id="modelEditorCancelBtn" type="button">Cancel</button><button class="model-primary-btn" id="modelEditorSaveBtn" type="button" disabled>Save Model</button></div></div></div>
 <div aria-hidden="true" class="delete-model-modal" id="deleteModelModal"><div class="delete-model-backdrop" data-close-delete-model="true"></div><div aria-labelledby="deleteModelTitle" aria-modal="true" class="delete-model-dialog" role="dialog"><h3 id="deleteModelTitle">Delete Model?</h3><p class="delete-model-copy">This will permanently remove <strong id="deleteModelLabel">this model</strong> from <code>models.json</code> and delete its full workspace folder under <code>work_root</code>.</p><div class="delete-model-actions"><button class="model-secondary-btn" id="deleteModelCancelBtn" type="button">Cancel</button><button class="delete-model-btn" id="deleteModelConfirmBtn" type="button">Delete Model</button></div></div></div>
-<div aria-hidden="true" class="settings-modal" id="settings-modal"><div class="settings-backdrop" data-close-settings="true"></div><div aria-labelledby="settings-title" aria-modal="true" class="settings-dialog" role="dialog"><button aria-label="Close" class="modal-close-btn modal-close-floating" id="settingsCloseX" type="button">Close</button><h3 id="settings-title">Model Settings</h3><p id="settings-copy">Edit the current project meta files for this model.</p><div class="settings-meta-tabs"><button class="meta-tab is-active" data-file="user_context.json" title="user_context.json" type="button">User</button><button class="meta-tab" data-file="ai_context.json" title="ai_context.json" type="button">AI Builder</button><button class="meta-tab" data-file="reviewer_context.json" title="reviewer_context.json" type="button">AI Reviewer</button></div><textarea class="meta-editor" id="metaEditor"></textarea><div class="meta-save-row"><button class="settings-close" id="settings-close" type="button">Cancel</button><button class="meta-save-btn" id="metaSaveBtn" type="button">Save Meta Files</button></div></div></div><script>function closeSettingsModal(){const modal=document.getElementById('settings-modal');if(!modal)return;restoreFocusBeforeHide(modal,lastFocusedBeforeSettingsModal||document.querySelector('.settings-btn'));modal.classList.remove('open');modal.setAttribute('aria-hidden','true');openSettingsModelId='';settingsMetaCache={};activeMetaTab='user_context.json';lastFocusedBeforeSettingsModal=null;}const metaSaveBtn=document.getElementById('metaSaveBtn');if(metaSaveBtn)metaSaveBtn.addEventListener('click',saveMetaFiles);const settingsCloseBtnInline=document.getElementById('settings-close');if(settingsCloseBtnInline)settingsCloseBtnInline.addEventListener('click',closeSettingsModal);const settingsCloseXInline=document.getElementById('settingsCloseX');if(settingsCloseXInline)settingsCloseXInline.addEventListener('click',closeSettingsModal);document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeSettingsModal();closeRiskModal();closeConfirmModal(false);closeModelEditor();closeDeleteModelModal();closeModelActionsMenu();closeVideoJobsModal();closeMeshJobsModal();closeDeadDropPopover({ restoreFocus: false });}});</script></body></html>
+
+<div aria-hidden="true" class="mastermind-modal" id="masterMindModal">
+<div class="mastermind-backdrop" data-close-mastermind="true"></div>
+<div aria-labelledby="masterMindTitle" aria-modal="true" class="mastermind-dialog" role="dialog">
+<div class="mastermind-head">
+<div><h3 class="mastermind-title" id="masterMindTitle">MasterMind</h3><p class="mastermind-subtitle" id="masterMindSubtitle">Manage global memories and identities for this model.</p></div>
+<button aria-label="Close" class="modal-close-btn" id="masterMindCloseBtn" type="button">Close</button>
+</div>
+<div class="mastermind-body">
+<div class="mastermind-actions"><button class="model-primary-btn" id="masterMindCreateMemoryBtn" type="button">Create Memory Folder</button><button class="model-primary-btn" id="masterMindCreateIdentityBtn" type="button">Create Identity Folder</button></div>
+<div class="mastermind-status" id="masterMindStatus">Loading MasterMind…</div>
+<div class="mastermind-grid">
+<section class="mastermind-section"><div class="mastermind-section-head"><h4>Memories</h4><p>Choose zero or one memory folder for this model.</p></div><div class="mastermind-list" id="masterMindMemoryList"></div></section>
+<section class="mastermind-section"><div class="mastermind-section-head"><h4>Identities</h4><p>Choose zero or one identity folder for this model.</p></div><div class="mastermind-list" id="masterMindIdentityList"></div></section>
+</div>
+</div>
+<div aria-hidden="true" class="mastermind-name-layer" id="masterMindNameLayer">
+<div aria-labelledby="masterMindNameTitle" aria-modal="true" class="mastermind-name-card" role="dialog">
+<div class="mastermind-name-head"><strong id="masterMindNameTitle">Create Folder</strong><button class="modal-close-btn" id="masterMindNameCloseBtn" type="button">Close</button></div>
+<div class="mastermind-name-body"><p id="masterMindNameCopy">Name the new MasterMind folder.</p><input autocomplete="off" id="masterMindNameInput" maxlength="100" placeholder="Folder name" type="text"/><div class="mastermind-name-actions"><button class="model-secondary-btn" id="masterMindNameCancelBtn" type="button">Cancel</button><button class="model-primary-btn" id="masterMindNameCreateBtn" type="button">Create</button></div></div>
+</div>
+</div>
+</div>
+</div>
+
+<div aria-hidden="true" class="settings-modal" id="settings-modal"><div class="settings-backdrop" data-close-settings="true"></div><div aria-labelledby="settings-title" aria-modal="true" class="settings-dialog" role="dialog"><button aria-label="Close" class="modal-close-btn modal-close-floating" id="settingsCloseX" type="button">Close</button><h3 id="settings-title">Model Settings</h3><p id="settings-copy">Edit the current project meta files for this model.</p><div class="settings-meta-tabs"><button class="meta-tab is-active" data-file="user_context.json" title="user_context.json" type="button">User</button><button class="meta-tab" data-file="ai_context.json" title="ai_context.json" type="button">AI Builder</button><button class="meta-tab" data-file="reviewer_context.json" title="reviewer_context.json" type="button">AI Reviewer</button></div><textarea class="meta-editor" id="metaEditor"></textarea><div class="meta-save-row"><button class="settings-close" id="settings-close" type="button">Cancel</button><button class="meta-save-btn" id="metaSaveBtn" type="button">Save Meta Files</button></div></div></div><script>function closeSettingsModal(){const modal=document.getElementById('settings-modal');if(!modal)return;restoreFocusBeforeHide(modal,lastFocusedBeforeSettingsModal||document.querySelector('.settings-btn'));modal.classList.remove('open');modal.setAttribute('aria-hidden','true');openSettingsModelId='';settingsMetaCache={};activeMetaTab='user_context.json';lastFocusedBeforeSettingsModal=null;}const metaSaveBtn=document.getElementById('metaSaveBtn');if(metaSaveBtn)metaSaveBtn.addEventListener('click',saveMetaFiles);const settingsCloseBtnInline=document.getElementById('settings-close');if(settingsCloseBtnInline)settingsCloseBtnInline.addEventListener('click',closeSettingsModal);const settingsCloseXInline=document.getElementById('settingsCloseX');if(settingsCloseXInline)settingsCloseXInline.addEventListener('click',closeSettingsModal);document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeSettingsModal();closeRiskModal();closeConfirmModal(false);closeModelEditor();closeDeleteModelModal();closeModelActionsMenu();closeMasterMindNamePopup();closeMasterMindModal();closeVideoJobsModal();closeMeshJobsModal();closeDeadDropPopover({ restoreFocus: false });}});</script></body></html>
