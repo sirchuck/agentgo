@@ -79,9 +79,10 @@ type stagedVideoInput struct {
 }
 
 const (
-	defaultVideoJobDuration   = "8"
-	defaultVideoJobAspect     = "16:9"
-	defaultVideoJobResolution = "720p"
+	defaultVideoJobDuration       = "8"
+	defaultVideoJobAspect         = "16:9"
+	defaultVideoJobResolution     = "720p"
+	maxVideoStatusDiagnosticBytes = 2000
 )
 
 type videoOutputFileInfo struct {
@@ -489,6 +490,31 @@ func applyVideoResultToRecord(record *videoJobRecord, result adapters.VideoResul
 	setVideoDiagnostic(record, "provider_error", result.Error)
 }
 
+func compactVideoProviderDiagnostics(values map[string]string) map[string]string {
+	if len(values) == 0 {
+		return nil
+	}
+	compact := map[string]string{}
+	for key, value := range values {
+		cleanKey := strings.TrimSpace(key)
+		if cleanKey == "" {
+			continue
+		}
+		cleanValue := strings.TrimSpace(value)
+		if cleanValue == "" {
+			continue
+		}
+		if len(cleanValue) > maxVideoStatusDiagnosticBytes {
+			cleanValue = cleanValue[:maxVideoStatusDiagnosticBytes] + "\n... [diagnostic truncated in status view]"
+		}
+		compact[cleanKey] = cleanValue
+	}
+	if len(compact) == 0 {
+		return nil
+	}
+	return compact
+}
+
 func (a *App) listVideoJobRecords(projectName, modelID string) ([]videoJobRecord, error) {
 	root, err := a.videoJobsRoot(projectName)
 	if err != nil {
@@ -521,6 +547,7 @@ func (a *App) listVideoJobRecords(projectName, modelID string) ([]videoJobRecord
 }
 
 func (a *App) videoJobResponseForRecord(record videoJobRecord) videoJobResponse {
+	record.ProviderDiagnostics = compactVideoProviderDiagnostics(record.ProviderDiagnostics)
 	resp := videoJobResponse{videoJobRecord: record}
 	if record.ArtifactVideoPath != "" {
 		resp.ArtifactBlobURL = buildBlobURL(record.ArtifactVideoPath)
@@ -540,6 +567,17 @@ func (a *App) videoJobResponseForRecord(record videoJobRecord) videoJobResponse 
 		}
 	}
 	return resp
+}
+
+func writeJobProviderResponse(jobRoot, rawBody string) error {
+	if strings.TrimSpace(rawBody) == "" {
+		return nil
+	}
+	metaDir := filepath.Join(jobRoot, "meta")
+	if err := os.MkdirAll(metaDir, 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(metaDir, "provider_response.json"), []byte(rawBody), 0o644)
 }
 
 func (a *App) handleVideoJobs(w http.ResponseWriter, r *http.Request) {
@@ -865,15 +903,17 @@ func (a *App) executeVideoJobAsync(projectName string, model ModelConfig, jobID 
 	record.Status = "completed"
 	record.ArtifactVideoPath = artifactPath
 	record.CompletedAt = time.Now().UTC().Format(time.RFC3339)
+	record.PromotionState = "job_saved"
+	record.PromotedAt = record.CompletedAt
 	record.Error = ""
-	if err := a.stageVideoArtifactsToProjectwork(model, projectName, &record, result, artifactName); err != nil {
+	if err := writeJobProviderResponse(jobRoot, result.RawBody); err != nil {
 		record.Status = "failed"
 		record.Error = err.Error()
 		_ = writeVideoJobRecord(videoJobMetaPath(jobRoot), record)
 		return
 	}
 	_ = writeVideoJobRecord(videoJobMetaPath(jobRoot), record)
-	a.logf(modelIDString(model.ID), "info", "Completed video job %s for project %s and saved output to %s", jobID, projectName, record.ProjectworkVideoPath)
+	a.logf(modelIDString(model.ID), "info", "Completed video job %s for project %s and saved output to %s", jobID, projectName, record.ArtifactVideoPath)
 }
 
 func (a *App) buildWaveVideoInputs(projectName string, contextFiles []string, mediaInputRoles map[string]string) (*stagedVideoInput, *stagedVideoInput, []string, error) {
@@ -1062,8 +1102,10 @@ func (a *App) runVideoModelRequest(model ModelConfig, projectName, executionID, 
 	record.Status = "completed"
 	record.ArtifactVideoPath = artifactPath
 	record.CompletedAt = time.Now().UTC().Format(time.RFC3339)
+	record.PromotionState = "job_saved"
+	record.PromotedAt = record.CompletedAt
 	record.Error = ""
-	if err := a.stageVideoArtifactsToProjectwork(model, projectName, &record, videoResult, artifactName); err != nil {
+	if err := writeJobProviderResponse(jobRoot, videoResult.RawBody); err != nil {
 		record.Status = "failed"
 		record.Error = err.Error()
 		_ = writeVideoJobRecord(videoJobMetaPath(jobRoot), record)
@@ -1162,36 +1204,11 @@ func (a *App) handleVideoJobPromote(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	data, err := os.ReadFile(src)
-	if err != nil {
+	if _, err := os.Stat(src); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	ext := strings.ToLower(filepath.Ext(src))
-	if ext == "" {
-		ext = ".mp4"
-	}
-	model, ok := a.findModel(record.ModelID)
-	if !ok {
-		http.Error(w, "video job model not found", http.StatusNotFound)
-		return
-	}
-	targetRelRoot, targetRoot, err := a.nextMediaProjectworkOutputRoot(projectName, model)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	targetName := sanitizeImportedFilename(filepath.Base(src))
-	if targetName == "" {
-		targetName = "video" + ext
-	}
-	targetFull := filepath.Join(targetRoot, targetName)
-	if err := os.WriteFile(targetFull, data, 0o644); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	record.ProjectworkVideoPath = filepath.ToSlash(filepath.Join(targetRelRoot, targetName))
-	record.PromotionState = "auto_saved"
+	record.PromotionState = "job_saved"
 	record.PromotedAt = time.Now().UTC().Format(time.RFC3339)
 	if err := writeVideoJobRecord(videoJobMetaPath(jobRoot), record); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1200,5 +1217,5 @@ func (a *App) handleVideoJobPromote(w http.ResponseWriter, r *http.Request) {
 	if record.ModelID != "" {
 		a.setPendingMergeCount(projectName, record.ModelID, 0)
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "job": a.videoJobResponseForRecord(record), "projectworkPath": record.ProjectworkVideoPath})
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "job": a.videoJobResponseForRecord(record), "artifactPath": record.ArtifactVideoPath, "projectworkPath": record.ProjectworkVideoPath})
 }

@@ -3,11 +3,18 @@ set -euo pipefail
 
 # AgentGO multi-platform build script for Linux/macOS terminals.
 # Run this from the AgentGO source folder.
+#
+# Output: a flat, ready-to-run dist/ folder containing all platform
+# executables plus clean public runtime files. The script intentionally
+# generates clean config.json and models.json instead of copying local files.
 
 APP_NAME="agentgo"
 DIST_DIR="dist"
 GO_BIN="${GO_BIN:-go}"
 HIGH_SIERRA_GO_BIN="${HIGH_SIERRA_GO_BIN:-go1.20}"
+
+REQUIRED_RUNTIME_DIRS=("templates" "assets" "system_prompts")
+REQUIRED_RUNTIME_FILES=("version.json" "model_names.json")
 
 echo
 echo "========================================"
@@ -27,6 +34,21 @@ if ! ls *.go >/dev/null 2>&1; then
   exit 1
 fi
 
+for dir in "${REQUIRED_RUNTIME_DIRS[@]}"; do
+  if [[ ! -d "$dir" ]]; then
+    echo "ERROR: Required runtime folder missing: $dir"
+    exit 1
+  fi
+done
+
+for file in "${REQUIRED_RUNTIME_FILES[@]}"; do
+  if [[ ! -f "$file" ]]; then
+    echo "ERROR: Required runtime file missing: $file"
+    exit 1
+  fi
+done
+
+rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"
 
 # Use CGO_ENABLED=0 for easier cross-compilation.
@@ -70,20 +92,69 @@ build_target "darwin"  "amd64" "${APP_NAME}-macos-amd64"       "macOS Intel"
 build_high_sierra_target
 
 echo
+echo "Copying public runtime assets..."
+for dir in "${REQUIRED_RUNTIME_DIRS[@]}"; do
+  cp -R "$dir" "$DIST_DIR/"
+done
+for file in "${REQUIRED_RUNTIME_FILES[@]}"; do
+  cp "$file" "$DIST_DIR/$file"
+done
+
+echo "Writing clean public config.json..."
+cat > "$DIST_DIR/config.json" <<'JSON'
+{
+  "agentgo_file": "config",
+  "file_version": 1,
+  "bind_host": "127.0.0.1",
+  "http_port": 5226,
+  "https_port": 0,
+  "tls_cert_file": "",
+  "tls_key_file": "",
+  "work_root": "work",
+  "max_response_history": 50,
+  "risk_mode_max_iterations": 10,
+  "outfit_run_retention": 50,
+  "auto_merge_single_builder_waves": true,
+  "prompt_version": 1,
+  "wiretap": {
+    "max_wiretap_entries": 200,
+    "default_runtime_slice_entries": 75,
+    "max_runtime_slice_entries": 150
+  }
+}
+JSON
+
+echo "Writing clean public models.json..."
+cat > "$DIST_DIR/models.json" <<'JSON'
+{
+  "agentgo_file": "models",
+  "file_version": 1,
+  "schema_version": 1,
+  "top_id": 0,
+  "models": []
+}
+JSON
+
+echo
 echo "========================================"
 echo "Build complete."
-echo "Binaries are in the \"$DIST_DIR\" folder."
+echo "Ready-to-run release files are in the \"$DIST_DIR\" folder."
+echo "Zip the whole \"$DIST_DIR\" folder when you are ready to publish."
 echo "========================================"
 echo
 
-ls -lh "$DIST_DIR"/${APP_NAME}-*
+ls -lh "$DIST_DIR"/${APP_NAME}-* 2>/dev/null || true
 
 echo
-echo "Package each binary with:"
-echo "  config.json"
-echo "  models.json"
+echo "Included runtime files:"
+echo "  config.json        clean public default"
+echo "  models.json        clean empty model list"
 echo "  version.json"
+echo "  model_names.json"
 echo "  templates/"
 echo "  assets/"
 echo "  system_prompts/"
+echo
+echo "Private/runtime data intentionally not included:"
+echo "  work/, projects, outfits, mastermind data, video_jobs, mesh_jobs, logs, local models/config secrets"
 echo

@@ -290,6 +290,7 @@ type App struct {
 	mu                          sync.RWMutex
 	activeProjectName           string
 	logs                        []LogEntry
+	logSeq                      uint64
 	toggles                     map[string]bool
 	activeCancels               map[string]activeCancelEntry
 	reviewerID                  string
@@ -323,12 +324,19 @@ type App struct {
 }
 
 type LogEntry struct {
+	Seq     uint64 `json:"seq,omitempty"`
 	Time    string `json:"time"`
 	Level   string `json:"level"`
 	Source  string `json:"source"`
 	Message string `json:"message"`
 	Risk    bool   `json:"risk,omitempty"`
 }
+
+const (
+	defaultLogResponseLimit  = 150
+	maxLogResponseLimit      = 500
+	maxDeadDropStatusMatches = 10
+)
 
 type homeData struct {
 	Models                []ModelConfig
@@ -2121,6 +2129,7 @@ type ollamaGenerateResponse struct {
 func main() {
 	configPath := "config.json"
 	modelsPath := "models.json"
+	modelNamesPath := "model_names.json"
 	releasePath := "version.json"
 	cfg := loadConfig(configPath)
 	applyConfigDefaults(&cfg)
@@ -2166,6 +2175,7 @@ func main() {
 	mux.HandleFunc("/", app.handleHome)
 	mux.HandleFunc("/api/models", app.handleModels)
 	mux.HandleFunc("/api/models/definitions", app.handleModelDefinitions)
+	mux.HandleFunc("/api/model-names", func(w http.ResponseWriter, r *http.Request) { handleKnownModelNames(w, r, modelNamesPath) })
 	mux.HandleFunc("/api/models/create", app.handleCreateModel)
 	mux.HandleFunc("/api/models/update", app.handleUpdateModel)
 	mux.HandleFunc("/api/models/delete", app.handleDeleteModel)
@@ -2180,6 +2190,8 @@ func main() {
 	mux.HandleFunc("/api/video/jobs", app.handleVideoJobs)
 	mux.HandleFunc("/api/video/jobs/promote", app.handleVideoJobPromote)
 	mux.HandleFunc("/api/mesh/jobs", app.handleMeshJobs)
+	mux.HandleFunc("/api/mesh/jobs/download", app.handleMeshJobDownload)
+	mux.HandleFunc("/api/mesh/jobs/refine", app.handleMeshJobRefine)
 	mux.HandleFunc("/api/mesh/jobs/promote", app.handleMeshJobPromote)
 	mux.HandleFunc("/api/chat", app.handleChat)
 	mux.HandleFunc("/api/work-mode/send", app.handleWorkModeSend)
@@ -3072,6 +3084,30 @@ func (a *App) handleModels(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, views)
 }
 
+func handleKnownModelNames(w http.ResponseWriter, r *http.Request, filename string) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			writeJSON(w, http.StatusOK, map[string]any{"schema_version": 1, "models": []any{}})
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	var payload any
+	if err := json.Unmarshal(data, &payload); err != nil {
+		http.Error(w, "model_names.json is not valid JSON", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data)
+}
+
 func (a *App) handleWaveState(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -3158,6 +3194,14 @@ func (a *App) handleModelToggle(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		if err := a.resetModelAIContextToEmpty(projectName, model); err != nil {
+			a.mu.Lock()
+			a.toggles[req.ModelID] = wasEnabled
+			a.mu.Unlock()
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		a.logf(req.ModelID, "info", "Reset ai_context.json to strict empty memory and reviewer_context.json to {} for activated model in project %s", projectName)
 	}
 	if !req.Enabled && projectName != "" {
 		a.clearPendingMergeCount(projectName, req.ModelID)
@@ -8490,9 +8534,51 @@ func (a *App) handleDiagnosticsFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) handleLogs(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	limit := defaultLogResponseLimit
+	if rawLimit := strings.TrimSpace(r.URL.Query().Get("limit")); rawLimit != "" {
+		parsed, err := strconv.Atoi(rawLimit)
+		if err != nil || parsed < 1 {
+			http.Error(w, "invalid limit", http.StatusBadRequest)
+			return
+		}
+		limit = parsed
+	}
+	if limit > maxLogResponseLimit {
+		limit = maxLogResponseLimit
+	}
+	sinceSeq := uint64(0)
+	if rawSince := strings.TrimSpace(r.URL.Query().Get("since")); rawSince != "" {
+		parsed, err := strconv.ParseUint(rawSince, 10, 64)
+		if err != nil {
+			http.Error(w, "invalid since", http.StatusBadRequest)
+			return
+		}
+		sinceSeq = parsed
+	}
+	objectResponse := strings.TrimSpace(r.URL.Query().Get("format")) == "object" || strings.TrimSpace(r.URL.Query().Get("since")) != ""
+
 	a.mu.RLock()
-	defer a.mu.RUnlock()
-	writeJSON(w, http.StatusOK, a.logs)
+	logs := make([]LogEntry, 0, len(a.logs))
+	for _, entry := range a.logs {
+		if sinceSeq > 0 && entry.Seq <= sinceSeq {
+			continue
+		}
+		logs = append(logs, entry)
+	}
+	nextSeq := a.logSeq
+	a.mu.RUnlock()
+	if len(logs) > limit {
+		logs = logs[len(logs)-limit:]
+	}
+	if objectResponse {
+		writeJSON(w, http.StatusOK, map[string]any{"logs": logs, "nextSeq": nextSeq, "limit": limit})
+		return
+	}
+	writeJSON(w, http.StatusOK, logs)
 }
 
 func (a *App) handleToastLog(w http.ResponseWriter, r *http.Request) {
@@ -9203,6 +9289,9 @@ func (a *App) projectWorkDeadDropMatches(projectName string) ([]string, error) {
 			return nil
 		}
 		matches = append(matches, filepath.ToSlash(rel))
+		if len(matches) >= maxDeadDropStatusMatches {
+			return filepath.SkipAll
+		}
 		return nil
 	})
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -9310,10 +9399,9 @@ func (a *App) handleDeadDropStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	nextRevision, err := a.nextDeadDropRevisionNumber(projectName)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	nextRevision := 0
+	if len(revisions) > 0 {
+		nextRevision = revisions[len(revisions)-1].Revision + 1
 	}
 	writeJSON(w, http.StatusOK, deadDropStatusResponse{
 		Project:            projectName,
@@ -9323,7 +9411,6 @@ func (a *App) handleDeadDropStatus(w http.ResponseWriter, r *http.Request) {
 		ProjectworkMatches: matches,
 		RevisionCount:      len(revisions),
 		NextRevision:       nextRevision,
-		Revisions:          revisions,
 	})
 }
 
@@ -16618,6 +16705,52 @@ func (a *App) resetProjectAIContextsToEmpty(projectName string) (int, error) {
 	return reset, nil
 }
 
+func (a *App) resetModelAIContextToEmpty(projectName string, model ModelConfig) error {
+	projectName = strings.TrimSpace(projectName)
+	if projectName == "" {
+		return nil
+	}
+	_, metaRoot, err := a.projectPaths(model, projectName)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(metaRoot, 0o755); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(reviewerReviewsDir(metaRoot), 0o755); err != nil {
+		return err
+	}
+	if err := ensureFile(filepath.Join(metaRoot, "user_context.json"), "{}\n"); err != nil {
+		return err
+	}
+	if err := atomicWriteFile(filepath.Join(metaRoot, "reviewer_context.json"), []byte("{}\n"), 0o644); err != nil {
+		return err
+	}
+	return atomicWriteFile(filepath.Join(metaRoot, "ai_context.json"), defaultAIContextJSON(), 0o644)
+}
+
+func (a *App) resetModelAIContextsToEmpty(projectName string, models []ModelConfig) (int, error) {
+	projectName = strings.TrimSpace(projectName)
+	if projectName == "" || len(models) == 0 {
+		return 0, nil
+	}
+	reset := 0
+	seen := map[string]bool{}
+	reviewerID := a.getReviewerID()
+	for _, model := range models {
+		modelID := modelIDString(model.ID)
+		if modelID == "" || seen[modelID] || modelID == reviewerID {
+			continue
+		}
+		seen[modelID] = true
+		if err := a.resetModelAIContextToEmpty(projectName, model); err != nil {
+			return reset, err
+		}
+		reset++
+	}
+	return reset, nil
+}
+
 func (a *App) resetAllProjectsAIContextsToEmpty() (int, error) {
 	projects, err := a.listProjects()
 	if err != nil {
@@ -16776,13 +16909,7 @@ func (a *App) handleSelectProject(w http.ResponseWriter, r *http.Request) {
 	} else if clearedReviewerReports > 0 {
 		a.logf("system", "info", "Cleared %d stale Observer report(s) for project %s after project switch", clearedReviewerReports, name)
 	}
-	resetCount, err := a.resetProjectAIContextsToEmpty(name)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 	a.logf("system", "info", "Selected active project %s", name)
-	a.logf("system", "info", "Reset ai_context.json to strict empty memory and reviewer_context.json to {} for %d model(s) in project %s after project switch", resetCount, name)
 	projects, _ = a.listProjects()
 	writeJSON(w, http.StatusOK, projectListResponse{ActiveProject: a.activeProject(), Projects: projects})
 }
@@ -16910,15 +17037,10 @@ func (a *App) handleSessionReset(w http.ResponseWriter, r *http.Request) {
 	if err := a.clearAllReviewerOutputStates(); err != nil {
 		a.logf("system", "warn", "Failed clearing observer reports during session reset: %v", err)
 	}
-	resetCount, err := a.resetAllProjectsAIContextsToEmpty()
-	if err != nil {
-		a.logf("system", "warn", "Failed resetting ai_context.json/reviewer_context.json during session reset: %v", err)
-	}
 	a.resetProjectSessionState()
 	a.clearAllLastMergedFiles()
 	a.resetSessionTokenUsage()
 	a.logf("system", "info", "Reset session state, cleared active project, cleared saved builder response cards plus observer reports, cleared session-scoped context selections, and reset estimated session token usage")
-	a.logf("system", "info", "Reset ai_context.json to strict empty memory and reviewer_context.json to {} for %d model(s) across all projects during session reset", resetCount)
 	projects, _ := a.listProjects()
 	writeJSON(w, http.StatusOK, projectListResponse{ActiveProject: a.activeProject(), Projects: projects})
 }
@@ -17308,7 +17430,7 @@ func isGeneratedMediaSyncDir(rel string) bool {
 	}
 	first, _, _ := strings.Cut(rel, "/")
 	switch strings.ToLower(first) {
-	case "videos", "3dmesh":
+	case "videos", "3dmesh", "video_jobs", "mesh_jobs", "3d_mesh_jobs":
 		return true
 	default:
 		return false
@@ -19752,6 +19874,8 @@ func (a *App) logf(source, level, format string, args ...any) {
 		Message: fmt.Sprintf(format, args...),
 	}
 	a.mu.Lock()
+	a.logSeq++
+	entry.Seq = a.logSeq
 	a.logs = append(a.logs, entry)
 	if len(a.logs) > 500 {
 		a.logs = a.logs[len(a.logs)-500:]
@@ -19769,6 +19893,8 @@ func (a *App) logRiskf(source, level, format string, args ...any) {
 		Risk:    true,
 	}
 	a.mu.Lock()
+	a.logSeq++
+	entry.Seq = a.logSeq
 	a.logs = append(a.logs, entry)
 	if len(a.logs) > 500 {
 		a.logs = a.logs[len(a.logs)-500:]
@@ -19988,7 +20114,7 @@ func validateModelMutation(req modelMutationRequest) error {
 		return errors.New("choose either Video Generation or 3D Mesh Generation, not both. Create a separate model card for the other mode")
 	}
 	switch req.AuthType {
-	case "none", "bearer", "basic", "header_key", "google_adc":
+	case "none", "bearer", "basic", "header_key", "fal_key", "google_adc":
 		return nil
 	default:
 		return errors.New("auth type is required")

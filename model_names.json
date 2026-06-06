@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "models": [
+    {
+      "provider": "fal",
+      "adapter": "fal_mesh",
+      "label": "fal Hunyuan3D v3 Mesh",
+      "model_name": "fal-ai/hunyuan3d-v3/text-to-3d",
+      "base_url": "https://queue.fal.run",
+      "api_path": "/fal-ai/hunyuan3d-v3/text-to-3d",
+      "auth_type": "fal_key",
+      "auth_header": "Authorization",
+      "api_key_env": "FAL_KEY",
+      "capabilities": ["text_to_mesh", "image_to_mesh", "multi_view_image_to_mesh", "glb_preview"],
+      "notes": "Current baseline Hunyuan route. AgentGO switches to image-to-3d when images are provided."
+    },
+    {
+      "provider": "fal",
+      "adapter": "fal_mesh",
+      "label": "fal Hunyuan3D V2 Image Mesh",
+      "model_name": "fal-ai/hunyuan3d/v2",
+      "base_url": "https://queue.fal.run",
+      "api_path": "/fal-ai/hunyuan3d/v2",
+      "auth_type": "fal_key",
+      "auth_header": "Authorization",
+      "api_key_env": "FAL_KEY",
+      "capabilities": ["image_to_mesh", "download", "glb_preview_if_returned"],
+      "notes": "Image-to-3D only. Output is parsed from model_mesh."
+    },
+    {
+      "provider": "fal",
+      "adapter": "fal_mesh",
+      "label": "fal Hunyuan 3D v3.1 Rapid Mesh",
+      "model_name": "fal-ai/hunyuan-3d/v3.1/rapid/text-to-3d",
+      "base_url": "https://queue.fal.run",
+      "api_path": "/fal-ai/hunyuan-3d/v3.1/rapid/text-to-3d",
+      "auth_type": "fal_key",
+      "auth_header": "Authorization",
+      "api_key_env": "FAL_KEY",
+      "capabilities": ["text_to_mesh", "image_to_mesh", "download", "glb_preview_if_returned"],
+      "notes": "AgentGO switches to image-to-3d when a primary image is provided. Rapid may return OBJ for some text jobs; non-GLB results are download-only."
+    },
+    {
+      "provider": "fal",
+      "adapter": "fal_mesh",
+      "label": "fal Hunyuan 3D v3.1 Pro Mesh",
+      "model_name": "fal-ai/hunyuan-3d/v3.1/pro/text-to-3d",
+      "base_url": "https://queue.fal.run",
+      "api_path": "/fal-ai/hunyuan-3d/v3.1/pro/text-to-3d",
+      "auth_type": "fal_key",
+      "auth_header": "Authorization",
+      "api_key_env": "FAL_KEY",
+      "capabilities": ["text_to_mesh", "image_to_mesh", "multi_view_image_to_mesh", "glb_preview"],
+      "notes": "AgentGO supports primary/back/left/right image slots now. Extra top/bottom/diagonal views are intentionally deferred."
+    },
+    {
+      "provider": "fal",
+      "adapter": "fal_mesh",
+      "label": "fal Trellis Mesh",
+      "model_name": "fal-ai/trellis",
+      "base_url": "https://queue.fal.run",
+      "api_path": "/fal-ai/trellis",
+      "auth_type": "fal_key",
+      "auth_header": "Authorization",
+      "api_key_env": "FAL_KEY",
+      "capabilities": ["image_to_mesh", "multi_image_to_mesh", "download"],
+      "notes": "Classic Trellis. AgentGO switches to fal-ai/trellis/multi for 2+ selected images."
+    },
+    {
+      "provider": "fal",
+      "adapter": "fal_mesh",
+      "label": "fal Trellis 2 Mesh",
+      "model_name": "fal-ai/trellis-2",
+      "base_url": "https://queue.fal.run",
+      "api_path": "/fal-ai/trellis-2",
+      "auth_type": "fal_key",
+      "auth_header": "Authorization",
+      "api_key_env": "FAL_KEY",
+      "capabilities": ["image_to_mesh", "multi_image_to_mesh", "glb_preview"],
+      "notes": "Same route for single and multi-image. AgentGO sends image_url for one image and image_urls for 2+ images."
+    },
+    {
+      "provider": "tripo",
+      "adapter": "tripo_mesh",
+      "label": "Tripo 3D Mesh",
+      "model_name": "",
+      "base_url": "https://api.tripo3d.ai",
+      "api_path": "/v2/openapi/task",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "capabilities": ["text_to_mesh", "image_to_mesh", "download", "glb_preview_if_returned"],
+      "notes": "Leave Model Name blank unless you want to force a Tripo model_version."
+    }
+  ]
+}

@@ -3270,6 +3270,8 @@ body.deaddrop-popover-open {
 .work-mode-send-btn:hover{filter:brightness(.96)}
 .work-mode-icon-btn svg,.work-mode-send-btn svg{width:20px;height:20px;stroke:currentColor;stroke-width:1.8;fill:none}.work-mode-attach-btn svg{width:25px;height:25px;stroke-width:1.7}
 .work-mode-prompt-status{min-height:18px;padding:0 12px;color:rgba(245,247,251,.55);font-size:.82rem;pointer-events:auto}
+.work-mode-status-stop-link{appearance:none;border:none;background:transparent;color:#f5f7fb;text-decoration:underline;text-underline-offset:2px;font:inherit;font-weight:900;cursor:pointer;padding:0 2px}
+.work-mode-status-stop-link:hover{color:#ff9ecb}
 .work-mode-popup{position:absolute;left:0;bottom:46px;width:min(340px,calc(100vw - 42px));max-height:min(420px,70vh);overflow:auto;border:1px solid rgba(255,255,255,.12);background:rgba(20,23,31,.98);border-radius:18px;box-shadow:0 20px 44px rgba(0,0,0,.42);padding:12px;z-index:2160;color:#fff}
 #workModeSettingsPopup{left:50%;transform:translateX(-50%);width:min(430px,calc(100vw - 42px))}
 .work-mode-status-ai-permissions{color:var(--work-pink);font-weight:950}
@@ -6377,6 +6379,21 @@ body.deaddrop-popover-open {
 .model-form-field{display:flex;flex-direction:column;gap:6px}
 .model-form-field label{font-size:13px;font-weight:800;color:#183153}
 .model-form-field input,.model-form-field select,.model-form-field textarea{width:100%;border:1px solid rgba(19,39,72,.18);border-radius:14px;padding:10px 12px;font:inherit;background:#fff;color:#132748;box-sizing:border-box}
+.model-name-picker-wrap{display:grid;grid-template-columns:minmax(0,1fr) 42px;gap:8px;align-items:center;position:relative}
+.model-name-picker-wrap input{min-width:0}
+.model-name-picker-btn{height:42px;border:1px solid rgba(19,39,72,.18);border-radius:14px;background:linear-gradient(180deg,#fff,#edf3fa);color:#183153;font-weight:900;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
+.model-name-picker-btn:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(23,53,95,.12),inset 0 1px 0 rgba(255,255,255,.94)}
+.model-name-picker-btn:focus-visible{outline:2px solid rgba(38,90,160,.36);outline-offset:2px}
+.model-name-picker-popover{position:fixed;z-index:1700;width:min(460px,calc(100vw - 28px));max-height:min(380px,calc(100vh - 60px));overflow:auto;background:linear-gradient(180deg,rgba(255,255,255,.99),rgba(244,248,253,.98));border:1px solid rgba(19,39,72,.16);border-radius:18px;box-shadow:0 22px 60px rgba(13,21,39,.24);padding:10px;display:none}
+.model-name-picker-popover.open{display:block}
+.model-name-picker-title{margin:0 0 8px;color:#17325c;font-size:12px;font-weight:900;letter-spacing:.04em;text-transform:uppercase}
+.model-name-picker-list{display:grid;gap:7px}
+.model-name-picker-option{appearance:none;border:1px solid rgba(19,39,72,.1);border-radius:14px;background:#fff;color:#17325c;text-align:left;padding:10px 11px;cursor:pointer;display:grid;gap:3px;font:inherit}
+.model-name-picker-option strong{font-size:13px;line-height:1.25;color:#17325c}
+.model-name-picker-option code{font-size:12px;color:#48627f;white-space:normal;word-break:break-word;background:transparent;padding:0}
+.model-name-picker-option small{font-size:11px;color:#607896;line-height:1.35}
+.model-name-picker-option:hover,.model-name-picker-option:focus-visible{border-color:rgba(38,90,160,.28);box-shadow:0 10px 22px rgba(23,53,95,.1);outline:none}
+.model-name-picker-empty{margin:0;padding:12px;border:1px dashed rgba(19,39,72,.16);border-radius:14px;color:#607896;font-size:12px;line-height:1.4;background:rgba(255,255,255,.7)}
 .model-form-field textarea{min-height:88px;resize:vertical}
 .model-form-field.full{grid-column:1 / -1}
 .model-section-callout{padding:14px 16px;border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.97),rgba(236,242,249,.95));border:1px solid rgba(111,134,171,.18);display:grid;gap:10px}
@@ -6493,13 +6510,13 @@ body.deaddrop-popover-open {
 .video-jobs-modal.open,.mesh-jobs-modal.open{display:flex}
 .video-jobs-backdrop,.mesh-jobs-backdrop{position:absolute;inset:0;background:rgba(8,16,30,.58);backdrop-filter:blur(4px)}
 .video-jobs-dialog,.mesh-jobs-dialog{position:relative;width:min(1320px,calc(100vw - 34px));max-height:calc(100vh - 46px);overflow:auto;padding:18px 20px;border-radius:28px;background:linear-gradient(180deg,rgba(252,254,255,.99),rgba(235,242,250,.97));box-shadow:0 36px 80px rgba(7,22,45,.34);border:1px solid rgba(110,132,170,.18)}
-.video-jobs-dialog{height:min(860px,calc(100vh - 46px));overflow:hidden;display:flex;flex-direction:column}
+.video-jobs-dialog,.mesh-jobs-dialog{height:min(860px,calc(100vh - 46px));overflow:hidden;display:flex;flex-direction:column}
 .video-jobs-grid,.mesh-jobs-grid{display:grid;grid-template-columns:minmax(500px,540px) minmax(520px,1fr);gap:20px;align-items:stretch}
-.video-jobs-grid{min-height:0;flex:1 1 auto}
+.video-jobs-grid,.mesh-jobs-grid{min-height:0;flex:1 1 auto}
 .video-jobs-form,.mesh-jobs-form,.video-jobs-results,.mesh-jobs-results{padding:14px;border-radius:22px;background:linear-gradient(180deg,rgba(248,251,255,.94),rgba(236,244,253,.88));border:1px solid rgba(117,137,171,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.85)}
 .video-jobs-form,.mesh-jobs-form{display:flex;flex-direction:column;min-height:430px}
 .video-jobs-results,.mesh-jobs-results{display:flex;flex-direction:column;min-height:430px}
-.video-jobs-results{min-height:0;overflow:hidden}
+.video-jobs-results,.mesh-jobs-results{min-height:0;overflow:hidden}
 .video-jobs-form textarea,.video-jobs-form input,.video-jobs-form select,.mesh-jobs-form textarea,.mesh-jobs-form input,.mesh-jobs-form select{width:100%;border-radius:14px;border:1px solid rgba(116,136,170,.22);background:rgba(255,255,255,.95);padding:10px 12px;font:inherit;color:#17325c}
 .video-jobs-form label,.mesh-jobs-form label{display:block;font-size:.85rem;font-weight:800;color:#35517c;margin:0 0 6px}
 .video-jobs-form .field,.mesh-jobs-form .field{margin-bottom:10px}
@@ -6531,6 +6548,13 @@ body.deaddrop-popover-open {
 .media-reference-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .media-reference-grid .media-frame-picker{min-height:120px}
 .media-reference-grid .media-frame-picker img{height:92px}
+.mesh-view-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.mesh-view-grid .media-frame-picker{min-height:128px}
+.mesh-view-grid .media-frame-picker img{height:100px}
+.mesh-jobs-form{min-height:0;overflow:visible}
+.mesh-jobs-form .media-job-section:first-child{flex:0 0 auto}
+.mesh-jobs-form .media-job-section:first-child .field{flex:0 0 auto}
+.mesh-jobs-form .media-job-section:first-child textarea{height:128px;min-height:96px;flex:0 0 auto}
 .media-frame-picker{appearance:none;border:1px dashed rgba(116,136,170,.34);border-radius:18px;background:rgba(255,255,255,.72);min-height:148px;padding:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#516a8f;cursor:pointer;overflow:hidden}
 .media-frame-picker:hover,.media-frame-picker.is-drag-over{border-color:rgba(155,45,113,.32);background:rgba(255,249,253,.88);transform:translateY(-1px)}
 .media-frame-picker.has-error{border-color:rgba(194,43,106,.46);background:rgba(255,238,248,.82)}
@@ -6543,6 +6567,41 @@ body.deaddrop-popover-open {
 .media-frame-picker.has-error .media-frame-error{display:block}
 .media-frame-file{display:none!important}
 .media-job-subtitle.is-warning{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(255,238,248,.94);color:#9b2d71;font-weight:900}
+.media-job-warning-badge{display:inline-flex;align-items:center;margin-left:7px;padding:3px 8px;border-radius:999px;background:rgba(255,186,73,.2);border:1px solid rgba(211,128,25,.26);color:#8a4b0d;font-size:.72rem;font-weight:900;letter-spacing:.01em;vertical-align:middle}
+.media-job-warning-badge.is-hidden{display:none}
+.mesh-selected-model-card{margin:6px 0 10px;padding:8px 12px;border-radius:16px;background:linear-gradient(180deg,rgba(255,255,255,.9),rgba(240,247,255,.84));border:1px solid rgba(117,137,171,.18);box-shadow:inset 0 1px 0 rgba(255,255,255,.72);color:#28466d;font-size:.82rem;font-weight:800;display:flex;align-items:center;gap:7px;white-space:nowrap;overflow:hidden}
+.mesh-selected-model-card.is-warning{background:rgba(255,238,248,.94);border-color:rgba(155,45,113,.18);color:#9b2d71;font-weight:900}
+.mesh-selected-model-card .mesh-selected-prefix{font-size:.72rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:#6f83a8;flex:0 0 auto}
+.mesh-selected-model-card .mesh-selected-badge{display:inline-flex;align-items:center;min-width:0;max-width:100%;padding:4px 8px;border-radius:999px;background:rgba(23,50,92,.08);color:#17325c;font-size:.76rem;font-weight:900;line-height:1.1;overflow:hidden;text-overflow:ellipsis}
+.mesh-selected-model-card .mesh-selected-badge.is-endpoint{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:.72rem;flex:0 1 auto}
+.mesh-selected-settings-btn{margin-left:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;border:0;border-radius:999px;background:#17325c;color:#fff;font-size:.74rem;font-weight:900;padding:7px 10px;cursor:pointer;box-shadow:0 8px 16px rgba(23,50,92,.14)}
+.mesh-selected-settings-btn:hover{transform:translateY(-1px);background:#234b80}
+.mesh-selected-settings-btn .mesh-settings-cog{font-size:.9rem;line-height:1}
+.mesh-model-settings-layer{position:fixed;inset:0;z-index:2380;display:none;align-items:flex-start;justify-content:center;padding:128px 18px 18px;pointer-events:none}
+.mesh-model-settings-layer.open{display:flex}
+.mesh-model-settings-dialog{width:min(560px,calc(100vw - 44px));max-height:calc(100vh - 180px);overflow:auto;pointer-events:auto;border-radius:22px;background:linear-gradient(180deg,rgba(252,254,255,.99),rgba(235,242,250,.98));border:1px solid rgba(110,132,170,.2);box-shadow:0 28px 70px rgba(7,22,45,.28);padding:16px}
+.mesh-model-settings-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+.mesh-model-settings-head h4{margin:0;color:#172a4d;font-size:1rem}
+.mesh-model-settings-current{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px;color:#516a8f;font-size:.8rem;font-weight:800}
+.mesh-model-settings-current span{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:rgba(23,50,92,.08);color:#17325c;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.mesh-model-settings-current .is-endpoint{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:.72rem}
+.mesh-model-settings-body{padding:12px;border-radius:16px;background:rgba(255,255,255,.66);border:1px solid rgba(117,137,171,.16);color:#516a8f;font-size:.84rem;line-height:1.45}
+.mesh-model-settings-body strong{display:block;color:#172a4d;margin-bottom:4px}
+.mesh-setting-grid{display:grid;gap:10px}
+.mesh-setting-field{display:flex;flex-direction:column;gap:5px;padding:10px;border-radius:14px;background:rgba(248,251,255,.82);border:1px solid rgba(117,137,171,.16)}
+.mesh-setting-field label{display:flex;align-items:center;gap:8px;font-size:.82rem;font-weight:900;color:#17325c;margin:0}
+.mesh-setting-field input[type="checkbox"]{width:auto;margin:0}
+.mesh-setting-field select,.mesh-setting-field input[type="number"]{width:100%;border-radius:12px;border:1px solid rgba(116,136,170,.22);background:#fff;padding:8px 10px;font:inherit;color:#17325c}
+.mesh-setting-help{font-size:.76rem;color:#516a8f;line-height:1.35}
+.mesh-extra-input-section{margin-top:8px;padding:8px 10px;border-radius:16px;background:rgba(255,255,255,.62);border:1px solid rgba(117,137,171,.14)}
+.mesh-extra-input-section[hidden]{display:none}
+.mesh-extra-input-heading{font-size:.74rem;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:#6f83a8;margin:0 0 6px}
+.mesh-extra-input-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.mesh-extra-input-grid .media-frame-picker{min-height:78px;padding:7px}
+.mesh-extra-input-grid .media-frame-picker img{height:50px}
+.mesh-extra-input-grid .media-frame-empty{font-size:.7rem}
+.mesh-extra-input-grid .media-frame-label{font-size:.68rem}
+.mesh-model-settings-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px}
 .media-job-results-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
 .media-job-results-head>div{display:flex;align-items:flex-start;gap:12px;min-width:0;flex:1}
 .media-job-results-head strong{font-size:.95rem;color:#172a4d;white-space:nowrap}
@@ -6551,16 +6610,20 @@ body.deaddrop-popover-open {
 .media-job-empty{min-height:300px;display:flex;flex-direction:column;justify-content:center;gap:4px;padding:16px;border-radius:18px;background:rgba(255,255,255,.58);border:1px dashed rgba(117,137,171,.32);color:#516a8f}
 .media-job-empty strong{color:#172a4d}
 .video-jobs-actions,.mesh-jobs-actions{display:flex;gap:10px;justify-content:flex-end;align-items:center;margin-top:auto;padding-top:8px}
+.mesh-job-inline-controls{margin-top:auto;padding-top:8px;border-top:1px solid rgba(117,137,171,.12)}
+.mesh-job-inline-controls .media-job-option-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 .video-jobs-list,.mesh-jobs-list{display:grid;gap:12px;flex:1 1 auto}
-.video-jobs-list{min-height:0;overflow:auto;padding-right:6px;align-content:start}
+.video-jobs-list,.mesh-jobs-list{min-height:0;overflow:auto;padding-right:6px;align-content:start}
 .video-job-card,.mesh-job-card{padding:14px;border-radius:18px;background:linear-gradient(180deg,rgba(248,251,255,.98),rgba(232,239,248,.96));border:1px solid rgba(117,137,171,.16)}
-.video-job-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
-.video-job-delete-btn{border:0;border-radius:12px;background:rgba(155,45,113,.1);color:#9b2d71;font-size:.78rem;font-weight:900;padding:7px 10px;cursor:pointer;white-space:nowrap}
-.video-job-delete-btn:hover{background:rgba(155,45,113,.16);transform:translateY(-1px)}
-.video-job-card.is-active{border-color:rgba(35,75,128,.24);box-shadow:0 16px 30px rgba(23,53,95,.10)}
-.video-job-card video,.mesh-job-preview img{width:100%;max-height:260px;border-radius:14px;background:#0f1827;object-fit:cover}
-.video-job-waiting{display:flex;align-items:center;gap:10px;margin:10px 0;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.64);border:1px solid rgba(117,137,171,.16);color:#35517c;font-size:.82rem;font-weight:800}
-.video-job-wait-dot{width:10px;height:10px;border-radius:999px;background:#17325c;box-shadow:0 0 0 rgba(23,53,95,.18);animation:videoJobBreath 1.7s ease-in-out infinite}
+.video-job-card-head,.mesh-job-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.video-job-delete-btn,.mesh-job-delete-btn{border:0;border-radius:12px;background:rgba(155,45,113,.1);color:#9b2d71;font-size:.78rem;font-weight:900;padding:7px 10px;cursor:pointer;white-space:nowrap}
+.video-job-delete-btn:hover,.mesh-job-delete-btn:hover{background:rgba(155,45,113,.16);transform:translateY(-1px)}
+.video-job-card.is-active,.mesh-job-card.is-active{border-color:rgba(35,75,128,.24);box-shadow:0 16px 30px rgba(23,53,95,.10)}
+.video-job-card video,.mesh-job-preview img,.mesh-job-preview model-viewer{width:100%;max-height:320px;border-radius:14px;background:#0f1827;object-fit:cover}
+.mesh-job-preview model-viewer{height:320px;display:block;object-fit:contain}
+.mesh-job-preview-fallback{margin-top:8px}
+.video-job-waiting,.mesh-job-waiting{display:flex;align-items:center;gap:10px;margin:10px 0;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.64);border:1px solid rgba(117,137,171,.16);color:#35517c;font-size:.82rem;font-weight:800}
+.video-job-wait-dot,.mesh-job-wait-dot{width:10px;height:10px;border-radius:999px;background:#17325c;box-shadow:0 0 0 rgba(23,53,95,.18);animation:videoJobBreath 1.7s ease-in-out infinite}
 @keyframes videoJobBreath{0%,100%{opacity:.42;transform:scale(.86);box-shadow:0 0 0 0 rgba(23,53,95,.18)}50%{opacity:1;transform:scale(1.12);box-shadow:0 0 0 9px rgba(23,53,95,.06)}}
 .video-job-diagnostics{margin-top:8px;border-radius:14px;border:1px solid rgba(117,137,171,.18);background:rgba(255,255,255,.72);padding:8px 10px}
 .video-job-diagnostics summary{cursor:pointer;font-weight:900;color:#17325c;font-size:.8rem}
@@ -6568,7 +6631,22 @@ body.deaddrop-popover-open {
 .video-job-meta,.mesh-job-meta{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 10px}
 .video-job-meta span,.mesh-job-meta span{padding:4px 8px;border-radius:999px;background:rgba(23,50,92,.08);font-size:.75rem;color:#28466d}
 .video-job-saved-file{margin:4px 0 10px;font-size:.78rem;font-weight:900;color:#28466d;word-break:break-word}
+.mesh-job-output-note{margin:8px 0 0;padding:9px 11px;border-radius:14px;background:rgba(255,255,255,.72);border:1px solid rgba(117,137,171,.16);font-size:.78rem;color:#516a8f}
+.mesh-job-output-note strong{display:block;color:#172a4d;margin-bottom:3px}
+.mesh-job-output-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:7px}
+.mesh-job-output-links a{font-weight:900;color:#17325c;text-decoration:none;border-bottom:1px solid rgba(23,50,92,.25)}
+.mesh-job-output-links a:hover{border-bottom-color:currentColor}
 .video-job-actions,.mesh-job-actions{display:flex;gap:8px;flex-wrap:wrap}
+.mesh-viewer-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:2450}
+.mesh-viewer-modal.open{display:flex}
+.mesh-viewer-backdrop{position:absolute;inset:0;background:rgba(8,16,30,.62);backdrop-filter:blur(4px)}
+.mesh-viewer-dialog{position:relative;width:min(1040px,calc(100vw - 44px));max-height:calc(100vh - 54px);overflow:hidden;padding:18px;border-radius:24px;background:linear-gradient(180deg,rgba(252,254,255,.99),rgba(235,242,250,.98));box-shadow:0 34px 84px rgba(7,22,45,.34);border:1px solid rgba(110,132,170,.18);display:flex;flex-direction:column;gap:12px}
+.mesh-viewer-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.mesh-viewer-head h3{margin:0;color:#17325c}
+.mesh-viewer-body{min-height:0;border-radius:18px;background:#0f1827;overflow:hidden}
+.mesh-viewer-body model-viewer{width:100%;height:min(68vh,620px);display:block;background:#0f1827}
+.mesh-viewer-preview-fallback{padding:10px;background:#0f1827}
+.mesh-viewer-preview-fallback img{width:100%;max-height:220px;object-fit:contain;border-radius:12px}
 .video-job-thumb-row{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}
 .video-job-thumb-row img{width:120px;height:84px;object-fit:cover;border-radius:12px;border:1px solid rgba(110,132,170,.18);background:#fff}
 .video-small-note,.mesh-small-note{font-size:.8rem;color:#516a8f}
@@ -6580,6 +6658,7 @@ body.deaddrop-popover-open {
 .mastermind-modal{position:fixed;inset:0;z-index:2140;display:none;align-items:center;justify-content:center;padding:18px;color:#10203a}.mastermind-modal.open{display:flex}.mastermind-backdrop{position:absolute;inset:0;background:rgba(6,9,16,.58);backdrop-filter:blur(4px)}.mastermind-dialog{position:relative;width:min(920px,94vw);max-height:min(84vh,860px);display:flex;flex-direction:column;border-radius:24px;overflow:hidden;background:rgba(255,255,255,.97);box-shadow:0 28px 70px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.86);border:1px solid rgba(255,255,255,.74)}.mastermind-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:20px 22px;border-bottom:1px solid rgba(23,53,95,.12);background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(236,244,254,.94))}.mastermind-title{margin:0;font-size:1.35rem;color:#17304d}.mastermind-subtitle{margin:5px 0 0;color:#4c6381;font-weight:700;line-height:1.4}.mastermind-body{padding:18px 22px 22px;display:grid;gap:16px;overflow:auto}.mastermind-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.mastermind-actions .model-primary-btn,.mastermind-actions .model-secondary-btn{min-height:38px}.mastermind-status{border:1px solid rgba(23,53,95,.12);border-radius:16px;background:rgba(241,246,252,.78);padding:10px 12px;color:#2e4360;font-weight:800}.mastermind-status strong{color:#17304d}.mastermind-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.mastermind-section{border:1px solid rgba(23,53,95,.13);border-radius:20px;background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(244,248,253,.92));box-shadow:0 12px 26px rgba(15,36,70,.08);overflow:hidden}.mastermind-section-head{padding:14px 15px 11px;border-bottom:1px solid rgba(23,53,95,.10)}.mastermind-section-head h4{margin:0;color:#17304d}.mastermind-section-head p{margin:4px 0 0;color:#5c6f89;font-weight:700;font-size:.86rem}.mastermind-list{padding:10px;display:grid;gap:8px;min-height:96px}.mastermind-folder-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;border:1px solid rgba(23,53,95,.10);border-radius:15px;padding:9px 10px;background:rgba(255,255,255,.78)}.mastermind-folder-row.is-active{border-color:rgba(45,120,217,.35);box-shadow:0 0 0 3px rgba(45,120,217,.10);background:rgba(241,248,255,.95)}.mastermind-radio{appearance:none;width:17px;height:17px;border-radius:999px;border:2px solid rgba(23,53,95,.28);background:transparent;cursor:pointer;box-shadow:inset 0 0 0 3px rgba(255,255,255,.92)}.mastermind-radio.is-active{border-color:var(--ready-blue-bottom);background:linear-gradient(180deg,var(--ready-blue-top),var(--ready-blue-bottom));box-shadow:0 0 0 4px rgba(45,120,217,.14)}.mastermind-folder-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:900;color:#17304d}.mastermind-delete-btn{appearance:none;border:none;border-radius:12px;background:rgba(210,52,78,.10);color:#a4243d;font-weight:900;padding:7px 9px;cursor:pointer}.mastermind-delete-btn:hover{background:rgba(210,52,78,.18)}.mastermind-empty{padding:18px 12px;border:1px dashed rgba(23,53,95,.18);border-radius:15px;color:#5f7189;font-weight:800;text-align:center;background:rgba(255,255,255,.55)}.mastermind-name-layer{position:absolute;inset:0;z-index:2;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(8,11,18,.35);backdrop-filter:blur(2px)}.mastermind-name-layer.open{display:flex}.mastermind-name-card{width:min(460px,92vw);border-radius:20px;background:#fff;box-shadow:0 24px 60px rgba(0,0,0,.30);border:1px solid rgba(255,255,255,.85);overflow:hidden}.mastermind-name-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:15px 16px;border-bottom:1px solid rgba(23,53,95,.10);background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(236,244,254,.94))}.mastermind-name-head strong{color:#17304d}.mastermind-name-body{padding:16px;display:grid;gap:12px}.mastermind-name-body p{margin:0;color:#405671;font-weight:700;line-height:1.45}.mastermind-name-body input{width:100%;border:1px solid rgba(23,53,95,.18);border-radius:14px;padding:12px 14px;font:inherit;font-weight:800;color:#17325c;background:#fff}.mastermind-name-actions{display:flex;justify-content:flex-end;gap:10px}.model-actions-menu .model-actions-btn.mastermind{color:#17355f}@media (max-width:760px){.mastermind-grid{grid-template-columns:1fr}.mastermind-dialog{max-height:90vh}.mastermind-head{align-items:stretch;flex-direction:column}.mastermind-head .modal-close-btn{align-self:flex-end}}
 
 </style>
+<script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 </head>
 <body>
 <div class="page">
@@ -7341,6 +7420,8 @@ let openSettingsModelId = "";
 let settingsMetaCache = {};
 let activeMetaTab = "user_context.json";
 let modelDefinitionsCache = [];
+let knownModelNamesCache = [];
+let knownModelNamesLoaded = false;
 let latestModelStates = [];
 let activeModelActionId = "";
 let activeRunOrderModelId = "";
@@ -7381,6 +7462,8 @@ let workModeSearchRunning = false;
 let workModeSearchPending = false;
 let workModeSearchError = '';
 let workModeSending = false;
+let workModeWaitingNoticeTimer = null;
+let workModeWaitingNoticeStartedAt = 0;
 let workModeContextFolderPath = '';
 let workModeContextTargetPath = '';
 let workModeContextTargetKind = 'folder';
@@ -7956,8 +8039,34 @@ let chatState = createDefaultChatState();
 
 let lastChatModalTrigger = null;
 
+const POLL_REQUEST_TIMEOUT_MS = 15000;
+const LOGS_POLL_LIMIT = 150;
+const pollingInFlight = Object.create(null);
+
 async function api(url, options = {}) {
-  const res = await fetch(url, Object.assign({ headers: { "Content-Type": "application/json" } }, options));
+  const { timeoutMs = 0, ...fetchOptions } = options || {};
+  const headers = Object.assign({ "Content-Type": "application/json" }, fetchOptions.headers || {});
+  const request = Object.assign({}, fetchOptions, { headers });
+  let timeoutId = null;
+  let controller = null;
+  if (Number(timeoutMs) > 0) {
+    controller = new AbortController();
+    request.signal = controller.signal;
+    timeoutId = setTimeout(() => controller.abort(), Math.max(1, Number(timeoutMs) || 1));
+  }
+  let res;
+  try {
+    res = await fetch(url, request);
+  } catch (err) {
+    if (err && err.name === 'AbortError') {
+      const timeoutErr = new Error('Request timed out.');
+      timeoutErr.name = 'TimeoutError';
+      throw timeoutErr;
+    }
+    throw err;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
   if (!res.ok) {
     const message = await res.text();
     const err = new Error(message || res.statusText || 'Request failed.');
@@ -7967,6 +8076,19 @@ async function api(url, options = {}) {
     throw err;
   }
   return res.json();
+}
+
+async function runPollingLane(name, work) {
+  if (pollingInFlight[name]) return null;
+  pollingInFlight[name] = true;
+  try {
+    return await work();
+  } catch (err) {
+    if (err && err.name !== 'TimeoutError') console.warn(`${name} polling failed`, err);
+    return null;
+  } finally {
+    pollingInFlight[name] = false;
+  }
 }
 
 function getOutfitById(id) {
@@ -9706,6 +9828,8 @@ function renderLogsEmptyState() {
   const box = document.getElementById('logsBox');
   if (!box) return;
   lastLogsRenderedText = '';
+  logsCache = [];
+  latestLogSeq = 0;
   box.innerHTML = buildEmptyState('No logs yet', 'Live request activity, merges, and responses will appear here as soon as work starts.');
 }
 
@@ -11836,6 +11960,8 @@ async function clearLogsPanel() {
   try {
     closeCopyLogsPopover();
     await api('/api/logs/clear', { method: 'POST', body: '{}' });
+    logsCache = [];
+    latestLogSeq = 0;
     renderLogsEmptyState();
     showToast('Logs cleared.');
   } catch (err) {
@@ -13168,13 +13294,13 @@ function renderDeadDropStatus(status) {
 }
 
 async function refreshDeadDropStatus(options = {}) {
-  const { silent = true } = options;
+  const { silent = true, timeoutMs = 0 } = options;
   if (!activeProject) {
     renderDeadDropStatus(null);
     return null;
   }
   try {
-    const status = await fetchDeadDropStatus();
+    const status = await fetchDeadDropStatus({ timeoutMs });
     renderDeadDropStatus(status);
     return status;
   } catch (err) {
@@ -13184,8 +13310,8 @@ async function refreshDeadDropStatus(options = {}) {
   }
 }
 
-async function fetchDeadDropStatus() {
-  return api('/api/deaddrop/status');
+async function fetchDeadDropStatus(options = {}) {
+  return api('/api/deaddrop/status', options);
 }
 
 async function hasActiveDeadDropSource() {
@@ -13816,6 +13942,8 @@ function setPromptStatus(message) {
 let modelStatePollTimer = null;
 let modelStatePollIdleHits = 0;
 let lastLogsRenderedText = '';
+let logsCache = [];
+let latestLogSeq = 0;
 const notesScrollSpeedMultiplier = 0.5;
 
 function isScrolledNearBottom(el, threshold = 42) {
@@ -13952,10 +14080,10 @@ function stopModelStatePolling() {
 
 function startModelStatePolling() {
   stopModelStatePolling();
-  modelStatePollTimer = setInterval(async () => {
-    try {
-      const models = await loadModelStates();
-      await loadWaveState().catch(() => {});
+  modelStatePollTimer = setInterval(() => {
+    runPollingLane('model-state', async () => {
+      const models = await loadModelStates({ timeoutMs: POLL_REQUEST_TIMEOUT_MS });
+      await runPollingLane('wave-state', () => loadWaveState({ timeoutMs: POLL_REQUEST_TIMEOUT_MS }));
       const hasRunning = Array.isArray(models) && models.some(model => !!model.running);
       const waveIsActive = !!(waveState && waveState.visible && ['running', 'risk', 'waiting', 'reviewing'].includes(String((waveState && waveState.state) || '').trim().toLowerCase()));
       const cypherIsActive = !!(cypherState && cypherState.working);
@@ -13971,7 +14099,7 @@ function startModelStatePolling() {
       } else {
         modelStatePollIdleHits = 0;
       }
-    } catch (_) {}
+    });
   }, 1500);
 }
 
@@ -14104,9 +14232,17 @@ const providerCatalog = {
   seedream: { label: 'Seedream', adapters: [{ value: 'custom_json', label: 'Custom JSON (BytePlus ModelArk)', defaults: { base_url: 'https://ark.ap-southeast.bytepluses.com/api/v3', api_path: '/images/generations', auth_type: 'bearer', auth_header: 'Authorization' } }] },
   kling: { label: 'Kling', adapters: [{ value: 'kling_video', label: 'Kling Video', defaults: { base_url: 'https://api.klingai.com', api_path: '/v1/videos/generations', auth_type: 'bearer', auth_header: 'Authorization' } }] },
   comfyui: { label: 'ComfyUI', adapters: [{ value: 'comfyui_ltx_video', label: 'ComfyUI LTX Video', defaults: { base_url: 'http://127.0.0.1:8188', api_path: '/prompt', auth_type: 'none', auth_header: '' } }] },
-  meshy: { label: 'Meshy', adapters: [{ value: 'meshy_mesh', label: 'Meshy 3D Mesh', defaults: { base_url: 'https://api.meshy.ai', api_path: '/openapi/v2/text-to-3d', auth_type: 'bearer', auth_header: 'Authorization' } }] },
+  meshy: { label: 'Meshy', adapters: [{ value: 'meshy_mesh', label: 'Meshy 3D Mesh', defaults: { model_name: 'latest', base_url: 'https://api.meshy.ai', api_path: '/openapi/v2/text-to-3d', auth_type: 'bearer', auth_header: 'Authorization', api_key_env: 'MESHY_API_KEY' } }] },
   tripo: { label: 'Tripo', adapters: [{ value: 'tripo_mesh', label: 'Tripo 3D Mesh', defaults: { base_url: 'https://api.tripo3d.ai', api_path: '/v2/openapi/task', auth_type: 'bearer', auth_header: 'Authorization' } }] },
   hyper3d: { label: 'Hyper3D', adapters: [{ value: 'hyper3d_mesh', label: 'Hyper3D Rodin Mesh', defaults: { base_url: 'https://api.hyper3d.com/api', api_path: '/v2/rodin', auth_type: 'bearer', auth_header: 'Authorization' } }] },
+  fal: { label: 'fal.ai', adapters: [
+    { value: 'fal_mesh', label: 'fal Hunyuan3D v3 Mesh', defaults: { model_name: 'fal-ai/hunyuan3d-v3/text-to-3d', base_url: 'https://queue.fal.run', api_path: '/fal-ai/hunyuan3d-v3/text-to-3d', auth_type: 'fal_key', auth_header: 'Authorization', api_key_env: 'FAL_KEY' } },
+    { value: 'fal_mesh', label: 'fal Hunyuan3D V2 Image Mesh', defaults: { model_name: 'fal-ai/hunyuan3d/v2', base_url: 'https://queue.fal.run', api_path: '/fal-ai/hunyuan3d/v2', auth_type: 'fal_key', auth_header: 'Authorization', api_key_env: 'FAL_KEY' } },
+    { value: 'fal_mesh', label: 'fal Hunyuan 3D v3.1 Rapid Mesh', defaults: { model_name: 'fal-ai/hunyuan-3d/v3.1/rapid/text-to-3d', base_url: 'https://queue.fal.run', api_path: '/fal-ai/hunyuan-3d/v3.1/rapid/text-to-3d', auth_type: 'fal_key', auth_header: 'Authorization', api_key_env: 'FAL_KEY' } },
+    { value: 'fal_mesh', label: 'fal Hunyuan 3D v3.1 Pro Mesh', defaults: { model_name: 'fal-ai/hunyuan-3d/v3.1/pro/text-to-3d', base_url: 'https://queue.fal.run', api_path: '/fal-ai/hunyuan-3d/v3.1/pro/text-to-3d', auth_type: 'fal_key', auth_header: 'Authorization', api_key_env: 'FAL_KEY' } },
+    { value: 'fal_mesh', label: 'fal Trellis Mesh', defaults: { model_name: 'fal-ai/trellis', base_url: 'https://queue.fal.run', api_path: '/fal-ai/trellis', auth_type: 'fal_key', auth_header: 'Authorization', api_key_env: 'FAL_KEY' } },
+    { value: 'fal_mesh', label: 'fal Trellis 2 Mesh', defaults: { model_name: 'fal-ai/trellis-2', base_url: 'https://queue.fal.run', api_path: '/fal-ai/trellis-2', auth_type: 'fal_key', auth_header: 'Authorization', api_key_env: 'FAL_KEY' } }
+  ] },
   openrouter: { label: 'OpenRouter', adapters: [{ value: 'openai_compatible', label: 'OpenAI Compatible', defaults: { base_url: 'https://openrouter.ai/api', api_path: '/v1/responses', auth_type: 'bearer', auth_header: 'Authorization' } }] },
   deepseek: { label: 'DeepSeek', adapters: [{ value: 'openai_compatible', label: 'OpenAI Compatible', defaults: { base_url: 'https://api.deepseek.com', api_path: '/chat/completions', auth_type: 'bearer', auth_header: 'Authorization' } }] },
   xai: { label: 'Grok / xAI', adapters: [{ value: 'openai_compatible', label: 'OpenAI Compatible', defaults: { base_url: 'https://api.x.ai', api_path: '/v1/responses', auth_type: 'bearer', auth_header: 'Authorization' } }] },
@@ -14122,6 +14258,7 @@ const authTypeOptions = [
   { value: 'bearer', label: 'Bearer Token' },
   { value: 'basic', label: 'Basic Auth' },
   { value: 'header_key', label: 'Header API Key' },
+  { value: 'fal_key', label: 'fal API Key' },
   { value: 'google_adc', label: 'Google ADC' }
 ];
 const baseCapabilityDefaults = {
@@ -14144,6 +14281,7 @@ const adapterCapabilityDefaults = {
   meshy_mesh: { supports_image_in: true, supports_binary_out: true },
   tripo_mesh: { supports_image_in: true, supports_binary_out: true },
   hyper3d_mesh: { supports_image_in: true, supports_binary_out: true },
+  fal_mesh: { supports_image_in: true, supports_binary_out: true },
   ollama_generate: {},
   openai_compatible: {},
   custom_json: { supports_image_in: true, supports_audio_in: true, supports_video_in: true, supports_file_in: true },
@@ -14187,6 +14325,8 @@ function providerModelNamePlaceholder(provider, adapter = '') {
       return 'grok-...';
     case 'mistral':
       return 'mistral-...';
+    case 'fal':
+      return 'fal-ai/hunyuan3d-v3/text-to-3d, fal-ai/trellis, or fal-ai/trellis-2';
     default:
       return 'model-name';
   }
@@ -14209,6 +14349,8 @@ function providerApiKeyEnvPlaceholder(provider) {
       return 'XAI_API_KEY';
     case 'mistral':
       return 'MISTRAL_API_KEY';
+    case 'fal':
+      return 'FAL_KEY';
     default:
       return 'OPENAI_API_KEY';
   }
@@ -14227,6 +14369,8 @@ function providerGuidanceText(provider, adapter) {
       return 'Ideogram presets Api-Key auth and now uses the Ideogram 3.0 generate/remix workflow. Text-only prompts go to Generate, while one uploaded image switches to Remix for image-to-image changes. Returned result URLs are downloaded automatically into AgentGO.';
     case 'seedream':
       return 'Seedream presets BytePlus ModelArk bearer auth and the AP region base URL. Phase 5 now maps Seedream text-to-image and image-to-image requests onto ModelArk\u2019s image generation API. Text-only prompts create images, while attached images are sent through the image field for edits or reference-guided generation.';
+    case 'fal':
+      return 'fal.ai presets FAL_KEY auth and the queue.fal.run endpoint. AgentGO supports Hunyuan v3/v3.1 prompt and image routes, Hunyuan V2 image-only, classic Trellis, and Trellis 2 single or multi-image GLB flows.';
     case 'openai':
       return 'OpenAI Responses can now generate or edit images when Provider Options enable image_generation_tool. Optional tool fields include action, size, quality, background, output_format, output_compression, and input_fidelity. AgentGO decodes the returned base64 image into a normal file artifact.';
     default:
@@ -14244,6 +14388,7 @@ function syncModelProviderGuidance() {
   if (apiKeyEnvField) {
     apiKeyEnvField.placeholder = providerApiKeyEnvPlaceholder(provider);
   }
+  updateKnownModelNamePickerState();
 }
 function capabilityIdentityForModel(provider, adapter, modelName = '', label = '') {
   return [provider, adapter, modelName, label].map(value => String(value || '').trim().toLowerCase()).filter(Boolean).join(' ');
@@ -14346,7 +14491,7 @@ function syncVideoIngredientsDefaultFromCurrentModelName() {
   if (checkbox && isVideoGenerationAdapter(adapter)) checkbox.checked = defaultAllowsVideoIngredients(adapter, modelName);
 }
 function isVideoGenerationModel(model) { return !!(model && (model.video_generation || isVideoGenerationAdapter(model.adapter))); }
-function isMeshGenerationAdapter(adapter) { return ['meshy_mesh', 'tripo_mesh', 'hyper3d_mesh'].includes(String(adapter || '').toLowerCase()); }
+function isMeshGenerationAdapter(adapter) { return ['meshy_mesh', 'tripo_mesh', 'hyper3d_mesh', 'fal_mesh'].includes(String(adapter || '').toLowerCase()); }
 function isMeshGenerationModel(model) { return !!(model && (model.mesh_generation || isMeshGenerationAdapter(model.adapter))); }
 
 function buildProviderOptionsTemplate(adapter, provider = '') {
@@ -14522,6 +14667,14 @@ function buildProviderOptionsTemplate(adapter, provider = '') {
       return JSON.stringify({ mesh_job_id_path: 'data.task_id', mesh_status_path: 'data.status', mesh_success_value: 'succeeded', mesh_result_url_path: 'data.result_url', mesh_preview_url_path: 'data.preview_url', mesh_poll_path_template: '/v2/openapi/task/{job_id}' }, null, 2);
     case 'hyper3d_mesh':
       return JSON.stringify({ mesh_preview_render: 'true', mesh_default_geometry_file_format: 'glb', mesh_submit_fields: {} }, null, 2);
+    case 'fal_mesh':
+      return JSON.stringify({
+        fal_generate_type: 'Normal',
+        fal_enable_pbr: false,
+        fal_polygon_type: 'triangle',
+        fal_face_count: '',
+        mesh_submit_fields: {}
+      }, null, 2);
     default:
       return '{}';
   }
@@ -14554,6 +14707,8 @@ function buildTransportHelpText(adapter, provider = '') {
     case 'tripo_mesh':
     case 'hyper3d_mesh':
       return 'Mesh-capable models use the dedicated 3D mesh runtime and return artifact bundles instead of builder JSON.';
+    case 'fal_mesh':
+      return 'fal mesh models use queue.fal.run. AgentGO adds the fal Authorization: Key prefix automatically, routes Hunyuan text/image jobs, supports Trellis classic multi-image, and sends Trellis 2 image_url or image_urls depending on selected images.';
     default:
       return 'Known adapters use built-in transport rules. Provider Options remain optional JSON overrides.';
   }
@@ -14693,16 +14848,29 @@ function populateProviderSelect(selectedProvider = '') {
 function populateAdapterSelect(provider, selectedAdapter = '') {
   const select = document.getElementById('modelAdapter');
   const adapters = (providerCatalog[provider] && providerCatalog[provider].adapters) || [];
-  select.innerHTML = adapters.map(item => `<option value="${item.value}" ${item.value === selectedAdapter ? 'selected' : ''}>${item.label}</option>`).join('');
-  if (!select.value && adapters.length) select.value = adapters[0].value;
+  let selectedApplied = false;
+  select.innerHTML = adapters.map((item, index) => {
+    const selected = !selectedApplied && item.value === selectedAdapter;
+    if (selected) selectedApplied = true;
+    return `<option value="${item.value}" data-adapter-index="${index}" ${selected ? 'selected' : ''}>${item.label}</option>`;
+  }).join('');
+  if (!select.value && adapters.length) select.selectedIndex = 0;
+}
+function selectedProviderAdapterPreset(provider, adapter) {
+  const adapters = (providerCatalog[provider] && providerCatalog[provider].adapters) || [];
+  const select = document.getElementById('modelAdapter');
+  const selectedOption = select && select.selectedOptions ? select.selectedOptions[0] : null;
+  const selectedIndex = selectedOption ? Number(selectedOption.dataset.adapterIndex) : NaN;
+  if (Number.isInteger(selectedIndex) && selectedIndex >= 0 && selectedIndex < adapters.length) return adapters[selectedIndex];
+  return adapters.find(item => item.value === adapter) || null;
 }
 function applyAdapterDefaults({ force = false } = {}) {
   const provider = document.getElementById('modelProvider').value;
   const adapter = document.getElementById('modelAdapter').value;
-  const choice = ((providerCatalog[provider] || {}).adapters || []).find(item => item.value === adapter);
+  const choice = selectedProviderAdapterPreset(provider, adapter);
   if (!choice) return;
   const defaults = choice.defaults || {};
-  [['modelBaseUrl', 'base_url'], ['modelApiPath', 'api_path'], ['modelAuthType', 'auth_type'], ['modelAuthHeader', 'auth_header'], ['modelApiKeyEnv', 'api_key_env']].forEach(([id, key]) => {
+  [['modelModelName', 'model_name'], ['modelBaseUrl', 'base_url'], ['modelApiPath', 'api_path'], ['modelAuthType', 'auth_type'], ['modelAuthHeader', 'auth_header'], ['modelApiKeyEnv', 'api_key_env']].forEach(([id, key]) => {
     const field = document.getElementById(id);
     if (!field) return;
     if (force || !field.value.trim()) field.value = defaults[key] || '';
@@ -14723,16 +14891,147 @@ function applyAdapterDefaults({ force = false } = {}) {
     document.getElementById('modelVideoGeneration').checked = false;
     document.getElementById('modelMeshPromptOnly').checked = true;
     document.getElementById('modelMeshImageInput').checked = true;
-    document.getElementById('modelMeshMultiImage').checked = false;
+    document.getElementById('modelMeshMultiImage').checked = ['fal_mesh','meshy_mesh','tripo_mesh'].includes(String(adapter || '').toLowerCase());
     document.getElementById('modelCapabilityBinaryOut').checked = true;
   }
   syncModelTransportUI({ forcePlaceholder: force });
   syncModelProviderGuidance();
+  updateKnownModelNamePickerState();
 }
 async function loadModelDefinitions() {
   const data = await api('/api/models/definitions');
   modelDefinitionsCache = data.models || [];
   return modelDefinitionsCache;
+}
+
+async function loadKnownModelNames() {
+  if (knownModelNamesLoaded) return knownModelNamesCache;
+  try {
+    const data = await api('/api/model-names');
+    knownModelNamesCache = normalizeKnownModelNames(data);
+  } catch (err) {
+    console.warn('Could not load known model names', err);
+    knownModelNamesCache = [];
+  }
+  knownModelNamesLoaded = true;
+  updateKnownModelNamePickerState();
+  return knownModelNamesCache;
+}
+function normalizeKnownModelNames(data) {
+  let entries = [];
+  if (Array.isArray(data)) entries = data;
+  else if (data && Array.isArray(data.models)) entries = data.models;
+  else if (data && typeof data === 'object') {
+    Object.entries(data).forEach(([provider, adapters]) => {
+      if (!adapters || typeof adapters !== 'object') return;
+      Object.entries(adapters).forEach(([adapter, list]) => {
+        if (!Array.isArray(list)) return;
+        list.forEach(item => entries.push({ provider, adapter, ...(typeof item === 'string' ? { model_name: item } : item) }));
+      });
+    });
+  }
+  return entries.map(item => ({
+    provider: String(item.provider || '').trim(),
+    adapter: String(item.adapter || '').trim(),
+    label: String(item.label || item.name || item.model_name || '').trim(),
+    model_name: String(item.model_name || item.model || item.id || '').trim(),
+    base_url: String(item.base_url || '').trim(),
+    api_path: String(item.api_path || '').trim(),
+    auth_type: String(item.auth_type || '').trim(),
+    auth_header: String(item.auth_header || '').trim(),
+    api_key_env: String(item.api_key_env || '').trim(),
+    notes: String(item.notes || item.description || '').trim(),
+    capabilities: Array.isArray(item.capabilities) ? item.capabilities.map(x => String(x || '').trim()).filter(Boolean) : []
+  })).filter(item => item.model_name || item.label);
+}
+function currentKnownModelProvider() {
+  return document.getElementById('modelProvider') ? document.getElementById('modelProvider').value : '';
+}
+function currentKnownModelAdapter() {
+  return document.getElementById('modelAdapter') ? document.getElementById('modelAdapter').value : '';
+}
+function knownModelMatchesCurrent(entry) {
+  const provider = currentKnownModelProvider();
+  const adapter = currentKnownModelAdapter();
+  return (!entry.provider || entry.provider === provider) && (!entry.adapter || entry.adapter === adapter);
+}
+function knownModelEntriesForCurrentSelection() {
+  return (knownModelNamesCache || []).filter(knownModelMatchesCurrent);
+}
+function updateKnownModelNamePickerState() {
+  const btn = document.getElementById('modelNamePickerBtn');
+  if (!btn) return;
+  const count = knownModelEntriesForCurrentSelection().length;
+  btn.disabled = !knownModelNamesLoaded;
+  btn.title = knownModelNamesLoaded ? (count ? `Pick from ${count} known model name(s)` : 'No known model names for this provider / adapter yet') : 'Known model names are loading';
+}
+function closeKnownModelNamePicker() {
+  const popover = document.getElementById('modelNamePickerPopover');
+  const btn = document.getElementById('modelNamePickerBtn');
+  if (!popover) return;
+  popover.classList.remove('open');
+  popover.setAttribute('aria-hidden', 'true');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+function openKnownModelNamePicker(anchor) {
+  const popover = document.getElementById('modelNamePickerPopover');
+  if (!popover || !anchor) return;
+  if (!knownModelNamesLoaded) {
+    loadKnownModelNames().then(() => openKnownModelNamePicker(anchor));
+    return;
+  }
+  const entries = knownModelEntriesForCurrentSelection();
+  const providerLabel = (providerCatalog[currentKnownModelProvider()] || {}).label || currentKnownModelProvider() || 'current provider';
+  popover.innerHTML = `<p class="model-name-picker-title">Known model names for ${escapeHtml(providerLabel)} / ${escapeHtml(currentKnownModelAdapter() || 'adapter')}</p><div class="model-name-picker-list">${entries.length ? entries.map((entry, index) => `<button type="button" class="model-name-picker-option" data-known-model-index="${index}"><strong>${escapeHtml(entry.label || entry.model_name || 'Known model')}</strong><code>${escapeHtml(entry.model_name || '(blank model name)')}</code>${entry.notes ? `<small>${escapeHtml(entry.notes)}</small>` : ''}</button>`).join('') : `<p class="model-name-picker-empty">No known model names for this provider / adapter yet. You can still type any model name manually.</p>`}</div>`;
+  popover.dataset.entries = JSON.stringify(entries);
+  popover.classList.add('open');
+  popover.setAttribute('aria-hidden', 'false');
+  anchor.setAttribute('aria-expanded', 'true');
+  const rect = anchor.getBoundingClientRect();
+  const width = Math.min(460, window.innerWidth - 28);
+  const left = Math.min(Math.max(14, rect.right - width), Math.max(14, window.innerWidth - width - 14));
+  const top = Math.min(window.innerHeight - 80, Math.max(14, rect.bottom + 8));
+  popover.style.width = `${width}px`;
+  popover.style.left = `${Math.round(left)}px`;
+  popover.style.top = `${Math.round(top)}px`;
+}
+function applyKnownModelNameEntry(entry) {
+  if (!entry) return;
+  const modelName = document.getElementById('modelModelName');
+  const label = document.getElementById('modelLabel');
+  if (modelName) modelName.value = entry.model_name || '';
+  if (label && !label.value.trim() && entry.label) label.value = entry.label;
+  [
+    ['modelBaseUrl', 'base_url'],
+    ['modelApiPath', 'api_path'],
+    ['modelAuthType', 'auth_type'],
+    ['modelAuthHeader', 'auth_header'],
+    ['modelApiKeyEnv', 'api_key_env']
+  ].forEach(([id, key]) => {
+    const field = document.getElementById(id);
+    if (field && entry[key]) field.value = entry[key];
+  });
+  if (isMeshGenerationAdapter(currentKnownModelAdapter())) {
+    const mesh = document.getElementById('modelMeshGeneration');
+    const meshPrompt = document.getElementById('modelMeshPromptOnly');
+    const meshImage = document.getElementById('modelMeshImageInput');
+    const meshMulti = document.getElementById('modelMeshMultiImage');
+    const binary = document.getElementById('modelCapabilityBinaryOut');
+    if (mesh) mesh.checked = true;
+    const caps = entry.capabilities || [];
+    if (meshPrompt) meshPrompt.checked = caps.some(value => value.includes('text_to_mesh'));
+    if (meshImage) meshImage.checked = caps.some(value => value.includes('image_to_mesh')) || caps.some(value => value.includes('multi'));
+    if (meshMulti) meshMulti.checked = caps.some(value => value.includes('multi'));
+    if (binary) binary.checked = true;
+  }
+  applyModelCapabilityDefaults({ force: true });
+  syncVideoIngredientsDefaultFromCurrentModelName();
+  syncModelAuthFieldVisibility();
+  syncModelTransportUI();
+  syncModelProviderGuidance();
+  syncModelCapabilityUI();
+  updateModelEditorValidationState();
+  closeKnownModelNamePicker();
 }
 function closeRunOrderPopover(options = {}) {
   const popover = document.getElementById('runOrderPopover');
@@ -14874,6 +15173,7 @@ function restoreFocusBeforeHide(modal, fallback) {
 }
 
 function closeModelEditor() {
+  closeKnownModelNamePicker();
   const modal = document.getElementById('modelEditorModal');
   if (!modal) return;
   restoreFocusBeforeHide(modal, lastFocusedBeforeModelEditor || document.getElementById('createModelBtn'));
@@ -15530,9 +15830,9 @@ function updateModelsPanelSubtitle(usage = sessionTokenUsageCache) {
   el.innerHTML = formatEstimatedTokenSubtitle(usage);
 }
 
-async function loadSessionTokenUsage() {
+async function loadSessionTokenUsage(options = {}) {
   try {
-    const usage = await api('/api/session/usage');
+    const usage = await api('/api/session/usage', options);
     sessionTokenUsageCache = {
       inputTokens: Number(usage && usage.inputTokens || 0),
       outputTokens: Number(usage && usage.outputTokens || 0),
@@ -15559,8 +15859,8 @@ async function loadSessionTokenUsage() {
   }
 }
 
-async function loadModelStates() {
-  const models = await api('/api/models');
+async function loadModelStates(options = {}) {
+  const models = await api('/api/models', options);
   latestModelStates = Array.isArray(models) ? models : [];
   reviewerModelId = '';
   document.querySelectorAll('.agent-card').forEach(card => {
@@ -15624,7 +15924,7 @@ async function loadModelStates() {
   updatePromptWorkflowStatusStrip();
   reorderModelCardsForDisplay(modelDefinitionsCache, models);
   updateAgentCardRuntimeVisibility(models);
-  await loadSessionTokenUsage();
+  await loadSessionTokenUsage(options);
   return models;
 }
 async function toggleReviewer(card) {
@@ -15642,7 +15942,7 @@ async function toggleReviewer(card) {
     showToast(err.message || 'Could not update observer mode.');
   }
 }
-async function loadRiskState() { riskState = await api('/api/risk'); updateRiskUI(); }
+async function loadRiskState(options = {}) { riskState = await api('/api/risk', options); updateRiskUI(); }
 function isDeadDropWaveStateActive(state) {
   const stateName = String((state && state.state) || '').trim().toLowerCase();
   const promptSource = String((state && state.promptSource) || '').trim().toLowerCase();
@@ -15653,11 +15953,11 @@ function isCypherWaveStateActive(state) {
   const promptSource = String((state && state.promptSource) || '').trim().toLowerCase();
   return !!(state && state.visible && promptSource === 'cypher' && ['running', 'waiting', 'reviewing', 'risk'].includes(stateName));
 }
-async function loadWaveState() {
+async function loadWaveState(options = {}) {
   const previous = waveState;
   const wasDeadDropActive = isDeadDropWaveStateActive(previous);
   const wasCypherActive = isCypherWaveStateActive(previous);
-  waveState = await api('/api/wave-state');
+  waveState = await api('/api/wave-state', options);
   updateWaveUI();
   if (wasDeadDropActive && !isDeadDropWaveStateActive(waveState)) {
     await refreshDeadDropStatus().catch(() => {});
@@ -15803,6 +16103,21 @@ function setWorkModeStatus(message) {
 function setWorkModeStatusHTML(html) {
   const status = document.getElementById('workModePromptStatus');
   if (status) status.innerHTML = html || '';
+}
+function clearWorkModeWaitingNotice() {
+  if (workModeWaitingNoticeTimer) clearInterval(workModeWaitingNoticeTimer);
+  workModeWaitingNoticeTimer = null;
+  workModeWaitingNoticeStartedAt = 0;
+}
+function showWorkModeWaitingNotice(modelLabel) {
+  const elapsedMs = workModeWaitingNoticeStartedAt ? Date.now() - workModeWaitingNoticeStartedAt : 0;
+  const minutes = Math.max(2, Math.round(elapsedMs / 60000));
+  setWorkModeStatusHTML(`AgentGO is still waiting on a response from ${escapeHtml(modelLabel || 'the model')} (${minutes} min). Use <button type="button" class="work-mode-status-stop-link" onclick="emergencyStop()">Emergency Stop</button> if you want to kill the session.`);
+}
+function startWorkModeWaitingNotice(modelLabel) {
+  clearWorkModeWaitingNotice();
+  workModeWaitingNoticeStartedAt = Date.now();
+  workModeWaitingNoticeTimer = setInterval(() => showWorkModeWaitingNotice(modelLabel), 120000);
 }
 function formatWorkModeMessageText(value) {
   return escapeHtml(value || '').replace(/&lt;br\s*\/?&gt;/gi, '<br>');
@@ -17036,6 +17351,7 @@ async function sendWorkModePrompt() {
     autosizeWorkModePrompt();
   }
   setWorkModeStatus('Sending Work Mode prompt...');
+  startWorkModeWaitingNotice(getActiveBuilderLabel());
 
   try {
     const data = await api('/api/work-mode/send', {
@@ -17071,6 +17387,7 @@ async function sendWorkModePrompt() {
     updateWorkModeSettingsStatus();
     showErrorToast(friendly.summary);
   } finally {
+    clearWorkModeWaitingNotice();
     workModeSending = false;
     if (sendBtn) sendBtn.disabled = false;
     requestAnimationFrame(updateWorkModeScrollButton);
@@ -17126,6 +17443,7 @@ function resetWorkModeState() {
   workModeActiveFile = null;
   workModeMessages = [];
   workModeSending = false;
+  clearWorkModeWaitingNotice();
   workModeTemporaryAttachments = [];
   workModeContextFolderPath = '';
   workModeContextTargetPath = '';
@@ -17305,16 +17623,40 @@ async function deleteProject(name) {
   }
 }
 
-async function refreshLogs() {
-  const logs = await api('/api/logs');
-  const normalizedLogs = Array.isArray(logs)
-    ? logs
-    : (logs && Array.isArray(logs.logs) ? logs.logs : []);
-  if (!normalizedLogs.length) {
+function normalizeLogEntriesPayload(payload) {
+  return Array.isArray(payload) ? payload : (payload && Array.isArray(payload.logs) ? payload.logs : []);
+}
+function updateLatestLogSeq(entries = [], fallback = 0) {
+  let seq = Number(fallback || 0) || 0;
+  entries.forEach(entry => {
+    const entrySeq = Number(entry && entry.seq || 0) || 0;
+    if (entrySeq > seq) seq = entrySeq;
+  });
+  latestLogSeq = Math.max(latestLogSeq, seq);
+}
+async function refreshLogs(options = {}) {
+  const { poll = false, timeoutMs = 0 } = options || {};
+  const params = new URLSearchParams();
+  params.set('format', 'object');
+  params.set('limit', String(LOGS_POLL_LIMIT));
+  if (poll && latestLogSeq > 0) params.set('since', String(latestLogSeq));
+  const payload = await api(`/api/logs?${params.toString()}`, { timeoutMs });
+  const normalizedLogs = normalizeLogEntriesPayload(payload);
+  const nextSeq = Number(payload && payload.nextSeq || 0) || 0;
+  if (poll && latestLogSeq > 0) {
+    updateLatestLogSeq(normalizedLogs, nextSeq);
+    if (!normalizedLogs.length) return;
+    logsCache = logsCache.concat(normalizedLogs).slice(-LOGS_POLL_LIMIT);
+    renderLogsLines(logsCache);
+    return;
+  }
+  logsCache = normalizedLogs.slice(-LOGS_POLL_LIMIT);
+  updateLatestLogSeq(logsCache, nextSeq);
+  if (!logsCache.length) {
     renderLogsEmptyState();
     return;
   }
-  renderLogsLines(normalizedLogs);
+  renderLogsLines(logsCache);
 }
 
 async function loadFiles(path = "") {
@@ -17730,10 +18072,37 @@ async function mergeModel(card) {
 let videoJobsFilterModelId = '';
 let meshJobsFilterModelId = '';
 let videoJobsAutoRefreshTimer = null;
+let meshJobsAutoRefreshTimer = null;
+let videoJobsLastStructuralSignature = '';
+let meshJobsLastStructuralSignature = '';
 let videoJobSubmitInFlight = false;
+let meshJobSubmitInFlight = false;
+const MESH_VIEW_INPUTS = [
+  ['meshJobBackViewImage', 'meshJobBackViewPreview', 'meshJobBackViewBox'],
+  ['meshJobLeftViewImage', 'meshJobLeftViewPreview', 'meshJobLeftViewBox'],
+  ['meshJobRightViewImage', 'meshJobRightViewPreview', 'meshJobRightViewBox']
+];
+const MESH_EXTRA_VIEW_INPUTS = [
+  ['meshJobTopViewImage', 'meshJobTopViewPreview', 'meshJobTopViewBox', 'topViewImage'],
+  ['meshJobBottomViewImage', 'meshJobBottomViewPreview', 'meshJobBottomViewBox', 'bottomViewImage'],
+  ['meshJobLeftFrontViewImage', 'meshJobLeftFrontViewPreview', 'meshJobLeftFrontViewBox', 'leftFrontViewImage'],
+  ['meshJobRightFrontViewImage', 'meshJobRightFrontViewPreview', 'meshJobRightFrontViewBox', 'rightFrontViewImage']
+];
+let meshJobSettingsModelId = '';
+let meshJobSettingsOverrides = {};
 const VIDEO_JOB_DEFAULTS = { duration: '8', aspectRatio: '16:9', resolution: '720p' };
+function updateMeshPromptLimitHint() {
+  const label = document.getElementById('meshJobPromptLabel');
+  if (!label) return;
+  const prompt = document.getElementById('meshJobPrompt');
+  const length = prompt ? String(prompt.value || '').length : 0;
+  const showWarning = length >= 200;
+  label.innerHTML = `Prompt <span class="media-job-warning-badge${showWarning ? '' : ' is-hidden'}">Warning: some models have character limits</span>`;
+}
 let lastFocusedBeforeVideoJobs = null;
 let lastFocusedBeforeMeshJobs = null;
+let lastFocusedBeforeMeshViewer = null;
+let lastFocusedBeforeMeshModelSettings = null;
 function closeVideoJobsModal() {
   if (videoJobsAutoRefreshTimer) { clearTimeout(videoJobsAutoRefreshTimer); videoJobsAutoRefreshTimer = null; }
   const modal = document.getElementById('videoJobsModal');
@@ -17745,13 +18114,43 @@ function closeVideoJobsModal() {
   lastFocusedBeforeVideoJobs = null;
 }
 function closeMeshJobsModal() {
+  if (meshJobsAutoRefreshTimer) { clearTimeout(meshJobsAutoRefreshTimer); meshJobsAutoRefreshTimer = null; }
   const modal = document.getElementById('meshJobsModal');
   if (!modal) return;
   restoreFocusBeforeHide(modal, lastFocusedBeforeMeshJobs || document.getElementById('meshJobsBtn'));
   modal.classList.remove('open');
   modal.setAttribute('aria-hidden', 'true');
   toggleMediaSettings('mesh', false);
+  closeMeshModelSettings({ restoreFocus: false });
+  closeMeshViewerModal({ restoreFocus: false });
   lastFocusedBeforeMeshJobs = null;
+}
+function openMeshViewerModal(primaryUrl = '', title = '3D Mesh Viewer', previewUrl = '', trigger = null) {
+  const modal = document.getElementById('meshViewerModal');
+  const body = document.getElementById('meshViewerBody');
+  const titleEl = document.getElementById('meshViewerTitle');
+  const subtitle = document.getElementById('meshViewerSubtitle');
+  if (!modal || !body || !primaryUrl) return;
+  lastFocusedBeforeMeshViewer = trigger || document.activeElement;
+  if (titleEl) titleEl.textContent = title || '3D Mesh Viewer';
+  if (subtitle) subtitle.textContent = 'Drag to orbit, scroll to zoom, and inspect the generated mesh.';
+  const fallback = previewUrl ? `<div class="mesh-viewer-preview-fallback"><img src="${escapeHtml(previewUrl)}" alt="Rendered mesh preview"></div>` : '';
+  body.innerHTML = `<model-viewer src="${escapeHtml(primaryUrl)}" camera-controls auto-rotate shadow-intensity="1" alt="${escapeHtml(title || 'Generated 3D mesh')}"></model-viewer>${fallback}`;
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden', 'false');
+  const closeBtn = document.getElementById('meshViewerCloseBtn');
+  if (closeBtn) closeBtn.focus();
+}
+function closeMeshViewerModal(options = {}) {
+  const modal = document.getElementById('meshViewerModal');
+  if (!modal) return;
+  const restore = options.restoreFocus !== false;
+  const body = document.getElementById('meshViewerBody');
+  if (body) body.innerHTML = '';
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden', 'true');
+  if (restore) restoreFocusBeforeHide(modal, lastFocusedBeforeMeshViewer || document.getElementById('meshJobsRefreshBtn'));
+  lastFocusedBeforeMeshViewer = null;
 }
 function activeMediaModels(kind) {
   const states = new Map((latestModelStates || []).map(state => [String(state.id), state]));
@@ -17773,8 +18172,203 @@ function setActiveMediaModelLabel(kind, model) {
   const el = document.getElementById(kind === 'video' ? 'videoJobActiveModel' : 'meshJobActiveModel');
   if (!el) return;
   const label = kind === 'video' ? 'Video model' : '3D Mesh model';
-  el.textContent = model ? `${label}: ${model.label || model.id}` : `Activate exactly one ${label} to create jobs.`;
+  if (kind !== 'mesh') {
+    el.textContent = model ? `${label}: ${model.label || model.id}` : `Activate exactly one ${label} to create jobs.`;
+    return;
+  }
+  if (!model) {
+    el.classList.add('is-warning');
+    el.textContent = `Activate exactly one ${label} to create jobs.`;
+    return;
+  }
+  el.classList.remove('is-warning');
+  const modelLabel = String(model.label || model.id || '3D Mesh model').trim();
+  const provider = String(model.provider || 'provider').trim();
+  const adapter = String(model.adapter || 'adapter').trim();
+  const modelName = String(model.model_name || '').trim();
+  const endpoint = modelName || String(model.api_path || '').trim() || 'No model name set';
+  const providerAdapter = `${provider} / ${adapter}`;
+  const selectedLine = `SELECTED: ${modelLabel} ${providerAdapter} ${endpoint}`;
+  el.title = selectedLine;
+  el.innerHTML = `<span class="mesh-selected-prefix">SELECTED:</span><span class="mesh-selected-badge">${escapeHtml(modelLabel)}</span><span class="mesh-selected-badge">${escapeHtml(providerAdapter)}</span><span class="mesh-selected-badge is-endpoint">${escapeHtml(endpoint)}</span>`;
+  updateMeshModelSettingsContent(model);
 }
+function meshModelSettingsSummaryParts(model) {
+  if (!model) return [];
+  const modelLabel = String(model.label || model.id || '3D Mesh model').trim();
+  const provider = String(model.provider || 'provider').trim();
+  const adapter = String(model.adapter || 'adapter').trim();
+  const modelName = String(model.model_name || '').trim();
+  const endpoint = modelName || String(model.api_path || '').trim() || 'No model name set';
+  return [modelLabel, `${provider} / ${adapter}`, endpoint];
+}
+function meshModelRouteValue(model = {}) {
+  return String(model.model_name || model.api_path || '').toLowerCase();
+}
+function meshModelIsFal(model = {}) {
+  return String(model.adapter || '').toLowerCase() === 'fal_mesh' || String(model.provider || '').toLowerCase() === 'fal';
+}
+function meshModelIsTrellis(model = {}) {
+  const route = meshModelRouteValue(model);
+  return meshModelIsFal(model) && route.includes('trellis') && !route.includes('trellis-2');
+}
+function meshModelIsTrellis2(model = {}) {
+  return meshModelIsFal(model) && meshModelRouteValue(model).includes('trellis-2');
+}
+function meshModelIsHunyuanV2(model = {}) {
+  const route = meshModelRouteValue(model);
+  return meshModelIsFal(model) && (route.includes('hunyuan3d/v2') || route.includes('hunyuan-3d/v2'));
+}
+function meshModelIsHunyuanRapid(model = {}) {
+  const route = meshModelRouteValue(model);
+  return meshModelIsFal(model) && (route.includes('/rapid/') || route.includes('v3.1/rapid'));
+}
+function meshModelIsHunyuanPro(model = {}) {
+  const route = meshModelRouteValue(model);
+  return meshModelIsFal(model) && (route.includes('/pro/') || route.includes('v3.1/pro'));
+}
+function meshModelSupportsExtraImageInputs(model = {}) {
+  return meshModelIsHunyuanPro(model);
+}
+function ensureMeshSettingsModel(model = null) {
+  const id = model ? String(model.id || '') : '';
+  if (meshJobSettingsModelId !== id) {
+    meshJobSettingsModelId = id;
+    meshJobSettingsOverrides = {};
+  }
+}
+function meshSettingsControlsForModel(model = null) {
+  if (!model) return [];
+  const adapter = String(model.adapter || '').toLowerCase();
+  if (meshModelIsHunyuanV2(model)) {
+    return [
+      { key: 'fal_textured_mesh', type: 'checkbox', label: 'Generate textured mesh', help: 'When supported, asks fal to create a painted/textured mesh instead of a white base mesh. This may cost more.' }
+    ];
+  }
+  if (meshModelIsHunyuanRapid(model)) {
+    return [
+      { key: 'fal_enable_pbr', type: 'checkbox', label: 'Enable PBR materials', help: 'Requests richer material output when supported. This may cost more.' },
+      { key: 'fal_enable_geometry', type: 'checkbox', label: 'Geometry only / white GLB', help: 'Requests geometry-only output. When enabled, PBR is ignored by the provider.' }
+    ];
+  }
+  if (meshModelIsHunyuanPro(model)) {
+    return [
+      { key: 'fal_generate_type', type: 'select', label: 'Generation type', help: 'Leave blank for provider default.', options: [['', 'Provider Default'], ['Normal', 'Normal'], ['Geometry', 'Geometry']] },
+      { key: 'fal_enable_pbr', type: 'checkbox', label: 'Enable PBR materials', help: 'Requests PBR materials when supported. This may cost more.' },
+      { key: 'fal_face_count', type: 'number', label: 'Face count', help: 'Optional. Leave blank to let the provider choose its default.', min: 1, step: 1, placeholder: 'Provider default' }
+    ];
+  }
+  if (meshModelIsTrellis2(model)) {
+    return [
+      { key: 'fal_resolution', type: 'select', label: 'Resolution', help: 'Higher resolution can cost more. Leave blank for provider default.', options: [['', 'Provider Default'], ['512', '512'], ['1024', '1024'], ['1536', '1536']] },
+      { key: 'fal_texture_size', type: 'select', label: 'Texture size', help: 'Leave blank for provider default.', options: [['', 'Provider Default'], ['1024', '1024'], ['2048', '2048'], ['4096', '4096']] }
+    ];
+  }
+  if (meshModelIsTrellis(model)) {
+    return [
+      { key: 'fal_texture_size', type: 'select', label: 'Texture size', help: 'Leave blank for provider default.', options: [['', 'Provider Default'], ['512', '512'], ['1024', '1024'], ['2048', '2048']] }
+    ];
+  }
+  if (adapter === 'tripo_mesh') {
+    return [
+      { key: 'tripo_quality', type: 'select', label: 'Quality', help: 'Leave blank for provider default. Higher quality may take longer or cost more.', options: [['', 'Provider Default'], ['standard', 'Standard'], ['detailed', 'Detailed'], ['extreme', 'Extreme']] }
+    ];
+  }
+  return [];
+}
+function meshSettingValue(key) {
+  return Object.prototype.hasOwnProperty.call(meshJobSettingsOverrides, key) ? meshJobSettingsOverrides[key] : '';
+}
+function setMeshJobSetting(key, value) {
+  const cleanKey = String(key || '').trim();
+  if (!cleanKey) return;
+  if (value === null || value === undefined || value === '' || value === false) delete meshJobSettingsOverrides[cleanKey];
+  else meshJobSettingsOverrides[cleanKey] = value;
+}
+function handleMeshModelSettingChanged(el) {
+  if (!el) return;
+  const key = String(el.dataset.meshSetting || '').trim();
+  if (!key) return;
+  if (el.type === 'checkbox') setMeshJobSetting(key, el.checked ? true : null);
+  else if (el.type === 'number') setMeshJobSetting(key, String(el.value || '').trim());
+  else setMeshJobSetting(key, String(el.value || '').trim());
+}
+function buildMeshSettingControlHtml(control) {
+  const key = control.key;
+  const value = meshSettingValue(key);
+  const label = escapeHtml(control.label || key);
+  const help = control.help ? `<div class="mesh-setting-help">${escapeHtml(control.help)}</div>` : '';
+  if (control.type === 'checkbox') {
+    const checked = value === true ? ' checked' : '';
+    return `<div class="mesh-setting-field"><label><input type="checkbox" data-mesh-setting="${escapeHtml(key)}" onchange="handleMeshModelSettingChanged(this)"${checked}> <span>${label}</span></label>${help}</div>`;
+  }
+  if (control.type === 'select') {
+    const options = (control.options || []).map(([optValue, optLabel]) => `<option value="${escapeHtml(String(optValue))}"${String(value) === String(optValue) ? ' selected' : ''}>${escapeHtml(String(optLabel))}</option>`).join('');
+    return `<div class="mesh-setting-field"><label>${label}</label><select data-mesh-setting="${escapeHtml(key)}" onchange="handleMeshModelSettingChanged(this)">${options}</select>${help}</div>`;
+  }
+  if (control.type === 'number') {
+    const min = control.min ? ` min="${escapeHtml(String(control.min))}"` : '';
+    const step = control.step ? ` step="${escapeHtml(String(control.step))}"` : '';
+    const placeholder = control.placeholder ? ` placeholder="${escapeHtml(control.placeholder)}"` : '';
+    return `<div class="mesh-setting-field"><label>${label}</label><input type="number" data-mesh-setting="${escapeHtml(key)}" value="${escapeHtml(String(value || ''))}"${min}${step}${placeholder} onchange="handleMeshModelSettingChanged(this)" oninput="handleMeshModelSettingChanged(this)">${help}</div>`;
+  }
+  return '';
+}
+function updateMeshModelSettingsContent(model = null) {
+  const current = document.getElementById('meshModelSettingsCurrent');
+  const body = document.getElementById('meshModelSettingsBody');
+  const activeModel = model || requireSingleActiveMediaModel('mesh', { toast: false });
+  ensureMeshSettingsModel(activeModel);
+  if (current) {
+    const parts = meshModelSettingsSummaryParts(activeModel);
+    current.innerHTML = parts.length ? parts.map((part, index) => `<span class="${index === 2 ? 'is-endpoint' : ''}">${escapeHtml(part)}</span>`).join('') : '<span>No active 3D mesh model selected.</span>';
+  }
+  if (body) {
+    if (!activeModel) {
+      body.innerHTML = '<strong>No active 3D mesh model.</strong><span>Activate exactly one 3D mesh model before choosing model settings.</span>';
+    } else {
+      const controls = meshSettingsControlsForModel(activeModel);
+      if (!controls.length) body.innerHTML = '<strong>No adjustable settings exposed for this model yet.</strong><span>AgentGO will use provider defaults and any saved model configuration.</span>';
+      else body.innerHTML = `<div class="mesh-setting-grid">${controls.map(buildMeshSettingControlHtml).join('')}</div>`;
+    }
+  }
+}
+function openMeshModelSettings(event = null) {
+  if (event) { event.preventDefault(); event.stopPropagation(); }
+  const layer = document.getElementById('meshModelSettingsLayer');
+  if (!layer) return;
+  lastFocusedBeforeMeshModelSettings = event && event.currentTarget ? event.currentTarget : document.activeElement;
+  updateMeshModelSettingsContent(requireSingleActiveMediaModel('mesh', { toast: false }));
+  layer.classList.add('open');
+  layer.setAttribute('aria-hidden', 'false');
+  const closeBtn = document.getElementById('meshModelSettingsCloseBtn');
+  if (closeBtn) closeBtn.focus();
+}
+function closeMeshModelSettings(options = {}) {
+  const layer = document.getElementById('meshModelSettingsLayer');
+  if (!layer) return;
+  const restore = options.restoreFocus !== false;
+  layer.classList.remove('open');
+  layer.setAttribute('aria-hidden', 'true');
+  if (restore) restoreFocusBeforeHide(layer, lastFocusedBeforeMeshModelSettings || document.getElementById('meshModelSettingsBtn'));
+  lastFocusedBeforeMeshModelSettings = null;
+}
+function resetMeshModelSettingsDefaults(options = {}) {
+  meshJobSettingsOverrides = {};
+  ['meshJobQuality', 'meshJobOutputFormat'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  updateMeshModelSettingsContent(requireSingleActiveMediaModel('mesh', { toast: false }));
+  refreshMediaJobSubtitle('mesh', requireSingleActiveMediaModel('mesh', { toast: false }));
+  if (!options.silent) showToast('3D model settings reset. Provider defaults will be used for unset options.');
+}
+function currentMeshJobSettingsPayload() {
+  const out = {};
+  Object.entries(meshJobSettingsOverrides || {}).forEach(([key, value]) => {
+    if (value === null || value === undefined || value === '' || value === false) return;
+    out[key] = value;
+  });
+  return out;
+}
+
 function mediaSettingsSummary(kind) {
   if (kind === 'video') {
     return [
@@ -17783,10 +18377,7 @@ function mediaSettingsSummary(kind) {
       document.getElementById('videoJobResolution')?.value.trim()
     ].filter(Boolean).join(' / ');
   }
-  return [
-    document.getElementById('meshJobQuality')?.value.trim(),
-    document.getElementById('meshJobOutputFormat')?.value.trim()
-  ].filter(Boolean).join(' / ');
+  return '';
 }
 function setMediaJobSubtitle(kind, text, mode = 'default') {
   const selector = kind === 'video' ? '#videoJobsModal .media-job-subtitle' : '#meshJobsModal .media-job-subtitle';
@@ -17805,7 +18396,7 @@ function refreshMediaJobSubtitle(kind, model) {
     setMediaJobSubtitle(kind, settings, 'default');
     return;
   }
-  setMediaJobSubtitle(kind, kind === 'video' ? 'Submit text-to-video or image-guided video jobs, preview completed outputs, and auto-save results into projectwork video revisions.' : 'Submit text-to-mesh or image-guided mesh jobs, preview completed outputs, and auto-save results into projectwork 3D mesh revisions.', 'default');
+  setMediaJobSubtitle(kind, kind === 'video' ? 'Submit text-to-video or image-guided video jobs, preview completed outputs, and auto-save results into projectwork video revisions.' : 'Submit 3D mesh jobs and preview completed outputs.', 'default');
 }
 function toggleMediaSettings(kind, forceOpen = null) {
   const id = kind === 'video' ? 'videoJobSettingsPopover' : 'meshJobSettingsPopover';
@@ -17922,6 +18513,40 @@ function selectedVideoReferenceFiles() {
   }
   return files;
 }
+function clearMeshJobReferenceInputs() {
+  MESH_VIEW_INPUTS.forEach(([inputId, previewId, boxId]) => clearMediaFramePreview(inputId, previewId, boxId));
+  MESH_EXTRA_VIEW_INPUTS.forEach(([inputId, previewId, boxId]) => clearMediaFramePreview(inputId, previewId, boxId));
+}
+function selectedMeshReferenceFiles() {
+  return MESH_VIEW_INPUTS.map(([inputId]) => {
+    const input = document.getElementById(inputId);
+    const file = input && input.files && input.files[0] ? input.files[0] : null;
+    return [inputId, file];
+  }).filter(([, file]) => !!file);
+}
+function selectedMeshExtraFiles() {
+  return MESH_EXTRA_VIEW_INPUTS.map(([inputId,,, formName]) => {
+    const input = document.getElementById(inputId);
+    const file = input && input.files && input.files[0] ? input.files[0] : null;
+    return [formName, file];
+  }).filter(([, file]) => !!file);
+}
+function setMeshJobSubmitWorking(working) {
+  meshJobSubmitInFlight = !!working;
+  const btn = document.getElementById('meshJobsSubmitBtn');
+  if (!btn) return;
+  btn.disabled = !!working;
+  btn.setAttribute('aria-busy', working ? 'true' : 'false');
+  btn.textContent = working ? 'working...' : 'Create 3D Mesh Job';
+}
+function resetMeshJobTransientInputs() {
+  const prompt = document.getElementById('meshJobPrompt');
+  if (prompt) prompt.value = '';
+  updateMeshPromptLimitHint();
+  clearMediaFramePreview('meshJobInputImage', 'meshJobInputPreview', 'meshJobInputBox');
+  clearMeshJobReferenceInputs();
+}
+
 function syncVideoJobCapabilityUI() {
   const model = requireSingleActiveMediaModel('video', { toast: false });
   setActiveMediaModelLabel('video', model);
@@ -17952,13 +18577,24 @@ function syncMeshJobCapabilityUI() {
   const model = requireSingleActiveMediaModel('mesh', { toast: false });
   setActiveMediaModelLabel('mesh', model);
   const imageInput = document.getElementById('meshJobInputImage');
-  const hint = document.getElementById('meshJobCapabilityHint');
   const adapter = String((model && model.adapter) || '').toLowerCase();
-  const imageAllowed = !model || !!(model.mesh_image_input || ['meshy_mesh', 'tripo_mesh', 'hyper3d_mesh'].includes(adapter));
+  const imageAllowed = !model || !!(model.mesh_image_input || ['meshy_mesh', 'tripo_mesh', 'hyper3d_mesh', 'fal_mesh'].includes(adapter));
+  const multiViewAllowed = !model || !!(model.mesh_multi_image || ['tripo_mesh', 'meshy_mesh', 'fal_mesh'].includes(adapter));
+  const extraInputsAllowed = !!(model && meshModelSupportsExtraImageInputs(model));
   if (imageInput) { imageInput.disabled = false; if (model && !imageAllowed) clearMediaFramePreview('meshJobInputImage', 'meshJobInputPreview', 'meshJobInputBox'); }
+  MESH_VIEW_INPUTS.forEach(([inputId, previewId, boxId]) => {
+    const input = document.getElementById(inputId);
+    if (input) input.disabled = false;
+    if (model && !multiViewAllowed) clearMediaFramePreview(inputId, previewId, boxId);
+  });
+  const extraSection = document.getElementById('meshJobExtraInputsSection');
+  if (extraSection) extraSection.hidden = !extraInputsAllowed;
+  MESH_EXTRA_VIEW_INPUTS.forEach(([inputId, previewId, boxId]) => {
+    const input = document.getElementById(inputId);
+    if (input) input.disabled = !extraInputsAllowed;
+    if (!extraInputsAllowed) clearMediaFramePreview(inputId, previewId, boxId);
+  });
   refreshMediaJobSubtitle('mesh', model);
-  if (!hint) return;
-  hint.textContent = model ? 'Text-to-mesh and image-guided jobs are supported by the active 3D mesh model.' : '';
 }
 function fillVideoJobDefaults(model) {
   const values = {
@@ -17971,10 +18607,12 @@ function fillVideoJobDefaults(model) {
 }
 function fillMeshJobDefaults(model) {
   if (!model) return;
+  ensureMeshSettingsModel(model);
   const q = document.getElementById('meshJobQuality');
   const f = document.getElementById('meshJobOutputFormat');
   if (q) q.value = model.mesh_quality || '';
-  if (f) f.value = model.mesh_output_format || '';
+  if (f) f.value = model.mesh_output_format || 'glb';
+  updateMeshModelSettingsContent(model);
   refreshMediaJobSubtitle('mesh', model);
 }
 function videoJobIsActive(job = {}) {
@@ -18001,7 +18639,7 @@ async function deleteVideoJob(jobId, trigger = null) {
   if (!cleanId) return;
   const confirmed = await openConfirmModal({
     title: 'Delete Video Job?',
-    message: 'Delete this local video job record and its saved job artifacts? Projectwork videos that were already auto-saved will be left alone.',
+    message: 'Delete this local video job record and its saved job artifacts? Legacy projectwork copies made by older versions will be left alone.',
     confirmLabel: 'Delete Job',
     cancelLabel: 'Cancel',
     destructive: true,
@@ -18015,6 +18653,51 @@ async function deleteVideoJob(jobId, trigger = null) {
   showToast('Video job deleted.');
 }
 
+async function deleteMeshJob(jobId, trigger = null) {
+  const cleanId = String(jobId || '').trim();
+  if (!cleanId) return;
+  const confirmed = await openConfirmModal({
+    title: 'Delete 3D Mesh Job?',
+    message: 'Delete this local 3D mesh job record and its saved job artifacts?',
+    confirmLabel: 'Delete Job',
+    cancelLabel: 'Cancel',
+    destructive: true,
+    elevated: true,
+    trigger: trigger || document.activeElement
+  });
+  if (!confirmed) return;
+  const res = await fetch(`/api/mesh/jobs?jobId=${encodeURIComponent(cleanId)}`, { method: 'DELETE', credentials: 'same-origin' });
+  if (!res.ok) throw new Error(await res.text());
+  await refreshMeshJobsList();
+  showToast('3D mesh job deleted.');
+}
+
+
+async function refineMeshJob(jobId, trigger = null) {
+  const cleanId = String(jobId || '').trim();
+  if (!cleanId) return;
+  const confirmed = await openConfirmModal({
+    title: 'Refine / Texture Mesh?',
+    message: 'Send this completed Meshy preview job for a texture/refine pass? This may consume additional provider credits.',
+    confirmLabel: 'Refine / Texture',
+    cancelLabel: 'Cancel',
+    destructive: false,
+    elevated: true,
+    trigger: trigger || document.activeElement
+  });
+  if (!confirmed) return;
+  const res = await fetch('/api/mesh/jobs/refine', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jobId: cleanId })
+  });
+  if (!res.ok) throw new Error(await res.text());
+  await refreshMeshJobsList();
+  showToast('Mesh refine job accepted.');
+}
+
+
 function formatVideoDuration(value) {
   const clean = String(value || '').trim();
   if (!clean) return '';
@@ -18026,51 +18709,298 @@ function mediaPathBasename(path) {
   const parts = clean.split(/[\\/]+/).filter(Boolean);
   return parts.length ? parts[parts.length - 1] : clean;
 }
+function videoJobVideoSrc(job = {}) {
+  return job.artifactBlobUrl || job.projectworkBlobUrl || '';
+}
+function videoJobLatestPlayableId(jobs = []) {
+  const latestPlayableJob = jobs.find(job => job && videoJobVideoSrc(job));
+  return latestPlayableJob ? String(latestPlayableJob.jobId || '') : '';
+}
+function videoJobReferenceCount(job = {}) {
+  return Array.isArray(job.referenceImagePaths) ? job.referenceImagePaths.length : (Array.isArray(job.referenceImageBlobUrls) ? job.referenceImageBlobUrls.length : 0);
+}
+function buildVideoJobMetaHtml(job = {}) {
+  const providerMarker = job.providerOperationName || job.providerJobId;
+  const settingsText = [formatVideoDuration(job.duration), job.aspectRatio, job.resolution].filter(Boolean).join(' · ');
+  const referenceCount = videoJobReferenceCount(job);
+  return [
+    job.status ? `<span>Status: ${escapeHtml(job.status)}</span>` : '',
+    Number(job.pollCount || 0) > 0 ? `<span>Polled: ${Number(job.pollCount || 0)}</span>` : '',
+    job.remoteStatus ? `<span>Provider: ${escapeHtml(job.remoteStatus)}</span>` : '',
+    providerMarker ? `<span>Operation: ${escapeHtml(String(providerMarker).slice(-28))}</span>` : '',
+    settingsText ? `<span>Settings: ${escapeHtml(settingsText)}</span>` : '',
+    referenceCount ? `<span>References: ${referenceCount}/3</span>` : '',
+    (job.artifactVideoPath || job.projectworkVideoPath) ? `<span>Saved</span>` : ''
+  ].filter(Boolean).join('');
+}
+function buildVideoJobSavedFileLine(job = {}) {
+  const savedFile = mediaPathBasename(job.artifactVideoPath || job.projectworkVideoPath || '');
+  return savedFile ? `<div class="video-job-saved-file">Saved File: ${escapeHtml(savedFile)}</div>` : '';
+}
+function buildVideoJobThumbsHtml(job = {}) {
+  const thumbs = `${job.startFrameBlobUrl ? `<img src="${escapeHtml(job.startFrameBlobUrl)}" alt="Start frame">` : ''}${job.endFrameBlobUrl ? `<img src="${escapeHtml(job.endFrameBlobUrl)}" alt="End frame">` : ''}`;
+  return thumbs ? `<div class="video-job-thumb-row">${thumbs}</div>` : '';
+}
+function buildVideoJobPreviewHtml(job = {}, latestPlayableJobId = '') {
+  const active = videoJobIsActive(job);
+  const videoSrc = videoJobVideoSrc(job);
+  const showInlineVideo = videoSrc && latestPlayableJobId && String(job.jobId || '') === latestPlayableJobId;
+  if (showInlineVideo) return `<video controls preload="metadata" src="${escapeHtml(videoSrc)}"></video>`;
+  if (active) return `<div class="video-job-waiting"><span class="video-job-wait-dot" aria-hidden="true"></span><span>${escapeHtml(videoJobStatusText(job))}</span></div>`;
+  if (!videoSrc) return `<div class="video-small-note">${escapeHtml(job.error || 'Waiting for provider output...')}</div>`;
+  return '';
+}
+function buildVideoJobActionsHtml(job = {}) {
+  const videoSrc = videoJobVideoSrc(job);
+  return `${videoSrc ? `<a class="model-secondary-btn" href="${escapeHtml(videoSrc)}" target="_blank" rel="noopener noreferrer">Open Video</a>` : ''}${videoSrc ? `<a class="model-secondary-btn" href="${escapeHtml(videoSrc)}&download=1" target="_blank" rel="noopener noreferrer">Download</a>` : ''}`;
+}
+function videoJobsStructuralSignature(jobs = []) {
+  const latestPlayableJobId = videoJobLatestPlayableId(jobs);
+  return JSON.stringify((jobs || []).map(job => ({
+    id: String(job && job.jobId || ''),
+    active: videoJobIsActive(job || {}),
+    inline: latestPlayableJobId && String(job && job.jobId || '') === latestPlayableJobId,
+    videoSrc: videoJobVideoSrc(job || {}),
+    start: String(job && job.startFrameBlobUrl || ''),
+    end: String(job && job.endFrameBlobUrl || ''),
+    saved: String(job && (job.artifactVideoPath || job.projectworkVideoPath) || ''),
+    modelLabel: String(job && job.modelLabel || ''),
+    prompt: String(job && job.prompt || ''),
+    referenceCount: videoJobReferenceCount(job || {}),
+    error: String(job && job.error || '')
+  })));
+}
+function findVideoJobCard(root, jobId) {
+  const cleanId = String(jobId || '');
+  return Array.from(root.querySelectorAll('[data-video-job-id]')).find(card => String(card.dataset.videoJobId || '') === cleanId) || null;
+}
+function updateVideoJobCardsDynamic(jobs = []) {
+  const root = document.getElementById('videoJobsList');
+  if (!root) return;
+  const latestPlayableJobId = videoJobLatestPlayableId(jobs);
+  jobs.forEach(job => {
+    const card = findVideoJobCard(root, job.jobId);
+    if (!card) return;
+    const active = videoJobIsActive(job);
+    card.classList.toggle('is-active', active);
+    const meta = card.querySelector('.video-job-meta');
+    if (meta) meta.innerHTML = buildVideoJobMetaHtml(job);
+    const waitingText = card.querySelector('.video-job-waiting span:last-child');
+    if (waitingText && active) waitingText.textContent = videoJobStatusText(job);
+    const diagnostics = card.querySelector('.video-job-diagnostics-wrap');
+    if (diagnostics) diagnostics.innerHTML = renderVideoDiagnostics(job);
+    const savedFile = card.querySelector('.video-job-saved-file');
+    const nextSavedFile = mediaPathBasename(job.artifactVideoPath || job.projectworkVideoPath || '');
+    if (savedFile && nextSavedFile) savedFile.textContent = `Saved File: ${nextSavedFile}`;
+    const actions = card.querySelector('.video-job-actions');
+    if (actions) actions.innerHTML = buildVideoJobActionsHtml(job);
+  });
+}
 function renderVideoJobs(jobs = []) {
   const root = document.getElementById('videoJobsList');
   if (!root) return;
   if (!jobs.length) {
+    videoJobsLastStructuralSignature = '';
     root.innerHTML = '<div class="media-job-empty"><strong>No video jobs yet.</strong><span>Create a job to see status, previews, and completed outputs here.</span></div>';
     scheduleVideoJobsAutoRefresh([]);
     return;
   }
-  const latestPlayableJob = jobs.find(job => job && (job.projectworkBlobUrl || job.artifactBlobUrl));
-  const latestPlayableJobId = latestPlayableJob ? String(latestPlayableJob.jobId || '') : '';
+  const signature = videoJobsStructuralSignature(jobs);
+  if (signature === videoJobsLastStructuralSignature && root.querySelector('[data-video-job-id]')) {
+    updateVideoJobCardsDynamic(jobs);
+    scheduleVideoJobsAutoRefresh(jobs);
+    return;
+  }
+  const latestPlayableJobId = videoJobLatestPlayableId(jobs);
   root.innerHTML = jobs.map(job => {
     const active = videoJobIsActive(job);
-    const providerMarker = job.providerOperationName || job.providerJobId;
-    const settingsText = [formatVideoDuration(job.duration), job.aspectRatio, job.resolution].filter(Boolean).join(' · ');
-    const savedFile = mediaPathBasename(job.projectworkVideoPath || '');
-    const referenceCount = Array.isArray(job.referenceImagePaths) ? job.referenceImagePaths.length : (Array.isArray(job.referenceImageBlobUrls) ? job.referenceImageBlobUrls.length : 0);
-    const meta = [job.status ? `<span>Status: ${escapeHtml(job.status)}</span>` : '', Number(job.pollCount || 0) > 0 ? `<span>Polled: ${Number(job.pollCount || 0)}</span>` : '', job.remoteStatus ? `<span>Provider: ${escapeHtml(job.remoteStatus)}</span>` : '', providerMarker ? `<span>Operation: ${escapeHtml(String(providerMarker).slice(-28))}</span>` : '', settingsText ? `<span>Settings: ${escapeHtml(settingsText)}</span>` : '', referenceCount ? `<span>References: ${referenceCount}/3</span>` : '', job.projectworkVideoPath ? `<span>Auto-saved</span>` : ''].filter(Boolean).join('');
-    const savedFileLine = savedFile ? `<div class="video-job-saved-file">Saved File: ${escapeHtml(savedFile)}</div>` : '';
-    const thumbs = `${job.startFrameBlobUrl ? `<img src="${escapeHtml(job.startFrameBlobUrl)}" alt="Start frame">` : ''}${job.endFrameBlobUrl ? `<img src="${escapeHtml(job.endFrameBlobUrl)}" alt="End frame">` : ''}`;
-    const videoSrc = job.projectworkBlobUrl || job.artifactBlobUrl;
-    const showInlineVideo = videoSrc && latestPlayableJobId && String(job.jobId || '') === latestPlayableJobId;
-    let video = '';
-    if (showInlineVideo) video = `<video controls preload="metadata" src="${escapeHtml(videoSrc)}"></video>`;
-    else if (active) video = `<div class="video-job-waiting"><span class="video-job-wait-dot" aria-hidden="true"></span><span>${escapeHtml(videoJobStatusText(job))}</span></div>`;
-    else if (!videoSrc) video = `<div class="video-small-note">${escapeHtml(job.error || 'Waiting for provider output...')}</div>`;
-    const diagnostics = renderVideoDiagnostics(job);
     const deleteAction = active ? '' : `<button class="video-job-delete-btn" type="button" onclick="deleteVideoJob('${escapeHtml(String(job.jobId || ''))}', this).catch(err =&gt; showErrorToast(err.message))">Delete</button>`;
-    const actions = `${videoSrc ? `<a class="model-secondary-btn" href="${escapeHtml(videoSrc)}" target="_blank" rel="noopener noreferrer">Open Video</a>` : ''}${videoSrc ? `<a class="model-secondary-btn" href="${escapeHtml(videoSrc)}&download=1" target="_blank" rel="noopener noreferrer">Download</a>` : ''}`;
-    return `<div class="video-job-card${active ? ' is-active' : ''}"><div class="video-job-card-head"><strong>${escapeHtml(job.modelLabel || 'Video Job')}</strong>${deleteAction}</div><div class="video-small-note">${escapeHtml(job.prompt || '')}</div>${thumbs ? `<div class="video-job-thumb-row">${thumbs}</div>` : ''}${video}<div class="video-job-meta">${meta}</div>${savedFileLine}${diagnostics}<div class="video-job-actions">${actions}</div></div>`;
+    return `<div class="video-job-card${active ? ' is-active' : ''}" data-video-job-id="${escapeHtml(String(job.jobId || ''))}"><div class="video-job-card-head"><strong>${escapeHtml(job.modelLabel || 'Video Job')}</strong>${deleteAction}</div><div class="video-small-note">${escapeHtml(job.prompt || '')}</div>${buildVideoJobThumbsHtml(job)}<div class="video-job-status-region">${buildVideoJobPreviewHtml(job, latestPlayableJobId)}</div><div class="video-job-meta">${buildVideoJobMetaHtml(job)}</div>${buildVideoJobSavedFileLine(job)}<div class="video-job-diagnostics-wrap">${renderVideoDiagnostics(job)}</div><div class="video-job-actions">${buildVideoJobActionsHtml(job)}</div></div>`;
   }).join('');
+  videoJobsLastStructuralSignature = signature;
   scheduleVideoJobsAutoRefresh(jobs);
+}
+function meshJobIsActive(job = {}) {
+  const status = String(job.status || '').toLowerCase();
+  return ['accepted', 'running', 'queued', 'submitted', 'processing'].includes(status);
+}
+function meshModelIsInlineViewable(path = '') {
+  return /\.(glb|gltf)(\?|$)/i.test(String(path || ''));
+}
+function meshReferenceCount(job = {}) {
+  return Array.isArray(job.referenceImagePaths) ? job.referenceImagePaths.length : 0;
+}
+function meshJobPrimaryUrl(job = {}) {
+  return job.primaryModelPath ? buildBlobUrl(job.primaryModelPath) : (job.primaryProjectworkPath ? buildBlobUrl(job.primaryProjectworkPath) : '');
+}
+function formatElapsedSince(timestamp) {
+  const start = timestamp ? Date.parse(timestamp) : NaN;
+  if (!Number.isFinite(start)) return '';
+  const elapsed = Math.max(0, Math.floor((Date.now() - start) / 1000));
+  const mins = Math.floor(elapsed / 60);
+  const secs = elapsed % 60;
+  if (mins >= 60) {
+    const hours = Math.floor(mins / 60);
+    const rem = mins % 60;
+    return `${hours}:${String(rem).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+  return `${mins}:${String(secs).padStart(2, '0')}`;
+}
+function meshJobStatusText(job = {}) {
+  const parts = [];
+  if (job.status) parts.push(`Status: ${job.status}`);
+  const provider = String(job.modelLabel || job.provider || job.adapter || 'provider').trim();
+  parts.push(`checking ${provider || 'provider'}...`);
+  if (job.remoteStatus) parts.push(`provider: ${job.remoteStatus}`);
+  const elapsed = formatElapsedSince(job.createdAt);
+  if (elapsed) parts.push(`${elapsed} elapsed`);
+  return parts.join(' — ') || 'Checking provider...';
+}
+function buildMeshJobMetaHtml(job = {}) {
+  const referenceCount = meshReferenceCount(job);
+  return [
+    job.status ? `<span>Status: ${escapeHtml(job.status)}</span>` : '',
+    job.remoteStatus ? `<span>Provider: ${escapeHtml(job.remoteStatus)}</span>` : '',
+    job.meshMode ? `<span>${escapeHtml(job.meshMode)}</span>` : '',
+    job.modelLabel ? `<span>${escapeHtml(job.modelLabel)}</span>` : '',
+    job.quality ? `<span>${escapeHtml(job.quality)}</span>` : '',
+    job.outputFormat ? `<span>${escapeHtml(job.outputFormat)}</span>` : '',
+    referenceCount ? `<span>Views: ${referenceCount + (job.inputImagePath ? 1 : 0)}</span>` : '',
+    job.refinedJobId ? `<span>Refine started</span>` : '',
+    job.refinedFromJobId ? `<span>Refined texture</span>` : '',
+    (job.artifactBundleRoot || job.primaryModelPath || job.projectworkBundleRoot) ? `<span>Artifact Saved</span>` : ''
+  ].filter(Boolean).join('');
+}
+function meshJobCanView(job = {}) {
+  const primaryUrl = meshJobPrimaryUrl(job);
+  return !!(primaryUrl && meshModelIsInlineViewable(job.primaryModelPath || job.primaryProjectworkPath || ''));
+}
+function meshJobCanRefine(job = {}) {
+  const adapter = String(job.adapter || '').toLowerCase();
+  const status = String(job.status || '').toLowerCase();
+  const mode = String(job.meshMode || '').toLowerCase();
+  const taskType = String(job.providerTaskType || '').toLowerCase();
+  return adapter === 'meshy_mesh'
+    && status === 'completed'
+    && !!job.providerJobId
+    && !job.refinedJobId
+    && !job.inputImagePath
+    && !(Array.isArray(job.referenceImagePaths) && job.referenceImagePaths.length)
+    && (!mode || mode === 'preview' || taskType.includes('preview'));
+}
+function meshJobDownloadUrl(job = {}) {
+  const jobId = String(job.jobId || '').trim();
+  return jobId ? `/api/mesh/jobs/download?jobId=${encodeURIComponent(jobId)}` : '';
+}
+function meshJobOutputBasename(job = {}) {
+  return mediaPathBasename(job.primaryModelPath || job.primaryProjectworkPath || '');
+}
+function meshJobIsNonPreviewableOutput(job = {}) {
+  const primary = String(job.primaryModelPath || job.primaryProjectworkPath || '').trim();
+  return !!(primary && !meshModelIsInlineViewable(primary));
+}
+function buildMeshExternalViewerLinksHtml() {
+  return '<div class="mesh-job-output-links"><a href="https://3dviewer.net/" target="_blank" rel="noopener noreferrer">3DViewer.net</a><a href="https://www.meshy.ai/3d-tools/online-viewer/obj" target="_blank" rel="noopener noreferrer">Meshy OBJ Viewer</a><a href="https://innerscene.com/tools/3d-viewer" target="_blank" rel="noopener noreferrer">Innerscene Viewer</a><a href="https://www.tripo3d.ai/3d-tools/3d-viewer" target="_blank" rel="noopener noreferrer">Tripo 3D Viewer</a></div>';
+}
+function buildMeshNonPreviewableNoticeHtml(job = {}) {
+  if (!meshJobIsNonPreviewableOutput(job)) return '';
+  const name = meshJobOutputBasename(job);
+  return `<div class="mesh-job-output-note"><strong>${escapeHtml(name ? `${name} output received.` : 'Non-GLB output received.')}</strong><span>AgentGO previews GLB files only. Download the job ZIP, then open the mesh in Blender or an external viewer.</span>${buildMeshExternalViewerLinksHtml()}</div>`;
+}
+function buildMeshJobPreviewHtml(job = {}, primaryUrl = '', latestInlineJobId = '') {
+  const active = meshJobIsActive(job);
+  if (active) return `<div class="mesh-job-waiting"><span class="mesh-job-wait-dot" aria-hidden="true"></span><span>${escapeHtml(meshJobStatusText(job))}</span></div>`;
+  const previewUrl = job.previewImagePath ? buildBlobUrl(job.previewImagePath) : '';
+  const canViewInline = primaryUrl && meshModelIsInlineViewable(job.primaryModelPath || job.primaryProjectworkPath || '');
+  const shouldMountInline = canViewInline && String(job.jobId || '') === String(latestInlineJobId || '');
+  if (shouldMountInline) {
+    const fallback = previewUrl ? `<div class="mesh-job-preview-fallback"><img src="${escapeHtml(previewUrl)}" alt="Rendered mesh preview"></div>` : '';
+    return `<div class="mesh-job-preview"><model-viewer src="${escapeHtml(primaryUrl)}" camera-controls auto-rotate shadow-intensity="1" alt="Generated 3D mesh preview"></model-viewer>${fallback}</div>`;
+  }
+  if (previewUrl) return `<div class="mesh-job-preview"><img src="${escapeHtml(previewUrl)}" alt="Mesh preview">${buildMeshNonPreviewableNoticeHtml(job)}</div>`;
+  if (canViewInline) return `<div class="mesh-small-note">Mesh ready. Click View Mesh to inspect it.</div>`;
+  if (meshJobIsNonPreviewableOutput(job)) return buildMeshNonPreviewableNoticeHtml(job);
+  return `<div class="mesh-small-note">${escapeHtml(job.error || 'Waiting for provider output...')}</div>`;
+}
+function buildMeshJobActionsHtml(job = {}) {
+  const primaryUrl = meshJobPrimaryUrl(job);
+  const previewUrl = job.previewImagePath ? buildBlobUrl(job.previewImagePath) : '';
+  const title = String(job.modelLabel || '3D Mesh Viewer');
+  const view = meshJobCanView(job) ? `<button class="model-secondary-btn" type="button" onclick="openMeshViewerModal('${escapeHtml(escJsSingle(primaryUrl))}','${escapeHtml(escJsSingle(title))}','${escapeHtml(escJsSingle(previewUrl))}', this)">View Mesh</button>` : '';
+  const refine = meshJobCanRefine(job) ? `<button class="model-secondary-btn" type="button" onclick="refineMeshJob('${escapeHtml(escJsSingle(String(job.jobId || '')))}', this).catch(err =&gt; showErrorToast(err.message))">Refine / Texture</button>` : '';
+  const downloadUrl = meshJobDownloadUrl(job);
+  const canDownload = downloadUrl && !meshJobIsActive(job) && (job.primaryModelPath || job.previewImagePath || job.artifactBundleRoot || job.metadataPath);
+  const download = canDownload ? `<a class="model-secondary-btn" href="${escapeHtml(downloadUrl)}" target="_blank" rel="noopener noreferrer">Download Job ZIP</a>` : '';
+  return `${refine}${view}${download}`;
+}
+function meshJobsStructuralSignature(jobs = []) {
+  return JSON.stringify((jobs || []).map(job => ({
+    id: String(job && job.jobId || ''),
+    active: meshJobIsActive(job || {}),
+    primary: String(job && (job.primaryModelPath || job.primaryProjectworkPath) || ''),
+    preview: String(job && job.previewImagePath || ''),
+    modelLabel: String(job && job.modelLabel || ''),
+    prompt: String(job && job.prompt || ''),
+    status: String(job && job.status || ''),
+    remoteStatus: String(job && job.remoteStatus || ''),
+    saved: String(job && (job.artifactBundleRoot || job.primaryModelPath || job.projectworkBundleRoot) || ''),
+    referenceCount: meshReferenceCount(job || {}),
+    meshMode: String(job && job.meshMode || ''),
+    taskType: String(job && job.providerTaskType || ''),
+    refinedJobId: String(job && job.refinedJobId || ''),
+    refinedFromJobId: String(job && job.refinedFromJobId || ''),
+    outputName: meshJobOutputBasename(job || {}),
+    error: String(job && job.error || '')
+  })));
+}
+function findMeshJobCard(root, jobId) {
+  const cleanId = String(jobId || '');
+  return Array.from(root.querySelectorAll('[data-mesh-job-id]')).find(card => String(card.dataset.meshJobId || '') === cleanId) || null;
+}
+function updateMeshJobCardsDynamic(jobs = []) {
+  const root = document.getElementById('meshJobsList');
+  if (!root) return;
+  jobs.forEach(job => {
+    const card = findMeshJobCard(root, job.jobId);
+    if (!card) return;
+    const active = meshJobIsActive(job);
+    card.classList.toggle('is-active', active);
+    const meta = card.querySelector('.mesh-job-meta');
+    if (meta) meta.innerHTML = buildMeshJobMetaHtml(job);
+    const waitingText = card.querySelector('.mesh-job-waiting span:last-child');
+    if (waitingText && active) waitingText.textContent = meshJobStatusText(job);
+    const actions = card.querySelector('.mesh-job-actions');
+    if (actions) actions.innerHTML = buildMeshJobActionsHtml(job);
+  });
 }
 function renderMeshJobs(jobs = []) {
   const root = document.getElementById('meshJobsList');
   if (!root) return;
-  if (!jobs.length) { root.innerHTML = '<div class="media-job-empty"><strong>No 3D mesh jobs yet.</strong><span>Create a job to see status, previews, and completed outputs here.</span></div>'; return; }
+  if (!jobs.length) {
+    meshJobsLastStructuralSignature = '';
+    root.innerHTML = '<div class="media-job-empty"><strong>No 3D mesh jobs yet.</strong><span>Create a job to see status, previews, and completed outputs here.</span></div>';
+    scheduleMeshJobsAutoRefresh([]);
+    return;
+  }
+  const signature = meshJobsStructuralSignature(jobs);
+  if (signature === meshJobsLastStructuralSignature && root.querySelector('[data-mesh-job-id]')) {
+    updateMeshJobCardsDynamic(jobs);
+    scheduleMeshJobsAutoRefresh(jobs);
+    return;
+  }
+  const latestInlineJob = jobs.find(job => job && !meshJobIsActive(job) && meshJobCanView(job));
+  const latestInlineJobId = latestInlineJob ? String(latestInlineJob.jobId || '') : '';
   root.innerHTML = jobs.map(job => {
-    const meta = [job.status ? `<span>Status: ${escapeHtml(job.status)}</span>` : '', job.modelLabel ? `<span>${escapeHtml(job.modelLabel)}</span>` : '', job.quality ? `<span>${escapeHtml(job.quality)}</span>` : '', job.outputFormat ? `<span>${escapeHtml(job.outputFormat)}</span>` : '', job.projectworkBundleRoot ? `<span>Auto-saved</span>` : ''].filter(Boolean).join('');
-    const preview = job.previewImagePath ? `<div class="mesh-job-preview"><img src="${escapeHtml(buildBlobUrl(job.previewImagePath))}" alt="Mesh preview"></div>` : `<div class="mesh-small-note">${escapeHtml(job.error || 'Waiting for provider output...')}</div>`;
-    const primaryUrl = job.primaryProjectworkPath ? buildBlobUrl(job.primaryProjectworkPath) : (job.primaryModelPath ? buildBlobUrl(job.primaryModelPath) : '');
-    const actions = `${primaryUrl ? `<a class="model-secondary-btn" href="${escapeHtml(primaryUrl)}" target="_blank" rel="noopener noreferrer">Open Mesh</a>` : ''}${primaryUrl ? `<a class="model-secondary-btn" href="${escapeHtml(primaryUrl)}&download=1" target="_blank" rel="noopener noreferrer">Download</a>` : ''}`;
-    return `<div class="mesh-job-card"><div><strong>${escapeHtml(job.modelLabel || '3D Mesh Job')}</strong></div><div class="mesh-small-note">${escapeHtml(job.prompt || '')}</div>${preview}<div class="mesh-job-meta">${meta}</div><div class="mesh-job-actions">${actions}</div></div>`;
+    const active = meshJobIsActive(job);
+    const deleteAction = active ? '' : `<button class="mesh-job-delete-btn" type="button" onclick="deleteMeshJob('${escapeHtml(escJsSingle(String(job.jobId || '')))}', this).catch(err =&gt; showErrorToast(err.message))">Delete</button>`;
+    const primaryUrl = meshJobPrimaryUrl(job);
+    const preview = buildMeshJobPreviewHtml(job, primaryUrl, latestInlineJobId);
+    return `<div class="mesh-job-card${active ? ' is-active' : ''}" data-mesh-job-id="${escapeHtml(String(job.jobId || ''))}"><div class="mesh-job-card-head"><strong>${escapeHtml(job.modelLabel || '3D Mesh Job')}</strong>${deleteAction}</div><div class="mesh-small-note">${escapeHtml(job.prompt || '')}</div>${preview}<div class="mesh-job-meta">${buildMeshJobMetaHtml(job)}</div><div class="mesh-job-actions">${buildMeshJobActionsHtml(job)}</div></div>`;
   }).join('');
+  meshJobsLastStructuralSignature = signature;
+  scheduleMeshJobsAutoRefresh(jobs);
 }
-function buildBlobUrl(path) { return path ? `/api/blob?path=${encodeURIComponent(path)}` : ''; }
+function buildBlobUrl(path) { return path ? `/api/file/blob?path=${encodeURIComponent(path)}` : ''; }
 function scheduleVideoJobsAutoRefresh(jobs = []) {
   if (videoJobsAutoRefreshTimer) { clearTimeout(videoJobsAutoRefreshTimer); videoJobsAutoRefreshTimer = null; }
   const modal = document.getElementById('videoJobsModal');
@@ -18078,17 +19008,27 @@ function scheduleVideoJobsAutoRefresh(jobs = []) {
   if (!isOpen || !jobs.some(videoJobIsActive)) return;
   videoJobsAutoRefreshTimer = setTimeout(() => {
     videoJobsAutoRefreshTimer = null;
-    refreshVideoJobsList({ silent: true }).catch(() => {});
+    runPollingLane('video-jobs', () => refreshVideoJobsList({ silent: true, poll: true }));
   }, 5000);
 }
-async function refreshVideoJobsList({ silent = false } = {}) {
+async function refreshVideoJobsList({ silent = false, poll = false } = {}) {
   const query = videoJobsFilterModelId ? `?modelId=${encodeURIComponent(videoJobsFilterModelId)}` : '';
-  const data = await api(`/api/video/jobs${query}`);
+  const data = await api(`/api/video/jobs${query}`, poll ? { timeoutMs: POLL_REQUEST_TIMEOUT_MS } : {});
   renderVideoJobs(Array.isArray(data.jobs) ? data.jobs : []);
 }
-async function refreshMeshJobsList() {
+function scheduleMeshJobsAutoRefresh(jobs = []) {
+  if (meshJobsAutoRefreshTimer) { clearTimeout(meshJobsAutoRefreshTimer); meshJobsAutoRefreshTimer = null; }
+  const modal = document.getElementById('meshJobsModal');
+  const isOpen = modal && modal.classList.contains('open') && modal.getAttribute('aria-hidden') !== 'true';
+  if (!isOpen || !jobs.some(meshJobIsActive)) return;
+  meshJobsAutoRefreshTimer = setTimeout(() => {
+    meshJobsAutoRefreshTimer = null;
+    runPollingLane('mesh-jobs', () => refreshMeshJobsList({ silent: true, poll: true }));
+  }, 5000);
+}
+async function refreshMeshJobsList({ silent = false, poll = false } = {}) {
   const query = meshJobsFilterModelId ? `?modelId=${encodeURIComponent(meshJobsFilterModelId)}` : '';
-  const data = await api(`/api/mesh/jobs${query}`);
+  const data = await api(`/api/mesh/jobs${query}`, poll ? { timeoutMs: POLL_REQUEST_TIMEOUT_MS } : {});
   renderMeshJobs(Array.isArray(data.jobs) ? data.jobs : []);
 }
 async function openVideoJobsModal() {
@@ -18120,6 +19060,7 @@ async function openMeshJobsModal() {
   meshJobsFilterModelId = model ? String(model.id) : '';
   fillMeshJobDefaults(model);
   syncMeshJobCapabilityUI();
+  updateMeshPromptLimitHint();
   const modal = document.getElementById('meshJobsModal');
   if (!modal) return;
   modal.classList.add('open');
@@ -18170,22 +19111,47 @@ async function submitVideoJob() {
   }
 }
 async function submitMeshJob() {
+  if (meshJobSubmitInFlight) return;
   if (!requireActiveProjectSelection()) return;
   const model = requireSingleActiveMediaModel('mesh', { toast: true });
   if (!model) return;
+  const promptValue = String(document.getElementById('meshJobPrompt')?.value || '').trim();
+  const qualityValue = String(document.getElementById('meshJobQuality')?.value || '').trim();
+  const outputFormatValue = String(document.getElementById('meshJobOutputFormat')?.value || '').trim();
+  const inputEl = document.getElementById('meshJobInputImage');
+  const inputFile = inputEl && inputEl.files && inputEl.files[0] ? inputEl.files[0] : null;
+  const referenceFiles = selectedMeshReferenceFiles();
+  const extraFiles = selectedMeshExtraFiles();
+  if (!promptValue && !inputFile && !referenceFiles.length && !extraFiles.length) {
+    showToast('Add a prompt or at least one image before creating a 3D mesh job.', 'warning');
+    return;
+  }
   const form = new FormData();
   form.append('modelId', String(model.id));
-  form.append('prompt', document.getElementById('meshJobPrompt').value.trim());
-  form.append('quality', document.getElementById('meshJobQuality').value.trim());
-  form.append('outputFormat', document.getElementById('meshJobOutputFormat').value.trim());
-  const inputFile = document.getElementById('meshJobInputImage').files[0];
+  form.append('prompt', promptValue);
+  form.append('quality', qualityValue);
+  form.append('outputFormat', outputFormatValue);
+  const settingsPayload = currentMeshJobSettingsPayload();
+  if (Object.keys(settingsPayload).length) form.append('meshSettings', JSON.stringify(settingsPayload));
   if (inputFile) form.append('inputImage', inputFile);
-  const res = await fetch('/api/mesh/jobs', { method: 'POST', body: form, credentials: 'same-origin' });
-  if (!res.ok) throw new Error(await res.text());
-  meshJobsFilterModelId = String(model.id);
-  await refreshMeshJobsList();
-  await loadModelStates().catch(() => {});
-  showToast('3D mesh job accepted. Completed output will auto-save to projectwork/3dmesh.');
+  referenceFiles.forEach(([inputId, file]) => {
+    const field = inputId === 'meshJobBackViewImage' ? 'backViewImage' : inputId === 'meshJobLeftViewImage' ? 'leftViewImage' : 'rightViewImage';
+    form.append(field, file);
+  });
+  extraFiles.forEach(([field, file]) => form.append(field, file));
+  setMeshJobSubmitWorking(true);
+  try {
+    const res = await fetch('/api/mesh/jobs', { method: 'POST', body: form, credentials: 'same-origin' });
+    if (!res.ok) throw new Error(await res.text());
+    meshJobsFilterModelId = String(model.id);
+    resetMeshJobTransientInputs();
+    syncMeshJobCapabilityUI();
+    await refreshMeshJobsList();
+    await loadModelStates().catch(() => {});
+    showToast('3D mesh job accepted. Completed output will save to this project mesh job record.');
+  } finally {
+    setMeshJobSubmitWorking(false);
+  }
 }
 document.getElementById('clearLogsBtn').addEventListener('click', () => {
   clearLogsPanel();
@@ -18386,6 +19352,8 @@ const meshJobsBtn = document.getElementById('meshJobsBtn');
 if (meshJobsBtn) meshJobsBtn.addEventListener('click', () => openMeshJobsModal().catch(err => showErrorToast(err.message)));
 ['videoJobDuration','videoJobAspectRatio','videoJobResolution'].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('input', () => refreshMediaJobSubtitle('video', requireSingleActiveMediaModel('video', { toast: false }))); });
 ['meshJobQuality','meshJobOutputFormat'].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('input', () => refreshMediaJobSubtitle('mesh', requireSingleActiveMediaModel('mesh', { toast: false }))); });
+const meshJobPromptInput = document.getElementById('meshJobPrompt');
+if (meshJobPromptInput) meshJobPromptInput.addEventListener('input', updateMeshPromptLimitHint);
 const doubleTapCancelBtn = document.getElementById('doubleTapCancelBtn');
 if (doubleTapCancelBtn) doubleTapCancelBtn.addEventListener('click', closeDoubleTapPopover);
 const doubleTapArmBtn = document.getElementById('doubleTapArmBtn');
@@ -18743,12 +19711,12 @@ const modelFieldHelpText = {
   modelModelName: ['Model Name', 'The exact model string sent to the provider API, such as gpt-4.1-mini or gemini-2.5-flash. This is different from the display label.'],
   modelBaseUrl: ['Base URL', 'The root endpoint for the provider API, without the specific route path. Provider presets usually fill this for you.'],
   modelApiPath: ['API Path', 'The route AgentGO calls under the Base URL, such as /v1/responses. Provider presets usually fill this for you.'],
-  modelAuthType: ['Auth Type', 'How AgentGO authenticates this model. Use None for local unauthenticated endpoints, Bearer Token for most APIs, Basic Auth for username/password, Header API Key for custom key headers, or Google ADC for Vertex AI.'],
+  modelAuthType: ['Auth Type', 'How AgentGO authenticates this model. Use None for local unauthenticated endpoints, Bearer Token for most APIs, Basic Auth for username/password, Header API Key for custom key headers, fal API Key for fal.ai, or Google ADC for Vertex AI.'],
   modelApiUser: ['API User', 'The username for Basic Auth providers. Leave it blank when the selected Auth Type does not use Basic Auth.'],
   modelApiPass: ['API Pass', 'Some models require a Basic Auth password. This is hidden after saving; leave it blank to keep the saved password, enter a new one to replace it, or type DELETE and save to remove it.'],
-  modelApiKeyEnv: ['API Key Env / ADC Env', 'Optional environment variable name. For API-key modes AgentGO checks this before using a saved key. For Google ADC, use GOOGLE_APPLICATION_CREDENTIALS or leave blank to use normal ADC discovery such as local gcloud credentials, attached service accounts, or Workload Identity Federation sources.'],
+  modelApiKeyEnv: ['API Key Env / ADC Env', 'Optional environment variable name. For API-key modes AgentGO checks this before using a saved key. For fal.ai, use FAL_KEY. For Google ADC, use GOOGLE_APPLICATION_CREDENTIALS or leave blank to use normal ADC discovery such as local gcloud credentials, attached service accounts, or Workload Identity Federation sources.'],
   modelApiKey: ['API Key', 'Some providers require an API key. This is hidden after saving; leave it blank to keep the saved key, enter a new key to replace it, or type DELETE and save to remove it.'],
-  modelAuthHeader: ['Auth Header', 'The HTTP header used for bearer or header-key authentication. Authorization is common for bearer tokens; some providers use names like Api-Key.'],
+  modelAuthHeader: ['Auth Header', 'The HTTP header used for bearer or header-key authentication. Authorization is common for bearer/fal keys; some providers use names like Api-Key.'],
   modelHeaders: ['Headers', 'Extra HTTP headers sent with model requests. Headers may contain secrets, so saved headers are hidden on edit; leave blank to keep them, enter new Header: value lines to replace them, or type DELETE and save to remove them.'],
   modelMaxTokens: ['Max Output Tokens', 'Blank/0 lets the adapter or provider choose. If responses are cut off or JSON is incomplete, increase this value.'],
   modelTimeout: ['Timeout Seconds', 'Optional request timeout for this model. Increase it for slower video, mesh, local, or large-context models.'],
@@ -18821,6 +19789,23 @@ function initializeDeferredModelEditorBindings() {
       updateModelEditorValidationState();
     });
     modelNameEl.dataset.bound = 'true';
+  }
+  const modelNamePickerBtn = document.getElementById('modelNamePickerBtn');
+  if (modelNamePickerBtn && !modelNamePickerBtn.dataset.bound) {
+    modelNamePickerBtn.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      const popover = document.getElementById('modelNamePickerPopover');
+      if (popover && popover.classList.contains('open')) closeKnownModelNamePicker();
+      else openKnownModelNamePicker(modelNamePickerBtn);
+    });
+    modelNamePickerBtn.dataset.bound = 'true';
+  }
+  const meshJobPromptEl = document.getElementById('meshJobPrompt');
+  if (meshJobPromptEl && !meshJobPromptEl.dataset.boundPromptHint) {
+    meshJobPromptEl.addEventListener('input', updateMeshPromptLimitHint);
+    meshJobPromptEl.dataset.boundPromptHint = 'true';
+    updateMeshPromptLimitHint();
   }
   const modelCapabilityModeEl = document.getElementById('modelCapabilityMode');
   if (modelCapabilityModeEl && !modelCapabilityModeEl.dataset.bound) {
@@ -18954,9 +19939,10 @@ function initializeDeferredModelEditorBindings() {
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeDeferredModelEditorBindings, { once: true });
+  document.addEventListener('DOMContentLoaded', () => { initializeDeferredModelEditorBindings(); loadKnownModelNames(); }, { once: true });
 } else {
   initializeDeferredModelEditorBindings();
+  loadKnownModelNames();
 }
 document.getElementById('closeProjectModalBtn').addEventListener('click', closeProjectModal);
 document.getElementById('projectModal').addEventListener('click', e => {
@@ -19003,7 +19989,18 @@ document.addEventListener('click', function (e) {
     showModelFieldHelp(helpBtn.getAttribute('data-field-help'), helpBtn);
     return;
   }
+  const knownModelOption = e.target.closest('[data-known-model-index]');
+  if (knownModelOption) {
+    e.preventDefault();
+    e.stopPropagation();
+    let entries = [];
+    const popover = document.getElementById('modelNamePickerPopover');
+    try { entries = JSON.parse(popover && popover.dataset ? (popover.dataset.entries || '[]') : '[]'); } catch (_) { entries = []; }
+    applyKnownModelNameEntry(entries[Number(knownModelOption.dataset.knownModelIndex)]);
+    return;
+  }
   if (!e.target.closest('#modelFieldHelpPopover')) hideModelFieldHelp();
+  if (!e.target.closest('#modelNamePickerPopover') && !e.target.closest('#modelNamePickerBtn')) closeKnownModelNamePicker();
   if (!e.target.closest('#modelActionsMenu') && !e.target.closest('.settings-btn')) closeModelActionsMenu();
   if (!e.target.closest('#runOrderPopover') && !e.target.closest('[data-run-order-trigger]')) closeRunOrderPopover();
   const modelCard = e.target.closest('.agent-card');
@@ -19087,6 +20084,7 @@ document.addEventListener('keydown', function (e) {
     closeWireTapPopover();
     closeDiagnosticsModal();
     closeRunOrderPopover();
+    closeKnownModelNamePicker();
     closeMasterMindNamePopup();
     closeMasterMindModal();
   }
@@ -19172,7 +20170,12 @@ initializeApp().catch(() => {
   updatePromptGuidance();
   updateContextButton();
 });
-setInterval(async () => { await refreshLogs(); await loadRiskState().catch(() => {}); await loadWaveState().catch(() => {}); await refreshDeadDropStatus().catch(() => {}); }, 2000);
+setInterval(() => {
+  runPollingLane('logs', () => refreshLogs({ poll: true, timeoutMs: POLL_REQUEST_TIMEOUT_MS }));
+  runPollingLane('risk', () => loadRiskState({ timeoutMs: POLL_REQUEST_TIMEOUT_MS }));
+  runPollingLane('wave-state', () => loadWaveState({ timeoutMs: POLL_REQUEST_TIMEOUT_MS }));
+  runPollingLane('deaddrop-status', () => refreshDeadDropStatus({ timeoutMs: POLL_REQUEST_TIMEOUT_MS }));
+}, 2000);
 </script>
 <div aria-hidden="true" class="run-order-popover" id="runOrderPopover"><div class="run-order-popover-title" id="runOrderPopoverTitle">Run Order</div><div class="run-order-popover-row"><input class="run-order-popover-input" id="runOrderInput" inputmode="numeric" max="99" min="0" step="1" type="number"/></div><div class="run-order-popover-actions"><button class="run-order-popover-btn primary" id="runOrderSaveBtn" type="button">Apply</button></div><div class="run-order-popover-note">Set model run order 0 - 99.</div></div><div class="model-actions-menu" id="modelActionsMenu"><button class="model-actions-btn" data-model-action="edit" type="button">Edit Model</button><button class="model-actions-btn" data-model-action="meta" type="button">Edit Meta Files</button><button class="model-actions-btn mastermind" data-model-action="mastermind" type="button">MasterMind</button><button class="model-actions-btn delete" data-model-action="delete" type="button">Delete Model</button></div>
 <div aria-hidden="true" class="video-jobs-modal" id="videoJobsModal">
@@ -19218,18 +20221,38 @@ setInterval(async () => { await refreshLogs(); await loadRiskState().catch(() =>
 <div aria-labelledby="meshJobsTitle" aria-modal="true" class="mesh-jobs-dialog" role="dialog">
 <button aria-label="Close" class="modal-close-btn modal-close-floating" id="meshJobsCloseX" onclick="closeMeshJobsModal()" type="button">Close</button>
 <h3 id="meshJobsTitle">3D Mesh Jobs</h3>
-<p class="mesh-small-note media-job-subtitle">Submit text-to-mesh or image-guided mesh jobs, preview completed outputs, and auto-save results into projectwork 3D mesh revisions.</p>
+<p class="mesh-small-note media-job-subtitle">Submit 3D mesh jobs and preview completed outputs.</p>
+<div class="mesh-selected-model-card" id="meshJobActiveModel">Activate exactly one 3D Mesh model to create jobs.</div>
 <div class="mesh-jobs-grid">
 <div class="mesh-jobs-form">
 <div class="media-job-section">
-<div class="field"><div class="media-job-prompt-head"><label for="meshJobPrompt">Prompt</label><div class="media-job-settings-wrap"><button aria-label="3D mesh output settings" class="media-job-settings-btn" onclick="toggleMediaSettings('mesh')" type="button"><svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg></button>
-<div aria-hidden="true" class="media-job-settings-popover" id="meshJobSettingsPopover"><div class="media-job-option-grid"><div class="field"><label for="meshJobQuality">Quality</label><input id="meshJobQuality" placeholder="standard, high" type="text"/></div><div class="field"><label for="meshJobOutputFormat">Output Format</label><input id="meshJobOutputFormat" placeholder="glb, obj, fbx" type="text"/></div></div></div></div></div><textarea id="meshJobPrompt" placeholder="Describe the object, shape, style, and material details." rows="8"></textarea></div>
+<div class="field"><div class="media-job-prompt-head"><label for="meshJobPrompt"><span id="meshJobPromptLabel">Prompt</span></label><button class="mesh-selected-settings-btn" id="meshModelSettingsBtn" onclick="openMeshModelSettings(event)" type="button" aria-label="Open 3D model settings">Settings <span class="mesh-settings-cog" aria-hidden="true">⚙</span></button></div><textarea id="meshJobPrompt" placeholder="Describe the object, shape, style, and material details." rows="4"></textarea></div>
 </div>
-<div class="media-job-section"><div class="media-frame-grid single">
-<button class="media-frame-picker" id="meshJobInputBox" onclick="triggerMediaFrameInput('meshJobInputImage','meshJobInputPreview','meshJobInputBox')" type="button"><img id="meshJobInputPreview" alt=""/><span class="media-frame-empty">Click to choose image</span><span class="media-frame-label">Reference Image</span></button>
+<div class="media-job-section"><div class="media-reference-grid mesh-view-grid">
+<button class="media-frame-picker" id="meshJobInputBox" onclick="triggerMediaFrameInput('meshJobInputImage','meshJobInputPreview','meshJobInputBox')" ondragover="handleMediaFrameDragOver(event,'meshJobInputBox')" ondragleave="handleMediaFrameDragLeave(event,'meshJobInputBox')" ondrop="handleMediaFrameDrop(event,'meshJobInputImage','meshJobInputPreview','meshJobInputBox')" type="button"><img id="meshJobInputPreview" alt=""/><span class="media-frame-empty">Click or drop image</span><span class="media-frame-label">Primary / Front View (optional)</span><span class="media-frame-error" id="meshJobInputImageError" aria-live="polite"></span></button>
+<button class="media-frame-picker" id="meshJobBackViewBox" onclick="triggerMediaFrameInput('meshJobBackViewImage','meshJobBackViewPreview','meshJobBackViewBox')" ondragover="handleMediaFrameDragOver(event,'meshJobBackViewBox')" ondragleave="handleMediaFrameDragLeave(event,'meshJobBackViewBox')" ondrop="handleMediaFrameDrop(event,'meshJobBackViewImage','meshJobBackViewPreview','meshJobBackViewBox')" type="button"><img id="meshJobBackViewPreview" alt=""/><span class="media-frame-empty">Click or drop image</span><span class="media-frame-label">Back View (optional)</span><span class="media-frame-error" id="meshJobBackViewImageError" aria-live="polite"></span></button>
+<button class="media-frame-picker" id="meshJobLeftViewBox" onclick="triggerMediaFrameInput('meshJobLeftViewImage','meshJobLeftViewPreview','meshJobLeftViewBox')" ondragover="handleMediaFrameDragOver(event,'meshJobLeftViewBox')" ondragleave="handleMediaFrameDragLeave(event,'meshJobLeftViewBox')" ondrop="handleMediaFrameDrop(event,'meshJobLeftViewImage','meshJobLeftViewPreview','meshJobLeftViewBox')" type="button"><img id="meshJobLeftViewPreview" alt=""/><span class="media-frame-empty">Click or drop image</span><span class="media-frame-label">Left View (optional)</span><span class="media-frame-error" id="meshJobLeftViewImageError" aria-live="polite"></span></button>
+<button class="media-frame-picker" id="meshJobRightViewBox" onclick="triggerMediaFrameInput('meshJobRightViewImage','meshJobRightViewPreview','meshJobRightViewBox')" ondragover="handleMediaFrameDragOver(event,'meshJobRightViewBox')" ondragleave="handleMediaFrameDragLeave(event,'meshJobRightViewBox')" ondrop="handleMediaFrameDrop(event,'meshJobRightViewImage','meshJobRightViewPreview','meshJobRightViewBox')" type="button"><img id="meshJobRightViewPreview" alt=""/><span class="media-frame-empty">Click or drop image</span><span class="media-frame-label">Right View (optional)</span><span class="media-frame-error" id="meshJobRightViewImageError" aria-live="polite"></span></button>
 <input accept="image/*" class="media-frame-file" id="meshJobInputImage" onchange="handleMediaFrameSelected('meshJobInputImage','meshJobInputPreview','meshJobInputBox')" type="file"/>
+<input accept="image/*" class="media-frame-file" id="meshJobBackViewImage" onchange="handleMediaFrameSelected('meshJobBackViewImage','meshJobBackViewPreview','meshJobBackViewBox')" type="file"/>
+<input accept="image/*" class="media-frame-file" id="meshJobLeftViewImage" onchange="handleMediaFrameSelected('meshJobLeftViewImage','meshJobLeftViewPreview','meshJobLeftViewBox')" type="file"/>
+<input accept="image/*" class="media-frame-file" id="meshJobRightViewImage" onchange="handleMediaFrameSelected('meshJobRightViewImage','meshJobRightViewPreview','meshJobRightViewBox')" type="file"/>
+</div>
+<div class="mesh-extra-input-section" id="meshJobExtraInputsSection" hidden>
+<div class="mesh-extra-input-heading">Extra Model Inputs</div>
+<div class="mesh-extra-input-grid">
+<button class="media-frame-picker" id="meshJobTopViewBox" onclick="triggerMediaFrameInput('meshJobTopViewImage','meshJobTopViewPreview','meshJobTopViewBox')" ondragover="handleMediaFrameDragOver(event,'meshJobTopViewBox')" ondragleave="handleMediaFrameDragLeave(event,'meshJobTopViewBox')" ondrop="handleMediaFrameDrop(event,'meshJobTopViewImage','meshJobTopViewPreview','meshJobTopViewBox')" type="button"><img id="meshJobTopViewPreview" alt=""/><span class="media-frame-empty">Click/drop</span><span class="media-frame-label">Top</span><span class="media-frame-error" id="meshJobTopViewImageError" aria-live="polite"></span></button>
+<button class="media-frame-picker" id="meshJobBottomViewBox" onclick="triggerMediaFrameInput('meshJobBottomViewImage','meshJobBottomViewPreview','meshJobBottomViewBox')" ondragover="handleMediaFrameDragOver(event,'meshJobBottomViewBox')" ondragleave="handleMediaFrameDragLeave(event,'meshJobBottomViewBox')" ondrop="handleMediaFrameDrop(event,'meshJobBottomViewImage','meshJobBottomViewPreview','meshJobBottomViewBox')" type="button"><img id="meshJobBottomViewPreview" alt=""/><span class="media-frame-empty">Click/drop</span><span class="media-frame-label">Bottom</span><span class="media-frame-error" id="meshJobBottomViewImageError" aria-live="polite"></span></button>
+<button class="media-frame-picker" id="meshJobLeftFrontViewBox" onclick="triggerMediaFrameInput('meshJobLeftFrontViewImage','meshJobLeftFrontViewPreview','meshJobLeftFrontViewBox')" ondragover="handleMediaFrameDragOver(event,'meshJobLeftFrontViewBox')" ondragleave="handleMediaFrameDragLeave(event,'meshJobLeftFrontViewBox')" ondrop="handleMediaFrameDrop(event,'meshJobLeftFrontViewImage','meshJobLeftFrontViewPreview','meshJobLeftFrontViewBox')" type="button"><img id="meshJobLeftFrontViewPreview" alt=""/><span class="media-frame-empty">Click/drop</span><span class="media-frame-label">Left-Front</span><span class="media-frame-error" id="meshJobLeftFrontViewImageError" aria-live="polite"></span></button>
+<button class="media-frame-picker" id="meshJobRightFrontViewBox" onclick="triggerMediaFrameInput('meshJobRightFrontViewImage','meshJobRightFrontViewPreview','meshJobRightFrontViewBox')" ondragover="handleMediaFrameDragOver(event,'meshJobRightFrontViewBox')" ondragleave="handleMediaFrameDragLeave(event,'meshJobRightFrontViewBox')" ondrop="handleMediaFrameDrop(event,'meshJobRightFrontViewImage','meshJobRightFrontViewPreview','meshJobRightFrontViewBox')" type="button"><img id="meshJobRightFrontViewPreview" alt=""/><span class="media-frame-empty">Click/drop</span><span class="media-frame-label">Right-Front</span><span class="media-frame-error" id="meshJobRightFrontViewImageError" aria-live="polite"></span></button>
+<input accept="image/*" class="media-frame-file" id="meshJobTopViewImage" onchange="handleMediaFrameSelected('meshJobTopViewImage','meshJobTopViewPreview','meshJobTopViewBox')" type="file"/>
+<input accept="image/*" class="media-frame-file" id="meshJobBottomViewImage" onchange="handleMediaFrameSelected('meshJobBottomViewImage','meshJobBottomViewPreview','meshJobBottomViewBox')" type="file"/>
+<input accept="image/*" class="media-frame-file" id="meshJobLeftFrontViewImage" onchange="handleMediaFrameSelected('meshJobLeftFrontViewImage','meshJobLeftFrontViewPreview','meshJobLeftFrontViewBox')" type="file"/>
+<input accept="image/*" class="media-frame-file" id="meshJobRightFrontViewImage" onchange="handleMediaFrameSelected('meshJobRightFrontViewImage','meshJobRightFrontViewPreview','meshJobRightFrontViewBox')" type="file"/>
+</div>
 </div></div>
-<div class="mesh-small-note" id="meshJobCapabilityHint">Text-to-mesh and image-guided jobs are supported for mesh-capable models configured in the Model Editor.</div>
+<input id="meshJobQuality" type="hidden"/>
+<input id="meshJobOutputFormat" type="hidden"/>
 <div class="mesh-jobs-actions">
 <button class="model-primary-btn" id="meshJobsSubmitBtn" onclick="submitMeshJob().catch(err =&gt; showErrorToast(err.message))" type="button">Create 3D Mesh Job</button>
 </div>
@@ -19242,7 +20265,23 @@ setInterval(async () => { await refreshLogs(); await loadRiskState().catch(() =>
 </div>
 </div>
 </div>
-<div aria-hidden="true" class="model-editor-modal" id="modelEditorModal"><div class="model-editor-backdrop" data-close-model-editor="true"></div><div aria-labelledby="modelEditorTitle" aria-modal="true" class="model-editor-dialog" role="dialog"><button aria-label="Close" class="modal-close-btn modal-close-floating" id="modelEditorCloseX" type="button">Close</button><div class="model-editor-header"><div class="model-editor-header-copy"><h3 id="modelEditorTitle">Create Model</h3><p id="modelEditorCopy">Create a new model definition.</p></div></div><div class="model-readonly-grid" id="modelReadonlyFields"></div><div class="model-editor-body"><section class="model-editor-section is-open" id="modelSectionIdentity" data-model-panel="identity"><div aria-hidden="false" class="model-section-body" id="modelSectionIdentityBody" style="display:grid"><div class="model-editor-grid"><div class="model-form-field"><label class="model-help-label" for="modelLabel"><button type="button" class="model-field-help-btn" data-field-help="modelLabel" aria-label="Help for Label"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Label</span></label><input id="modelLabel" placeholder="ChatGPT 4.1 Mini" type="text"/></div><div class="model-form-field"><label class="model-help-label" for="modelProvider"><button type="button" class="model-field-help-btn" data-field-help="modelProvider" aria-label="Help for Provider"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Provider</span></label><select id="modelProvider"></select></div><div class="model-form-field"><label class="model-help-label" for="modelAdapter"><button type="button" class="model-field-help-btn" data-field-help="modelAdapter" aria-label="Help for Adapter"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Adapter</span></label><select id="modelAdapter"></select></div><div class="model-form-field"><label class="model-help-label" for="modelModelName"><button type="button" class="model-field-help-btn" data-field-help="modelModelName" aria-label="Help for Model Name"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Model Name</span></label><input id="modelModelName" placeholder="model-name" type="text"/></div><div class="model-form-field"><label class="model-help-label" for="modelBaseUrl"><button type="button" class="model-field-help-btn" data-field-help="modelBaseUrl" aria-label="Help for Base URL"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Base URL</span></label><input id="modelBaseUrl" type="text"/></div><div class="model-form-field"><label class="model-help-label" for="modelApiPath"><button type="button" class="model-field-help-btn" data-field-help="modelApiPath" aria-label="Help for API Path"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>API Path</span></label><input id="modelApiPath" type="text"/></div><div class="model-form-field"><label class="model-help-label" for="modelAuthType"><button type="button" class="model-field-help-btn" data-field-help="modelAuthType" aria-label="Help for Auth Type"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Auth Type</span></label><select id="modelAuthType"></select></div><p aria-live="polite" class="model-identity-validation is-warning" id="modelIdentityValidation">Complete the required setup fields to enable Save Model.</p></div></div></section><section class="model-editor-section" id="modelSectionAuthentication" data-model-panel="authentication"><div aria-hidden="true" class="model-section-body" id="modelSectionAuthenticationBody"><div class="model-editor-grid"><div class="model-form-field" data-auth-visible="basic"><label class="model-help-label" for="modelApiUser"><button type="button" class="model-field-help-btn" data-field-help="modelApiUser" aria-label="Help for API User"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>API User</span></label><input id="modelApiUser" type="text"/></div><div class="model-form-field" data-auth-visible="basic"><label class="model-help-label" for="modelApiPass"><button type="button" class="model-field-help-btn" data-field-help="modelApiPass" aria-label="Help for API Pass"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>API Pass</span></label><input autocomplete="new-password" id="modelApiPass" type="password"/><p class="model-capability-note" id="modelApiPassNote">Optional. Saved on server when provided.</p><p aria-live="polite" class="model-secret-delete-status" id="modelApiPassDeleteStatus">Saved password will be removed when you save.</p></div><div class="model-form-field" data-auth-visible="bearer,header_key,google_adc"><label class="model-help-label" for="modelApiKeyEnv"><button type="button" class="model-field-help-btn" data-field-help="modelApiKeyEnv" aria-label="Help for API Key Env"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span id="modelApiKeyEnvLabelText">API Key Env</span></label><input id="modelApiKeyEnv" placeholder="OPENAI_API_KEY" type="text"/><p class="model-capability-note" id="modelApiKeyEnvNote">Optional env var name. AgentGO checks this first, then falls back to the saved API key.</p></div><div class="model-form-field" data-auth-visible="bearer,header_key"><label class="model-help-label" for="modelApiKey"><button type="button" class="model-field-help-btn" data-field-help="modelApiKey" aria-label="Help for API Key"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>API Key</span></label><input autocomplete="new-password" id="modelApiKey" type="password"/><p class="model-capability-note" id="modelApiKeyNote">Optional. Saved on server when provided.</p><p aria-live="polite" class="model-secret-delete-status" id="modelApiKeyDeleteStatus">Saved API key will be removed when you save.</p></div><div class="model-form-field" data-auth-visible="bearer,header_key"><label class="model-help-label" for="modelAuthHeader"><button type="button" class="model-field-help-btn" data-field-help="modelAuthHeader" aria-label="Help for Auth Header"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Auth Header</span></label><input id="modelAuthHeader" placeholder="Authorization" type="text"/></div><div class="model-form-field full"><label class="model-help-label" for="modelHeaders"><button type="button" class="model-field-help-btn" data-field-help="modelHeaders" aria-label="Help for Headers"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Headers</span></label><textarea id="modelHeaders" placeholder="header-name: value"></textarea><p class="model-capability-note" id="modelHeadersNote">Optional. Enter custom headers as key: value pairs.</p><p aria-live="polite" class="model-secret-delete-status" id="modelHeadersDeleteStatus">Saved headers will be removed when you save.</p></div></div></div></section><section class="model-editor-section" id="modelSectionBehavior" data-model-panel="behavior"><div aria-hidden="true" class="model-section-body" id="modelSectionBehaviorBody"><div class="model-editor-grid model-tuning-grid"><div class="model-form-field"><label class="model-help-label" for="modelMaxTokens"><button type="button" class="model-field-help-btn" data-field-help="modelMaxTokens" aria-label="Help for Max Output Tokens"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Max Output Tokens</span></label><input id="modelMaxTokens" min="0" step="1" type="number"/></div><div class="model-form-field"><label class="model-help-label" for="modelTimeout"><button type="button" class="model-field-help-btn" data-field-help="modelTimeout" aria-label="Help for Timeout Seconds"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Timeout Seconds</span></label><input id="modelTimeout" min="0" step="1" type="number"/></div><div class="model-form-field"><label class="model-help-label" for="modelTemperature"><button type="button" class="model-field-help-btn" data-field-help="modelTemperature" aria-label="Help for Temperature"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Temperature</span></label><input id="modelTemperature" min="0" step="0.1" type="number"/></div><div class="model-form-field full"><div class="model-group-label"><button type="button" class="model-field-help-btn" data-field-help="modelPromptMode" aria-label="Help for System Prompt Mode"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>System Prompt Mode</span></div><div aria-label="System Prompt Mode" class="model-prompt-mode-group" id="modelPromptModeGroup" role="radiogroup"><label class="model-prompt-mode-option"><input name="modelPromptMode" type="radio" value="none"/><span class="model-prompt-mode-card"><strong>None</strong><small>Send no system prompt</small></span></label><label class="model-prompt-mode-option"><input name="modelPromptMode" type="radio" value="low"/><span class="model-prompt-mode-card"><strong>Low</strong><small>Lightweight prompt (Local AI)</small></span></label><label class="model-prompt-mode-option"><input name="modelPromptMode" type="radio" value="balanced"/><span class="model-prompt-mode-card"><strong>Balanced</strong><small>Standard balanced prompt</small></span></label></div><p class="model-capability-note">Default: Balanced. Current selection: <strong id="modelPromptModeValue">Balanced</strong>.</p><div class="model-ugg-toggle-row"><label class="model-ugg-toggle" for="modelUggPrompt"><input id="modelUggPrompt" type="checkbox"/><span class="model-ugg-toggle-card"><img id="modelUggPromptImage" src="assets/Ugg1.png" alt="" aria-hidden="true"/><span><strong>Ugg Protocol</strong><small>Optional terse response overlay. Keeps technical substance, trims fluff.</small><span class="model-ugg-state" id="modelUggPromptState">Off</span></span></span></label></div></div><div class="model-form-field full" id="modelResponseCapabilityWrap"><div class="model-group-label"><button type="button" class="model-field-help-btn" data-field-help="modelStrictStructuredOutput" aria-label="Help for Strict Structured Output"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Strict Structured Output</span></div><label class="model-binary-toggle" for="modelStrictStructuredOutput"><input id="modelStrictStructuredOutput" type="checkbox"/><span class="model-binary-toggle-card"><strong>Structured Output</strong><small id="modelStrictStructuredOutputStatus">Unavailable for this adapter.</small></span></label><p class="model-capability-note" id="modelResponseCapabilitySummary">Unavailable for this adapter.</p></div><div class="model-form-field full"><label class="model-help-label" for="modelProviderOptions"><button type="button" class="model-field-help-btn" data-field-help="modelProviderOptions" aria-label="Help for Provider Options (JSON)"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Provider Options (JSON)</span></label><textarea id="modelProviderOptions" placeholder="{}"></textarea><p class="model-capability-note" id="modelTransportHint">Known adapters use built-in transport rules. Provider Options remain optional strict JSON overrides with quoted keys, for example {"options":{"num_ctx":8192}}.</p><p aria-live="polite" class="model-field-error" id="modelProviderOptionsError"></p></div><div class="model-form-field full"><label class="model-help-label" for="modelNotes"><button type="button" class="model-field-help-btn" data-field-help="modelNotes" aria-label="Help for Notes"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Notes</span></label><textarea id="modelNotes" placeholder="Optional notes about this model"></textarea></div></div></div></section><section class="model-editor-section" id="modelSectionCapabilities" data-model-panel="capabilities"><div aria-hidden="true" class="model-section-body" id="modelSectionCapabilitiesBody"><div class="model-editor-grid"><div class="model-form-field"><label class="model-help-label" for="modelCapabilityMode"><button type="button" class="model-field-help-btn" data-field-help="modelCapabilityMode" aria-label="Help for Capability Mode"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Capability Mode</span></label><select id="modelCapabilityMode"><option value="auto">Auto (adapter + model hints)</option><option value="manual">Manual override</option></select></div><div class="model-form-field full"><div class="model-group-label"><button type="button" class="model-field-help-btn" data-field-help="modelCapabilities" aria-label="Help for IO Capabilities"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>IO Capabilities</span></div><p class="model-capability-note" id="modelCapabilitySummary">Auto uses adapter defaults plus known model hints.</p></div><div class="model-form-field full" id="modelCapabilityManualWrap"><div class="model-capability-grid"><label class="model-capability-check" for="modelCapabilityImageIn"><input id="modelCapabilityImageIn" type="checkbox"/>Accept images</label><label class="model-capability-check" for="modelCapabilityAudioIn"><input id="modelCapabilityAudioIn" type="checkbox"/>Accept audio</label><label class="model-capability-check" for="modelCapabilityVideoIn"><input id="modelCapabilityVideoIn" type="checkbox"/>Accept video</label><label class="model-capability-check" for="modelCapabilityFileIn"><input id="modelCapabilityFileIn" type="checkbox"/>Accept files</label><label class="model-capability-check" for="modelCapabilityBinaryOut"><input id="modelCapabilityBinaryOut" type="checkbox"/>Return binary outputs</label></div><p class="model-capability-note">Text input stays enabled because AgentGO always sends instructions and context text.</p></div><div class="model-form-field full"><div class="model-group-label"><button type="button" class="model-field-help-btn" data-field-help="modelVideoGeneration" aria-label="Help for Video Generation"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Video Generation</span></div><div class="model-capability-grid"><label class="model-capability-check" for="modelVideoGeneration"><input id="modelVideoGeneration" type="checkbox"/>Enable video generation mode</label><label class="model-capability-check" for="modelVideoPromptOnly"><input id="modelVideoPromptOnly" type="checkbox"/>Text to Video</label><label class="model-capability-check" for="modelVideoStartFrame"><input id="modelVideoStartFrame" type="checkbox"/>Allows Start Frame</label><label class="model-capability-check" for="modelVideoEndFrame"><input id="modelVideoEndFrame" type="checkbox"/>Allows End Frame</label><label class="model-capability-check" for="modelVideoIngredients"><input id="modelVideoIngredients" type="checkbox"/>Allows Ingredients</label></div><div class="model-inline-note-grid"><div class="model-form-field"><label for="modelVideoDuration">Duration Seconds</label><input id="modelVideoDuration" placeholder="5, 8, 10" type="text"/></div><div class="model-form-field"><label for="modelVideoAspectRatio">Aspect Ratio</label><input id="modelVideoAspectRatio" placeholder="16:9, 9:16, 1:1" type="text"/></div><div class="model-form-field"><label for="modelVideoResolution">Resolution / Size</label><input id="modelVideoResolution" placeholder="720p, 1080p, 1024x576" type="text"/></div><div class="model-form-field"><label for="modelVideoOutputFormat">Output Format</label><input id="modelVideoOutputFormat" placeholder="mp4, webm, mov" type="text"/></div><div class="model-form-field"><label for="modelVideoFPS">Frames per Second</label><input id="modelVideoFPS" placeholder="24, 30, 60" type="text"/></div><div class="model-form-field"><label for="modelVideoQuality">Quality / Mode</label><input id="modelVideoQuality" placeholder="standard, high, turbo" type="text"/></div></div><p class="model-capability-note">Video models can run in Waves, but every active model in the run must also be a video model.</p></div><div class="model-form-field full"><div class="model-group-label"><button type="button" class="model-field-help-btn" data-field-help="modelMeshGeneration" aria-label="Help for 3D Mesh Generation"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>3D Mesh Generation</span></div><div class="model-capability-grid"><label class="model-capability-check" for="modelMeshGeneration"><input id="modelMeshGeneration" type="checkbox"/>Enable 3D mesh generation mode</label><label class="model-capability-check" for="modelMeshPromptOnly"><input id="modelMeshPromptOnly" type="checkbox"/>Text to Mesh</label><label class="model-capability-check" for="modelMeshImageInput"><input id="modelMeshImageInput" type="checkbox"/>Allows Image Input</label><label class="model-capability-check is-disabled" for="modelMeshMultiImage" title="Coming later"><input id="modelMeshMultiImage" type="checkbox" disabled/>Multi-image input — Coming later</label></div><div class="model-inline-note-grid"><div class="model-form-field"><label class="model-help-label" for="modelMeshQuality"><button type="button" class="model-field-help-btn" data-field-help="modelMeshQuality" aria-label="Help for Mesh Quality"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Quality</span></label><input id="modelMeshQuality" placeholder="standard, high" type="text"/></div><div class="model-form-field"><label class="model-help-label" for="modelMeshOutputFormat"><button type="button" class="model-field-help-btn" data-field-help="modelMeshOutputFormat" aria-label="Help for Mesh Output Format"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Output Format</span></label><input id="modelMeshOutputFormat" placeholder="glb, obj, fbx" type="text"/></div></div><p class="model-capability-note">3D models can run in Waves, but every active model in the run must also be a 3D model.</p></div></div></div></section></div><div class="model-editor-panel-tabs" role="tablist" aria-label="Model editor panels"><button type="button" class="model-editor-panel-tab is-active is-incomplete" data-model-panel-target="modelSectionIdentity" aria-controls="modelSectionIdentityBody" aria-selected="true" role="tab"><span>Identity &amp; Setup</span><small id="modelRequiredTabStatus">Required</small></button><button type="button" class="model-editor-panel-tab" data-model-panel-target="modelSectionAuthentication" aria-controls="modelSectionAuthenticationBody" aria-selected="false" role="tab"><span>Authentication</span><small>Secrets &amp; headers</small></button><button type="button" class="model-editor-panel-tab" data-model-panel-target="modelSectionBehavior" aria-controls="modelSectionBehaviorBody" aria-selected="false" role="tab"><span>Behavior &amp; Tuning</span><small>Runtime defaults</small></button><button type="button" class="model-editor-panel-tab" data-model-panel-target="modelSectionCapabilities" aria-controls="modelSectionCapabilitiesBody" aria-selected="false" role="tab"><span>Media &amp; Capabilities</span><small>IO, video, mesh</small></button></div><div aria-live="polite" class="model-field-help-popover" id="modelFieldHelpPopover" role="status"></div><div class="model-editor-actions"><button class="model-secondary-btn" id="modelEditorCancelBtn" type="button">Cancel</button><button class="model-primary-btn" id="modelEditorSaveBtn" type="button" disabled>Save Model</button></div></div></div>
+
+<div aria-hidden="true" class="mesh-model-settings-layer" id="meshModelSettingsLayer">
+<div aria-labelledby="meshModelSettingsTitle" aria-modal="true" class="mesh-model-settings-dialog" role="dialog">
+<div class="mesh-model-settings-head"><div><h4 id="meshModelSettingsTitle">3D Model Settings</h4><p class="mesh-small-note">Adjust settings for this 3D mesh job. Defaults clears overrides and lets the provider choose.</p></div></div>
+<div class="mesh-model-settings-current" id="meshModelSettingsCurrent"></div>
+<div class="mesh-model-settings-body" id="meshModelSettingsBody"><strong>No adjustable settings exposed yet.</strong><span>AgentGO will use provider defaults and any saved model configuration.</span></div>
+<div class="mesh-model-settings-actions"><button class="model-secondary-btn" id="meshModelSettingsDefaultsBtn" onclick="resetMeshModelSettingsDefaults()" type="button">Defaults</button><button class="model-primary-btn" id="meshModelSettingsCloseBtn" onclick="closeMeshModelSettings()" type="button">Close</button></div>
+</div>
+</div>
+<div aria-hidden="true" class="mesh-viewer-modal" id="meshViewerModal">
+<div class="mesh-viewer-backdrop" onclick="closeMeshViewerModal()"></div>
+<div aria-labelledby="meshViewerTitle" aria-modal="true" class="mesh-viewer-dialog" role="dialog">
+<div class="mesh-viewer-head"><div><h3 id="meshViewerTitle">3D Mesh Viewer</h3><p class="mesh-small-note" id="meshViewerSubtitle">Interactive model preview.</p></div><button aria-label="Close 3D mesh viewer" class="modal-close-btn" id="meshViewerCloseBtn" onclick="closeMeshViewerModal()" type="button">Close</button></div>
+<div class="mesh-viewer-body" id="meshViewerBody"></div>
+</div>
+</div>
+<div aria-hidden="true" class="model-editor-modal" id="modelEditorModal"><div class="model-editor-backdrop" data-close-model-editor="true"></div><div aria-labelledby="modelEditorTitle" aria-modal="true" class="model-editor-dialog" role="dialog"><button aria-label="Close" class="modal-close-btn modal-close-floating" id="modelEditorCloseX" type="button">Close</button><div class="model-editor-header"><div class="model-editor-header-copy"><h3 id="modelEditorTitle">Create Model</h3><p id="modelEditorCopy">Create a new model definition.</p></div></div><div class="model-readonly-grid" id="modelReadonlyFields"></div><div class="model-editor-body"><section class="model-editor-section is-open" id="modelSectionIdentity" data-model-panel="identity"><div aria-hidden="false" class="model-section-body" id="modelSectionIdentityBody" style="display:grid"><div class="model-editor-grid"><div class="model-form-field"><label class="model-help-label" for="modelLabel"><button type="button" class="model-field-help-btn" data-field-help="modelLabel" aria-label="Help for Label"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Label</span></label><input id="modelLabel" placeholder="ChatGPT 4.1 Mini" type="text"/></div><div class="model-form-field"><label class="model-help-label" for="modelProvider"><button type="button" class="model-field-help-btn" data-field-help="modelProvider" aria-label="Help for Provider"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Provider</span></label><select id="modelProvider"></select></div><div class="model-form-field"><label class="model-help-label" for="modelAdapter"><button type="button" class="model-field-help-btn" data-field-help="modelAdapter" aria-label="Help for Adapter"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Adapter</span></label><select id="modelAdapter"></select></div><div class="model-form-field"><label class="model-help-label" for="modelModelName"><button type="button" class="model-field-help-btn" data-field-help="modelModelName" aria-label="Help for Model Name"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Model Name</span></label><div class="model-name-picker-wrap"><input id="modelModelName" placeholder="model-name" type="text"/><button aria-controls="modelNamePickerPopover" aria-expanded="false" aria-haspopup="listbox" aria-label="Pick a known model name" class="model-name-picker-btn" id="modelNamePickerBtn" title="Pick known model name" type="button">▾</button></div><div aria-hidden="true" class="model-name-picker-popover" id="modelNamePickerPopover" role="listbox"></div></div><div class="model-form-field"><label class="model-help-label" for="modelBaseUrl"><button type="button" class="model-field-help-btn" data-field-help="modelBaseUrl" aria-label="Help for Base URL"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Base URL</span></label><input id="modelBaseUrl" type="text"/></div><div class="model-form-field"><label class="model-help-label" for="modelApiPath"><button type="button" class="model-field-help-btn" data-field-help="modelApiPath" aria-label="Help for API Path"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>API Path</span></label><input id="modelApiPath" type="text"/></div><div class="model-form-field"><label class="model-help-label" for="modelAuthType"><button type="button" class="model-field-help-btn" data-field-help="modelAuthType" aria-label="Help for Auth Type"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Auth Type</span></label><select id="modelAuthType"></select></div><p aria-live="polite" class="model-identity-validation is-warning" id="modelIdentityValidation">Complete the required setup fields to enable Save Model.</p></div></div></section><section class="model-editor-section" id="modelSectionAuthentication" data-model-panel="authentication"><div aria-hidden="true" class="model-section-body" id="modelSectionAuthenticationBody"><div class="model-editor-grid"><div class="model-form-field" data-auth-visible="basic"><label class="model-help-label" for="modelApiUser"><button type="button" class="model-field-help-btn" data-field-help="modelApiUser" aria-label="Help for API User"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>API User</span></label><input id="modelApiUser" type="text"/></div><div class="model-form-field" data-auth-visible="basic"><label class="model-help-label" for="modelApiPass"><button type="button" class="model-field-help-btn" data-field-help="modelApiPass" aria-label="Help for API Pass"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>API Pass</span></label><input autocomplete="new-password" id="modelApiPass" type="password"/><p class="model-capability-note" id="modelApiPassNote">Optional. Saved on server when provided.</p><p aria-live="polite" class="model-secret-delete-status" id="modelApiPassDeleteStatus">Saved password will be removed when you save.</p></div><div class="model-form-field" data-auth-visible="bearer,header_key,fal_key,google_adc"><label class="model-help-label" for="modelApiKeyEnv"><button type="button" class="model-field-help-btn" data-field-help="modelApiKeyEnv" aria-label="Help for API Key Env"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span id="modelApiKeyEnvLabelText">API Key Env</span></label><input id="modelApiKeyEnv" placeholder="OPENAI_API_KEY" type="text"/><p class="model-capability-note" id="modelApiKeyEnvNote">Optional env var name. AgentGO checks this first, then falls back to the saved API key.</p></div><div class="model-form-field" data-auth-visible="bearer,header_key,fal_key"><label class="model-help-label" for="modelApiKey"><button type="button" class="model-field-help-btn" data-field-help="modelApiKey" aria-label="Help for API Key"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>API Key</span></label><input autocomplete="new-password" id="modelApiKey" type="password"/><p class="model-capability-note" id="modelApiKeyNote">Optional. Saved on server when provided.</p><p aria-live="polite" class="model-secret-delete-status" id="modelApiKeyDeleteStatus">Saved API key will be removed when you save.</p></div><div class="model-form-field" data-auth-visible="bearer,header_key,fal_key"><label class="model-help-label" for="modelAuthHeader"><button type="button" class="model-field-help-btn" data-field-help="modelAuthHeader" aria-label="Help for Auth Header"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Auth Header</span></label><input id="modelAuthHeader" placeholder="Authorization" type="text"/></div><div class="model-form-field full"><label class="model-help-label" for="modelHeaders"><button type="button" class="model-field-help-btn" data-field-help="modelHeaders" aria-label="Help for Headers"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Headers</span></label><textarea id="modelHeaders" placeholder="header-name: value"></textarea><p class="model-capability-note" id="modelHeadersNote">Optional. Enter custom headers as key: value pairs.</p><p aria-live="polite" class="model-secret-delete-status" id="modelHeadersDeleteStatus">Saved headers will be removed when you save.</p></div></div></div></section><section class="model-editor-section" id="modelSectionBehavior" data-model-panel="behavior"><div aria-hidden="true" class="model-section-body" id="modelSectionBehaviorBody"><div class="model-editor-grid model-tuning-grid"><div class="model-form-field"><label class="model-help-label" for="modelMaxTokens"><button type="button" class="model-field-help-btn" data-field-help="modelMaxTokens" aria-label="Help for Max Output Tokens"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Max Output Tokens</span></label><input id="modelMaxTokens" min="0" step="1" type="number"/></div><div class="model-form-field"><label class="model-help-label" for="modelTimeout"><button type="button" class="model-field-help-btn" data-field-help="modelTimeout" aria-label="Help for Timeout Seconds"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Timeout Seconds</span></label><input id="modelTimeout" min="0" step="1" type="number"/></div><div class="model-form-field"><label class="model-help-label" for="modelTemperature"><button type="button" class="model-field-help-btn" data-field-help="modelTemperature" aria-label="Help for Temperature"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Temperature</span></label><input id="modelTemperature" min="0" step="0.1" type="number"/></div><div class="model-form-field full"><div class="model-group-label"><button type="button" class="model-field-help-btn" data-field-help="modelPromptMode" aria-label="Help for System Prompt Mode"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>System Prompt Mode</span></div><div aria-label="System Prompt Mode" class="model-prompt-mode-group" id="modelPromptModeGroup" role="radiogroup"><label class="model-prompt-mode-option"><input name="modelPromptMode" type="radio" value="none"/><span class="model-prompt-mode-card"><strong>None</strong><small>Send no system prompt</small></span></label><label class="model-prompt-mode-option"><input name="modelPromptMode" type="radio" value="low"/><span class="model-prompt-mode-card"><strong>Low</strong><small>Lightweight prompt (Local AI)</small></span></label><label class="model-prompt-mode-option"><input name="modelPromptMode" type="radio" value="balanced"/><span class="model-prompt-mode-card"><strong>Balanced</strong><small>Standard balanced prompt</small></span></label></div><p class="model-capability-note">Default: Balanced. Current selection: <strong id="modelPromptModeValue">Balanced</strong>.</p><div class="model-ugg-toggle-row"><label class="model-ugg-toggle" for="modelUggPrompt"><input id="modelUggPrompt" type="checkbox"/><span class="model-ugg-toggle-card"><img id="modelUggPromptImage" src="assets/Ugg1.png" alt="" aria-hidden="true"/><span><strong>Ugg Protocol</strong><small>Optional terse response overlay. Keeps technical substance, trims fluff.</small><span class="model-ugg-state" id="modelUggPromptState">Off</span></span></span></label></div></div><div class="model-form-field full" id="modelResponseCapabilityWrap"><div class="model-group-label"><button type="button" class="model-field-help-btn" data-field-help="modelStrictStructuredOutput" aria-label="Help for Strict Structured Output"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Strict Structured Output</span></div><label class="model-binary-toggle" for="modelStrictStructuredOutput"><input id="modelStrictStructuredOutput" type="checkbox"/><span class="model-binary-toggle-card"><strong>Structured Output</strong><small id="modelStrictStructuredOutputStatus">Unavailable for this adapter.</small></span></label><p class="model-capability-note" id="modelResponseCapabilitySummary">Unavailable for this adapter.</p></div><div class="model-form-field full"><label class="model-help-label" for="modelProviderOptions"><button type="button" class="model-field-help-btn" data-field-help="modelProviderOptions" aria-label="Help for Provider Options (JSON)"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Provider Options (JSON)</span></label><textarea id="modelProviderOptions" placeholder="{}"></textarea><p class="model-capability-note" id="modelTransportHint">Known adapters use built-in transport rules. Provider Options remain optional strict JSON overrides with quoted keys, for example {"options":{"num_ctx":8192}}.</p><p aria-live="polite" class="model-field-error" id="modelProviderOptionsError"></p></div><div class="model-form-field full"><label class="model-help-label" for="modelNotes"><button type="button" class="model-field-help-btn" data-field-help="modelNotes" aria-label="Help for Notes"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Notes</span></label><textarea id="modelNotes" placeholder="Optional notes about this model"></textarea></div></div></div></section><section class="model-editor-section" id="modelSectionCapabilities" data-model-panel="capabilities"><div aria-hidden="true" class="model-section-body" id="modelSectionCapabilitiesBody"><div class="model-editor-grid"><div class="model-form-field"><label class="model-help-label" for="modelCapabilityMode"><button type="button" class="model-field-help-btn" data-field-help="modelCapabilityMode" aria-label="Help for Capability Mode"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Capability Mode</span></label><select id="modelCapabilityMode"><option value="auto">Auto (adapter + model hints)</option><option value="manual">Manual override</option></select></div><div class="model-form-field full"><div class="model-group-label"><button type="button" class="model-field-help-btn" data-field-help="modelCapabilities" aria-label="Help for IO Capabilities"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>IO Capabilities</span></div><p class="model-capability-note" id="modelCapabilitySummary">Auto uses adapter defaults plus known model hints.</p></div><div class="model-form-field full" id="modelCapabilityManualWrap"><div class="model-capability-grid"><label class="model-capability-check" for="modelCapabilityImageIn"><input id="modelCapabilityImageIn" type="checkbox"/>Accept images</label><label class="model-capability-check" for="modelCapabilityAudioIn"><input id="modelCapabilityAudioIn" type="checkbox"/>Accept audio</label><label class="model-capability-check" for="modelCapabilityVideoIn"><input id="modelCapabilityVideoIn" type="checkbox"/>Accept video</label><label class="model-capability-check" for="modelCapabilityFileIn"><input id="modelCapabilityFileIn" type="checkbox"/>Accept files</label><label class="model-capability-check" for="modelCapabilityBinaryOut"><input id="modelCapabilityBinaryOut" type="checkbox"/>Return binary outputs</label></div><p class="model-capability-note">Text input stays enabled because AgentGO always sends instructions and context text.</p></div><div class="model-form-field full"><div class="model-group-label"><button type="button" class="model-field-help-btn" data-field-help="modelVideoGeneration" aria-label="Help for Video Generation"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Video Generation</span></div><div class="model-capability-grid"><label class="model-capability-check" for="modelVideoGeneration"><input id="modelVideoGeneration" type="checkbox"/>Enable video generation mode</label><label class="model-capability-check" for="modelVideoPromptOnly"><input id="modelVideoPromptOnly" type="checkbox"/>Text to Video</label><label class="model-capability-check" for="modelVideoStartFrame"><input id="modelVideoStartFrame" type="checkbox"/>Allows Start Frame</label><label class="model-capability-check" for="modelVideoEndFrame"><input id="modelVideoEndFrame" type="checkbox"/>Allows End Frame</label><label class="model-capability-check" for="modelVideoIngredients"><input id="modelVideoIngredients" type="checkbox"/>Allows Ingredients</label></div><div class="model-inline-note-grid"><div class="model-form-field"><label for="modelVideoDuration">Duration Seconds</label><input id="modelVideoDuration" placeholder="5, 8, 10" type="text"/></div><div class="model-form-field"><label for="modelVideoAspectRatio">Aspect Ratio</label><input id="modelVideoAspectRatio" placeholder="16:9, 9:16, 1:1" type="text"/></div><div class="model-form-field"><label for="modelVideoResolution">Resolution / Size</label><input id="modelVideoResolution" placeholder="720p, 1080p, 1024x576" type="text"/></div><div class="model-form-field"><label for="modelVideoOutputFormat">Output Format</label><input id="modelVideoOutputFormat" placeholder="mp4, webm, mov" type="text"/></div><div class="model-form-field"><label for="modelVideoFPS">Frames per Second</label><input id="modelVideoFPS" placeholder="24, 30, 60" type="text"/></div><div class="model-form-field"><label for="modelVideoQuality">Quality / Mode</label><input id="modelVideoQuality" placeholder="standard, high, turbo" type="text"/></div></div><p class="model-capability-note">Video models can run in Waves, but every active model in the run must also be a video model.</p></div><div class="model-form-field full"><div class="model-group-label"><button type="button" class="model-field-help-btn" data-field-help="modelMeshGeneration" aria-label="Help for 3D Mesh Generation"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>3D Mesh Generation</span></div><div class="model-capability-grid"><label class="model-capability-check" for="modelMeshGeneration"><input id="modelMeshGeneration" type="checkbox"/>Enable 3D mesh generation mode</label><label class="model-capability-check" for="modelMeshPromptOnly"><input id="modelMeshPromptOnly" type="checkbox"/>Text to Mesh</label><label class="model-capability-check" for="modelMeshImageInput"><input id="modelMeshImageInput" type="checkbox"/>Allows Image Input</label><label class="model-capability-check" for="modelMeshMultiImage"><input id="modelMeshMultiImage" type="checkbox"/>Allows Multi-View Images</label></div><div class="model-inline-note-grid"><div class="model-form-field"><label class="model-help-label" for="modelMeshQuality"><button type="button" class="model-field-help-btn" data-field-help="modelMeshQuality" aria-label="Help for Mesh Quality"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Quality</span></label><input id="modelMeshQuality" placeholder="standard, high" type="text"/></div><div class="model-form-field"><label class="model-help-label" for="modelMeshOutputFormat"><button type="button" class="model-field-help-btn" data-field-help="modelMeshOutputFormat" aria-label="Help for Mesh Output Format"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg></button><span>Output Format</span></label><input id="modelMeshOutputFormat" placeholder="glb, obj, fbx" type="text"/></div></div><p class="model-capability-note">3D models can run in Waves, but every active model in the run must also be a 3D model.</p></div></div></div></section></div><div class="model-editor-panel-tabs" role="tablist" aria-label="Model editor panels"><button type="button" class="model-editor-panel-tab is-active is-incomplete" data-model-panel-target="modelSectionIdentity" aria-controls="modelSectionIdentityBody" aria-selected="true" role="tab"><span>Identity &amp; Setup</span><small id="modelRequiredTabStatus">Required</small></button><button type="button" class="model-editor-panel-tab" data-model-panel-target="modelSectionAuthentication" aria-controls="modelSectionAuthenticationBody" aria-selected="false" role="tab"><span>Authentication</span><small>Secrets &amp; headers</small></button><button type="button" class="model-editor-panel-tab" data-model-panel-target="modelSectionBehavior" aria-controls="modelSectionBehaviorBody" aria-selected="false" role="tab"><span>Behavior &amp; Tuning</span><small>Runtime defaults</small></button><button type="button" class="model-editor-panel-tab" data-model-panel-target="modelSectionCapabilities" aria-controls="modelSectionCapabilitiesBody" aria-selected="false" role="tab"><span>Media &amp; Capabilities</span><small>IO, video, mesh</small></button></div><div aria-live="polite" class="model-field-help-popover" id="modelFieldHelpPopover" role="status"></div><div class="model-editor-actions"><button class="model-secondary-btn" id="modelEditorCancelBtn" type="button">Cancel</button><button class="model-primary-btn" id="modelEditorSaveBtn" type="button" disabled>Save Model</button></div></div></div>
 <div aria-hidden="true" class="delete-model-modal" id="deleteModelModal"><div class="delete-model-backdrop" data-close-delete-model="true"></div><div aria-labelledby="deleteModelTitle" aria-modal="true" class="delete-model-dialog" role="dialog"><h3 id="deleteModelTitle">Delete Model?</h3><p class="delete-model-copy">This will permanently remove <strong id="deleteModelLabel">this model</strong> from <code>models.json</code> and delete its full workspace folder under <code>work_root</code>.</p><div class="delete-model-actions"><button class="model-secondary-btn" id="deleteModelCancelBtn" type="button">Cancel</button><button class="delete-model-btn" id="deleteModelConfirmBtn" type="button">Delete Model</button></div></div></div>
 
 <div aria-hidden="true" class="mastermind-modal" id="masterMindModal">
@@ -19269,4 +20308,4 @@ setInterval(async () => { await refreshLogs(); await loadRiskState().catch(() =>
 </div>
 </div>
 
-<div aria-hidden="true" class="settings-modal" id="settings-modal"><div class="settings-backdrop" data-close-settings="true"></div><div aria-labelledby="settings-title" aria-modal="true" class="settings-dialog" role="dialog"><button aria-label="Close" class="modal-close-btn modal-close-floating" id="settingsCloseX" type="button">Close</button><h3 id="settings-title">Model Settings</h3><p id="settings-copy">Edit the current project meta files for this model.</p><div class="settings-meta-tabs"><button class="meta-tab is-active" data-file="user_context.json" title="user_context.json" type="button">User</button><button class="meta-tab" data-file="ai_context.json" title="ai_context.json" type="button">AI Builder</button><button class="meta-tab" data-file="reviewer_context.json" title="reviewer_context.json" type="button">AI Reviewer</button></div><textarea class="meta-editor" id="metaEditor"></textarea><div class="meta-save-row"><button class="settings-close" id="settings-close" type="button">Cancel</button><button class="meta-save-btn" id="metaSaveBtn" type="button">Save Meta Files</button></div></div></div><script>function closeSettingsModal(){const modal=document.getElementById('settings-modal');if(!modal)return;restoreFocusBeforeHide(modal,lastFocusedBeforeSettingsModal||document.querySelector('.settings-btn'));modal.classList.remove('open');modal.setAttribute('aria-hidden','true');openSettingsModelId='';settingsMetaCache={};activeMetaTab='user_context.json';lastFocusedBeforeSettingsModal=null;}const metaSaveBtn=document.getElementById('metaSaveBtn');if(metaSaveBtn)metaSaveBtn.addEventListener('click',saveMetaFiles);const settingsCloseBtnInline=document.getElementById('settings-close');if(settingsCloseBtnInline)settingsCloseBtnInline.addEventListener('click',closeSettingsModal);const settingsCloseXInline=document.getElementById('settingsCloseX');if(settingsCloseXInline)settingsCloseXInline.addEventListener('click',closeSettingsModal);document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeSettingsModal();closeRiskModal();closeConfirmModal(false);closeModelEditor();closeDeleteModelModal();closeModelActionsMenu();closeMasterMindNamePopup();closeMasterMindModal();closeVideoJobsModal();closeMeshJobsModal();closeDeadDropPopover({ restoreFocus: false });}});</script></body></html>
+<div aria-hidden="true" class="settings-modal" id="settings-modal"><div class="settings-backdrop" data-close-settings="true"></div><div aria-labelledby="settings-title" aria-modal="true" class="settings-dialog" role="dialog"><button aria-label="Close" class="modal-close-btn modal-close-floating" id="settingsCloseX" type="button">Close</button><h3 id="settings-title">Model Settings</h3><p id="settings-copy">Edit the current project meta files for this model.</p><div class="settings-meta-tabs"><button class="meta-tab is-active" data-file="user_context.json" title="user_context.json" type="button">User</button><button class="meta-tab" data-file="ai_context.json" title="ai_context.json" type="button">AI Builder</button><button class="meta-tab" data-file="reviewer_context.json" title="reviewer_context.json" type="button">AI Reviewer</button></div><textarea class="meta-editor" id="metaEditor"></textarea><div class="meta-save-row"><button class="settings-close" id="settings-close" type="button">Cancel</button><button class="meta-save-btn" id="metaSaveBtn" type="button">Save Meta Files</button></div></div></div><script>function closeSettingsModal(){const modal=document.getElementById('settings-modal');if(!modal)return;restoreFocusBeforeHide(modal,lastFocusedBeforeSettingsModal||document.querySelector('.settings-btn'));modal.classList.remove('open');modal.setAttribute('aria-hidden','true');openSettingsModelId='';settingsMetaCache={};activeMetaTab='user_context.json';lastFocusedBeforeSettingsModal=null;}const metaSaveBtn=document.getElementById('metaSaveBtn');if(metaSaveBtn)metaSaveBtn.addEventListener('click',saveMetaFiles);const settingsCloseBtnInline=document.getElementById('settings-close');if(settingsCloseBtnInline)settingsCloseBtnInline.addEventListener('click',closeSettingsModal);const settingsCloseXInline=document.getElementById('settingsCloseX');if(settingsCloseXInline)settingsCloseXInline.addEventListener('click',closeSettingsModal);document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeSettingsModal();closeRiskModal();closeConfirmModal(false);closeModelEditor();closeDeleteModelModal();closeModelActionsMenu();closeMasterMindNamePopup();closeMasterMindModal();closeVideoJobsModal();closeMeshModelSettings({ restoreFocus: false });closeMeshViewerModal({ restoreFocus: false });closeMeshJobsModal();closeDeadDropPopover({ restoreFocus: false });}});</script></body></html>

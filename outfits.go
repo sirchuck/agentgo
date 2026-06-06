@@ -946,12 +946,15 @@ func (a *App) applyOutfitState(outfit OutfitRecord) (string, string, error) {
 	a.mu.Unlock()
 
 	if projectName != "" {
-		if _, err := a.syncActiveBuilderProjectsFromProjectwork(projectName); err != nil {
+		activeBuilders := a.activeBuilderModelsSnapshot()
+		if _, err := a.syncBuilderProjectsFromProjectwork(projectName, activeBuilders); err != nil {
 			return "", missingProjectName, err
 		}
-		if _, err := a.resetProjectAIContextsToEmpty(projectName); err != nil {
+		resetCount, err := a.resetModelAIContextsToEmpty(projectName, activeBuilders)
+		if err != nil {
 			return "", missingProjectName, err
 		}
+		a.logf("system", "info", "Reset ai_context.json to strict empty memory and reviewer_context.json to {} for %d Outfit-activated model(s) in project %s", resetCount, projectName)
 	}
 	return projectName, missingProjectName, nil
 }
