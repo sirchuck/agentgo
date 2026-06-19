@@ -3173,6 +3173,7 @@ body.deaddrop-popover-open {
 .yeti-menu-btn:active{transform:translateY(1px)}
 .yeti-menu-risk-btn{background:linear-gradient(180deg,var(--frost-magenta-top),var(--frost-magenta-bottom));color:#fff;box-shadow:0 10px 24px var(--frost-magenta-shadow)}
 .yeti-menu-work-btn{background:linear-gradient(180deg,rgba(106,188,255,1),rgba(35,128,245,.98));color:#fff;box-shadow:0 10px 24px rgba(74,163,255,.34),inset 0 1px 0 rgba(255,255,255,.36)}
+.yeti-menu-work-status{margin:-2px 2px 2px;padding:8px 10px;border-radius:13px;background:rgba(255,255,255,.78);border:1px solid rgba(23,53,95,.10);display:grid;gap:4px;color:#17355f;box-shadow:inset 0 1px 0 rgba(255,255,255,.82)}.yeti-menu-work-status-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:.76rem;line-height:1.2}.yeti-menu-work-status-row strong{font-weight:950;color:#17355f}.yeti-menu-work-status-row span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;font-weight:850;color:#46627f}.yeti-menu-work-status-row.is-ready span{color:#0b6f8c}.yeti-menu-work-status-row.is-missing span{color:#8d2c68}
 .work-mode-overlay{--work-pink:#f5a6d7;--work-pink-strong:#d14ba0;--work-blue:#4aa3ff;position:fixed;inset:0;z-index:2100;display:none;background:#0b0d12;color:#f5f7fb;overflow:hidden}
 .work-mode-overlay.open{display:block}
 .work-mode-shell{height:100%;display:grid;grid-template-columns:minmax(250px,320px) minmax(0,1fr);background:radial-gradient(circle at 78% 16%,rgba(209,75,160,.18),transparent 30%),radial-gradient(circle at 24% 78%,rgba(74,163,255,.12),transparent 28%),linear-gradient(180deg,#10131b,#080a0f 62%);overflow:auto;scrollbar-width:none}.work-mode-shell::-webkit-scrollbar{width:0;height:0}
@@ -3181,6 +3182,8 @@ body.deaddrop-popover-open {
 .work-mode-tree{flex:1 1 auto;min-height:0;overflow:auto;padding:2px 0 10px;scrollbar-width:none;scrollbar-gutter:stable}.work-mode-tree::-webkit-scrollbar{width:0;height:0}
 .work-mode-tree-row{min-height:28px;display:flex;align-items:center;gap:7px;border-radius:9px;padding:3px 6px;color:rgba(245,247,251,.82);font-size:.88rem;line-height:1.2;user-select:none}
 .work-mode-tree-row:hover{background:rgba(255,255,255,.07)}
+.work-mode-tree-row.is-tmp-work{margin-bottom:6px;border:1px solid rgba(109,224,182,.20);background:rgba(109,224,182,.07);color:#dbfff2}.work-mode-tree-row.is-tmp-work:hover{background:rgba(109,224,182,.11)}
+.work-mode-tree-row.is-tmp-work .work-mode-folder-name{font-weight:950;color:#dbfff2}.work-mode-tree-row.is-tmp-file{background:rgba(109,224,182,.035)}.work-mode-tree-row.is-tmp-file .work-mode-file-name{color:#eafff7}.work-mode-tmp-actions{margin-left:auto;display:inline-flex;align-items:center;gap:6px}.work-mode-tmp-merge-all,.work-mode-tmp-merge{appearance:none;border:1px solid rgba(109,224,182,.26);border-radius:999px;background:rgba(109,224,182,.10);color:#dbfff2;font-size:.68rem;font-weight:950;padding:4px 7px;cursor:pointer}.work-mode-tmp-merge{padding:3px 7px;font-size:.64rem}.work-mode-tmp-merge-all:disabled,.work-mode-tmp-merge:disabled{opacity:.45;cursor:not-allowed}.work-mode-readonly-note{margin:8px 0 0;color:#a8c6c8;font-size:.8rem}.work-mode-card-btn.merge{border-color:rgba(109,224,182,.42);background:rgba(109,224,182,.10);color:#dcfff3}
 .work-mode-tree-row.is-empty,.work-mode-tree-row.is-note{color:rgba(245,247,251,.38);font-style:italic;cursor:default}
 .work-mode-tree-row.is-empty.is-deletable{cursor:pointer;color:rgba(245,247,251,.52)}
 .work-mode-tree-row.is-empty.is-deletable:hover{background:rgba(209,75,160,.12);color:#fff}
@@ -3202,9 +3205,21 @@ body.deaddrop-popover-open {
 .work-mode-kicker{font-size:.76rem;font-weight:900;letter-spacing:.10em;text-transform:uppercase;color:var(--work-pink);margin-bottom:6px}
 .work-mode-title{margin:0;font-size:clamp(1.45rem,2.3vw,2.45rem);line-height:1.08;font-weight:900;letter-spacing:-.03em;color:#fff}
 .work-mode-subtitle{margin:8px 0 0;max-width:720px;color:rgba(245,247,251,.68);font-size:.98rem;line-height:1.45}
-.work-mode-stage{max-width:1180px;width:100%;height:calc(100vh - 104px);margin:14px auto 0;border:1px solid rgba(255,255,255,.10);border-radius:28px;background:rgba(255,255,255,.045);box-shadow:0 24px 58px rgba(0,0,0,.30);overflow:auto;padding:26px 28px 220px;text-align:left;scrollbar-width:none}.work-mode-stage::-webkit-scrollbar{width:0;height:0}
-.work-mode-chat-feed{display:grid;gap:18px;max-width:1100px;margin:0 auto;color:rgba(245,247,251,.86)}
-.work-mode-message{font-size:.96rem;line-height:1.45;white-space:pre-wrap}
+.work-mode-stage{max-width:1180px;width:100%;height:calc(100vh - 104px);margin:14px auto 0;border:1px solid rgba(255,255,255,.10);border-radius:28px;background:rgba(255,255,255,.045);box-shadow:0 24px 58px rgba(0,0,0,.30);overflow-y:auto;overflow-x:hidden;padding:26px 28px 220px;text-align:left;scrollbar-width:none}.work-mode-stage::-webkit-scrollbar{width:0;height:0}
+.work-mode-stage.is-review-mode{max-width:1520px;padding:20px 22px 220px;perspective:1600px;background:linear-gradient(90deg,rgba(74,163,255,.055),rgba(255,255,255,.052),rgba(209,75,160,.055))}
+.work-mode-single-pane{min-height:100%}.work-mode-stage.is-review-mode .work-mode-single-pane{display:none}
+.work-mode-chat-feed{display:grid;gap:18px;max-width:1100px;margin:0 auto;color:rgba(245,247,251,.86);min-width:0}
+.work-mode-review-grid{height:100%;min-height:520px;display:grid;grid-template-columns:minmax(260px,1fr) minmax(320px,1.08fr) minmax(260px,1fr);gap:16px;align-items:stretch;transform-style:preserve-3d}.work-mode-review-grid[hidden]{display:none}
+.work-mode-review-panel{min-width:0;min-height:0;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,.12);border-radius:22px;background:rgba(8,10,15,.50);box-shadow:0 18px 42px rgba(0,0,0,.24);overflow:hidden;backdrop-filter:blur(10px)}
+.work-mode-review-panel.is-worker{transform:rotateY(2.2deg);transform-origin:right center}.work-mode-review-panel.is-observer{transform:rotateY(-2.2deg);transform-origin:left center}.work-mode-review-panel.is-final{background:rgba(255,255,255,.062);border-color:rgba(255,255,255,.18);box-shadow:0 24px 56px rgba(0,0,0,.32),0 0 0 1px rgba(74,163,255,.08)}
+.work-mode-review-head{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.045)}
+.work-mode-review-title{min-width:0;font-size:.82rem;font-weight:950;letter-spacing:.04em;text-transform:uppercase;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.work-mode-review-title span{color:var(--work-blue)}
+.work-mode-review-badge{flex:0 0 auto;border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:4px 8px;color:rgba(245,247,251,.64);font-size:.68rem;font-weight:950;letter-spacing:.06em;text-transform:uppercase}
+.work-mode-review-feed{flex:1 1 auto;min-height:0;min-width:0;overflow-y:auto;overflow-x:hidden;padding:16px;display:grid;align-content:start;gap:14px;scrollbar-width:none;color:rgba(245,247,251,.86)}.work-mode-review-feed::-webkit-scrollbar{width:0;height:0}
+.work-mode-review-placeholder{border:1px dashed rgba(255,255,255,.14);border-radius:16px;padding:14px;color:rgba(245,247,251,.55);font-size:.88rem;line-height:1.45;background:rgba(255,255,255,.035)}
+.work-mode-review-grid .work-mode-message.user{justify-self:stretch;max-width:100%}.work-mode-review-grid .work-mode-message.ai,.work-mode-review-grid .work-mode-message.agentgo{justify-self:stretch;max-width:100%}
+.work-mode-review-final-feed{max-width:none;margin:0}.work-mode-review-final-feed .work-mode-message.ai{color:rgba(245,247,251,.90)}
+.work-mode-message{min-width:0;max-width:100%;box-sizing:border-box;font-size:.96rem;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
 .work-mode-message.user{justify-self:end;max-width:min(650px,82%);background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.08);border-radius:22px;padding:13px 16px;box-shadow:0 14px 28px rgba(0,0,0,.18)}
 .work-mode-message.ai{justify-self:start;max-width:min(720px,88%);padding:4px 0;color:rgba(245,247,251,.88)}
 .work-mode-message.ai.has-file-output{position:relative;padding-right:44px}
@@ -3212,6 +3227,9 @@ body.deaddrop-popover-open {
 .work-mode-ai-file-toggle:hover{background:rgba(74,163,255,.20);color:#fff}
 .work-mode-ai-file-toggle svg{width:23px;height:23px;stroke:currentColor;fill:none;transition:transform .16s ease}
 .work-mode-ai-file-toggle.is-open svg{transform:rotate(180deg)}
+.work-mode-ai-speak-btn{appearance:none;margin-top:8px;width:30px;height:30px;border-radius:999px;border:1px solid rgba(74,163,255,.30);background:rgba(74,163,255,.10);color:#d9eeff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.work-mode-ai-speak-btn:hover{background:rgba(74,163,255,.18);color:#fff}.work-mode-ai-speak-btn.is-speaking{background:rgba(74,163,255,.24);color:#fff;box-shadow:0 0 0 1px rgba(74,163,255,.32)}
+.work-mode-ai-speak-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9}
 .work-mode-file-outputs{margin-top:12px;display:grid;gap:10px;border:1px solid rgba(74,163,255,.28);border-radius:16px;background:rgba(74,163,255,.08);padding:10px}
 .work-mode-file-output-head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#d9eeff;font-size:.82rem;font-weight:900}
 .work-mode-file-output-state{color:rgba(245,247,251,.62);font-weight:700}
@@ -3228,6 +3246,7 @@ body.deaddrop-popover-open {
 .work-mode-agent-details-section+.work-mode-agent-details-section{margin-top:12px}
 .work-mode-agent-details-pre{margin:0;max-height:360px;overflow:auto;color:#f5f7fb;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word}
 .work-mode-message-kicker{font-size:.78rem;font-weight:950;letter-spacing:.02em;color:var(--work-pink);margin-bottom:5px}
+.work-mode-message-collapse-btn{margin-top:8px;appearance:none;border:1px solid rgba(255,255,255,.12);border-radius:999px;background:rgba(255,255,255,.08);color:rgba(245,247,251,.86);font-size:.78rem;font-weight:900;padding:6px 10px;cursor:pointer}.work-mode-message-collapse-btn:hover{background:rgba(74,163,255,.16);border-color:rgba(74,163,255,.34);color:#fff}
 .work-mode-file-card{display:grid;gap:12px;width:100%;justify-self:stretch;border:1px solid rgba(209,75,160,.72);border-radius:22px;background:rgba(12,14,20,.82);box-shadow:0 20px 46px rgba(0,0,0,.30);padding:14px;min-height:220px}
 .work-mode-file-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:10px}
 .work-mode-file-card-title{font-weight:900;color:#fff;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -3264,11 +3283,17 @@ body.deaddrop-popover-open {
 .work-mode-icon-btn,.work-mode-send-btn,.work-mode-opened-btn,.work-mode-settings-btn{appearance:none;border:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:38px;border-radius:999px;background:transparent;color:rgba(245,247,251,.88);font-weight:800}
 .work-mode-icon-btn:hover,.work-mode-opened-btn:hover,.work-mode-settings-btn:hover{background:rgba(255,255,255,.09)}
 .work-mode-icon-btn.is-listening{background:rgba(209,75,160,.24);color:#fff;box-shadow:0 0 0 1px rgba(245,166,215,.30)}
+.work-mode-icon-btn.is-auto-read{background:rgba(74,163,255,.22);color:#fff;box-shadow:0 0 0 1px rgba(74,163,255,.30)}
+.work-mode-icon-btn.is-observer-review{background:rgba(109,224,182,.20);color:#fff;box-shadow:0 0 0 1px rgba(109,224,182,.30)}
+.work-mode-icon-btn:disabled{opacity:.38;cursor:not-allowed}.work-mode-icon-btn:disabled:hover{background:transparent}
 .work-mode-opened-btn{padding:0 13px;gap:6px;font-size:.84rem;background:rgba(74,163,255,.20);min-width:92px;color:#d9eeff;box-shadow:0 0 0 1px rgba(74,163,255,.22)}
 .work-mode-settings-btn svg{width:20px;height:20px;stroke:currentColor;stroke-width:1.8;fill:none}
 .work-mode-send-btn{background:#f5f7fb;color:#0b0d12;font-size:1.1rem;box-shadow:0 8px 22px rgba(255,255,255,.12)}
 .work-mode-send-btn:hover{filter:brightness(.96)}
 .work-mode-icon-btn svg,.work-mode-send-btn svg{width:20px;height:20px;stroke:currentColor;stroke-width:1.8;fill:none}.work-mode-attach-btn svg{width:25px;height:25px;stroke-width:1.7}
+.work-mode-observer-controls{display:inline-flex;align-items:center;gap:6px}.work-mode-observer-controls[hidden]{display:none}
+.work-mode-pass-wrap{height:38px;display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.11);border-radius:999px;background:rgba(255,255,255,.06);padding:0 9px;color:rgba(245,247,251,.70);font-size:.76rem;font-weight:900;white-space:nowrap}.work-mode-pass-wrap input{width:54px;border:1px solid rgba(255,255,255,.14);border-radius:10px;background:rgba(0,0,0,.25);color:#fff;font:inherit;font-size:.78rem;font-weight:900;padding:5px 6px;outline:none}.work-mode-pass-wrap input:focus{border-color:rgba(74,163,255,.56);box-shadow:0 0 0 3px rgba(74,163,255,.13)}.work-mode-pass-wrap.is-disabled{opacity:.48}
+.work-mode-pause-controls{display:inline-flex;align-items:center;gap:6px}.work-mode-mini-btn{appearance:none;border:1px solid rgba(255,255,255,.13);border-radius:999px;background:rgba(255,255,255,.07);color:rgba(245,247,251,.86);height:34px;padding:0 11px;font-size:.78rem;font-weight:950;cursor:pointer}.work-mode-mini-btn:hover{background:rgba(255,255,255,.12);color:#fff}.work-mode-mini-btn.finalize{border-color:rgba(109,224,182,.36);background:rgba(109,224,182,.13);color:#dbfff2}.work-mode-mini-btn[hidden]{display:none}.work-mode-mini-btn:disabled{opacity:.42;cursor:not-allowed}
 .work-mode-prompt-status{min-height:18px;padding:0 12px;color:rgba(245,247,251,.55);font-size:.82rem;pointer-events:auto}
 .work-mode-status-stop-link{appearance:none;border:none;background:transparent;color:#f5f7fb;text-decoration:underline;text-underline-offset:2px;font:inherit;font-weight:900;cursor:pointer;padding:0 2px}
 .work-mode-status-stop-link:hover{color:#ff9ecb}
@@ -3295,8 +3320,9 @@ body.deaddrop-popover-open {
 .work-mode-paste-target{width:100%;min-height:118px;border:1px dashed rgba(74,163,255,.36);border-radius:14px;background:rgba(0,0,0,.24);color:rgba(245,247,251,.56);padding:12px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:.88rem;outline:none;overflow:hidden}.work-mode-paste-target:focus{border-color:rgba(74,163,255,.7);box-shadow:0 0 0 3px rgba(74,163,255,.14)}.work-mode-paste-target.has-preview{padding:8px;background:rgba(74,163,255,.08);border-style:solid}.work-mode-paste-preview{max-width:100%;max-height:180px;border-radius:10px;object-fit:contain;box-shadow:0 12px 28px rgba(0,0,0,.28)}
 .work-mode-popup-btn{appearance:none;border:none;border-radius:999px;background:rgba(74,163,255,.18);color:#d9eeff;font-weight:850;padding:8px 12px;cursor:pointer}
 .work-mode-scroll-bottom{position:absolute;left:50%;bottom:118px;transform:translateX(-50%);z-index:2145;width:42px;height:42px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(37,39,46,.28);color:rgba(245,247,251,.82);backdrop-filter:blur(10px);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}.work-mode-scroll-bottom svg{width:27px;height:27px;stroke:currentColor;fill:none}.work-mode-scroll-bottom:hover{background:rgba(74,163,255,.18);color:#fff}.work-mode-scroll-bottom[hidden]{display:none}
-.work-mode-status-memory-toggle{appearance:none;border:none;background:transparent;color:rgba(245,247,251,.56);display:inline-flex;align-items:center;gap:6px;padding:0 2px;margin:0;font:inherit;cursor:pointer;vertical-align:baseline}.work-mode-status-memory-toggle:hover .work-mode-status-memory-off{color:rgba(245,247,251,.82)}.work-mode-status-memory-toggle:focus-visible{outline:2px solid rgba(74,163,255,.65);outline-offset:3px;border-radius:999px}.work-mode-status-memory-bubble{width:12px;height:12px;border-radius:999px;border:1.5px solid rgba(245,247,251,.45);background:transparent;box-shadow:inset 0 0 0 2px rgba(0,0,0,.20);flex:0 0 12px}.work-mode-status-memory-toggle.is-on .work-mode-status-memory-bubble{background:var(--work-blue);border-color:var(--work-blue);box-shadow:0 0 0 3px rgba(74,163,255,.18)}.work-mode-status-memory-on{color:var(--work-blue);font-weight:900;animation:workModeMemoryBreath 2.2s ease-in-out infinite}.work-mode-status-memory-off{color:rgba(245,247,251,.56)}@keyframes workModeMemoryBreath{0%,100%{text-shadow:0 0 0 rgba(74,163,255,0)}50%{text-shadow:0 0 14px rgba(74,163,255,.72)}}
+.work-mode-status-memory-wrap{position:relative;display:inline-flex;align-items:center;vertical-align:baseline}.work-mode-status-memory-toggle{appearance:none;border:none;background:transparent;color:rgba(245,247,251,.56);display:inline-flex;align-items:center;gap:6px;padding:0 2px;margin:0;font:inherit;cursor:pointer;vertical-align:baseline}.work-mode-status-memory-toggle:hover .work-mode-status-memory-off{color:rgba(245,247,251,.82)}.work-mode-status-memory-toggle:focus-visible{outline:2px solid rgba(74,163,255,.65);outline-offset:3px;border-radius:999px}.work-mode-status-memory-bubble{width:12px;height:12px;border-radius:999px;border:1.5px solid rgba(245,247,251,.45);background:transparent;box-shadow:inset 0 0 0 2px rgba(0,0,0,.20);flex:0 0 12px}.work-mode-status-memory-toggle.is-on .work-mode-status-memory-bubble{background:var(--work-blue);border-color:var(--work-blue);box-shadow:0 0 0 3px rgba(74,163,255,.18)}.work-mode-status-memory-on{color:var(--work-blue);font-weight:900;animation:workModeMemoryBreath 2.2s ease-in-out infinite}.work-mode-status-memory-off{color:rgba(245,247,251,.56)}.work-mode-memory-menu{position:absolute;left:-8px;bottom:calc(100% + 10px);z-index:2200;width:min(320px,calc(100vw - 44px));padding:12px;border-radius:18px;background:rgba(255,255,255,.98);color:#17304d;border:1px solid rgba(23,53,95,.12);box-shadow:0 20px 46px rgba(0,0,0,.32);display:grid;gap:9px;white-space:normal}.work-mode-memory-menu::after{content:'';position:absolute;left:22px;bottom:-8px;width:16px;height:16px;background:rgba(255,255,255,.98);border-right:1px solid rgba(23,53,95,.12);border-bottom:1px solid rgba(23,53,95,.12);transform:rotate(45deg)}.work-mode-memory-menu-title{font-size:.78rem;font-weight:950;text-transform:uppercase;letter-spacing:.06em;color:#d14ba0}.work-mode-memory-menu-note{font-size:.8rem;line-height:1.35;color:#53677f;font-weight:750}.work-mode-memory-menu-list{display:grid;gap:6px;max-height:230px;overflow:auto;padding-right:2px}.work-mode-memory-menu-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center}.work-mode-memory-menu-btn,.work-mode-memory-delete-btn,.work-mode-memory-save-btn{appearance:none;border:1px solid rgba(23,53,95,.12);border-radius:12px;background:rgba(241,246,252,.96);color:#17304d;font:inherit;font-size:.84rem;font-weight:900;padding:8px 10px;cursor:pointer;text-align:left;min-width:0}.work-mode-memory-menu-btn:hover,.work-mode-memory-save-btn:hover{background:rgba(226,239,255,.98);border-color:rgba(74,163,255,.30)}.work-mode-memory-delete-btn{width:34px;height:34px;padding:0;text-align:center;color:#a4243d;background:rgba(210,52,78,.10)}.work-mode-memory-delete-btn:hover{background:rgba(210,52,78,.18);border-color:rgba(210,52,78,.28)}.work-mode-memory-save-form{display:grid;gap:8px}.work-mode-memory-save-input{width:100%;border:1px solid rgba(23,53,95,.16);border-radius:12px;padding:9px 10px;font:inherit;font-size:.86rem;font-weight:800;color:#17304d;background:#fff;outline:none}.work-mode-memory-save-input:focus{border-color:rgba(74,163,255,.45);box-shadow:0 0 0 3px rgba(74,163,255,.12)}.work-mode-memory-save-actions{display:flex;gap:8px;justify-content:flex-end}.work-mode-memory-save-btn.primary{background:#17304d;color:#fff;border-color:#17304d}.work-mode-memory-save-btn.secondary{background:rgba(241,246,252,.96);color:#52667f}@keyframes workModeMemoryBreath{0%,100%{text-shadow:0 0 0 rgba(74,163,255,0)}50%{text-shadow:0 0 14px rgba(74,163,255,.72)}}
 .work-mode-context-menu{position:fixed;z-index:2180;min-width:160px;padding:6px;border:1px solid rgba(255,255,255,.12);border-radius:14px;background:rgba(20,23,31,.98);box-shadow:0 20px 44px rgba(0,0,0,.42);color:#fff}.work-mode-context-menu[hidden]{display:none}.work-mode-context-menu button{width:100%;appearance:none;border:none;background:transparent;color:#fff;text-align:left;border-radius:10px;padding:9px 10px;font-weight:850;cursor:pointer}.work-mode-context-menu button:hover{background:rgba(74,163,255,.16)}.work-mode-context-menu button.danger{color:#ff9aa8}.work-mode-context-menu button.danger:hover{background:rgba(255,90,120,.16)}.work-mode-context-menu button[hidden]{display:none}
+@media (max-width:1100px){.work-mode-stage.is-review-mode{padding-left:14px;padding-right:14px}.work-mode-review-grid{grid-template-columns:1fr;min-height:0}.work-mode-review-panel.is-worker,.work-mode-review-panel.is-observer{transform:none}.work-mode-review-panel{min-height:260px}.work-mode-review-panel.is-final{order:-1}}
 #workModeCreateModal{z-index:2190}
 .work-mode-create-card{width:min(500px,92vw);height:auto}.work-mode-create-body{padding:18px;color:#12233e;display:grid;gap:12px}.work-mode-create-copy{margin:0;line-height:1.5;color:#21344f;font-weight:700}.work-mode-create-input{width:100%;border:1px solid rgba(23,53,95,.18);border-radius:14px;padding:12px 14px;font:inherit;font-weight:700;color:#17325c;background:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.92)}.work-mode-create-input:focus{outline:none;border-color:rgba(23,53,95,.36);box-shadow:0 0 0 4px rgba(23,53,95,.10)}.work-mode-create-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:4px}
 .work-mode-yeti{position:fixed;right:-23px;bottom:-17px;width:min(14vw,180px);min-width:92px;z-index:2130;filter:drop-shadow(0 14px 24px rgba(0,0,0,.36));cursor:pointer;user-select:none}
@@ -6973,7 +6999,21 @@ body.deaddrop-popover-open {
 </div>
 </header>
 <section class="work-mode-stage" id="workModeStage" aria-label="Work Mode workspace">
-<div class="work-mode-chat-feed" id="workModeChatFeed"></div>
+<div class="work-mode-single-pane" id="workModeSinglePane"><div class="work-mode-chat-feed" id="workModeChatFeed"></div></div>
+<div class="work-mode-review-grid" id="workModeReviewGrid" hidden>
+<section class="work-mode-review-panel is-worker" aria-label="Worker draft panel">
+<div class="work-mode-review-head"><div class="work-mode-review-title">Worker: <span id="workModeWorkerPanelName">Builder</span></div><div class="work-mode-review-badge">Drafts</div></div>
+<div class="work-mode-review-feed" id="workModeWorkerFeed"></div>
+</section>
+<section class="work-mode-review-panel is-final" aria-label="Official Work Mode final panel">
+<div class="work-mode-review-head"><div class="work-mode-review-title">Final</div><div class="work-mode-review-badge">Official</div></div>
+<div class="work-mode-review-feed work-mode-review-final-feed" id="workModeFinalFeed"></div>
+</section>
+<section class="work-mode-review-panel is-observer" aria-label="Observer review panel">
+<div class="work-mode-review-head"><div class="work-mode-review-title">Observer: <span id="workModeObserverPanelName">Observer</span></div><div class="work-mode-review-badge">Notes</div></div>
+<div class="work-mode-review-feed" id="workModeObserverFeed"></div>
+</section>
+</div>
 </section>
 <button aria-label="Scroll Work Mode to bottom" class="work-mode-scroll-bottom" hidden id="workModeScrollBottomBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 12.75 3 3m0 0 3-3m-3 3v-7.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"/></svg></button>
 <div class="work-mode-prompt-wrap">
@@ -6992,6 +7032,15 @@ body.deaddrop-popover-open {
 </div>
 </div>
 </div>
+<div class="work-mode-control-group work-mode-observer-controls" id="workModeObserverControls" hidden>
+<button aria-label="Use Observer review" aria-pressed="true" class="work-mode-icon-btn" id="workModeObserverReviewBtn" title="Use Observer review" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8.75 11.25a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5Z"/><path d="M15.75 12.75a2.75 2.75 0 1 0 0-5.5 2.75 2.75 0 0 0 0 5.5Z"/><path d="M3.75 19.25a5 5 0 0 1 10 0" stroke-linecap="round"/><path d="M12.75 18.75a4 4 0 0 1 7.5 0" stroke-linecap="round"/></svg></button>
+<label class="work-mode-pass-wrap" id="workModeMaxPassWrap" title="Maximum Worker passes before AgentGO stops the review loop">Max <input id="workModeMaxPassesInput" aria-label="Maximum Worker passes" type="number" min="1" max="100" step="1" value="3"/></label>
+<div class="work-mode-pause-controls" id="workModePauseControls">
+<button class="work-mode-mini-btn" id="workModePauseBtn" type="button">Pause</button>
+<button class="work-mode-mini-btn" id="workModeUnpauseBtn" hidden type="button">Unpause</button>
+<button class="work-mode-mini-btn finalize" id="workModeFinalizeBtn" hidden type="button">Finalize</button>
+</div>
+</div>
 <div class="work-mode-control-spacer"></div>
 <div class="work-mode-control-group">
 <button aria-expanded="false" aria-haspopup="true" class="work-mode-opened-btn" id="workModeOpenedBtn" title="Recent files" type="button">Recents: 0</button>
@@ -7002,6 +7051,7 @@ body.deaddrop-popover-open {
 <div class="work-mode-popup" hidden id="workModeSettingsPopup"></div>
 </div>
 <button aria-label="Start speech input" aria-pressed="false" class="work-mode-icon-btn" id="workModeMicBtn" title="Speech input" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3.75a3 3 0 0 0-3 3v5.5a3 3 0 0 0 6 0v-5.5a3 3 0 0 0-3-3Z"/><path d="M5.75 11.25a6.25 6.25 0 0 0 12.5 0M12 17.5v2.75M8.75 20.25h6.5"/></svg></button>
+<button aria-label="Auto-read AI replies" aria-pressed="false" class="work-mode-icon-btn" id="workModeAutoReadBtn" title="Auto-read AI replies" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4.75 10.25v3.5h3.1L12 17.5v-11l-4.15 3.75h-3.1Z"/><path d="M15.25 9.25a4 4 0 0 1 0 5.5M17.75 7a7 7 0 0 1 0 10" stroke-linecap="round"/></svg></button>
 <button aria-label="Send Work Mode prompt" class="work-mode-send-btn" id="workModeSendBtn" title="Send Work Mode prompt" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 19.25V4.75M5.75 11 12 4.75 18.25 11"/></svg></button>
 </div>
 </div>
@@ -7440,7 +7490,10 @@ let workModeOpen = false;
 let workModePromptDraft = "";
 let workModeRecognition = null;
 let workModeSpeechActive = false;
+let workModeReplySpeechMessageIndex = null;
+let workModeReplySpeechUtterance = null;
 let workModeFileTree = null;
+let workModeTmpWorkTree = null;
 let workModeTreeLoadedProject = "";
 let workModeExpandedFolders = new Set();
 let workModeSelectedFiles = new Set();
@@ -7468,7 +7521,20 @@ let workModeContextFolderPath = '';
 let workModeContextTargetPath = '';
 let workModeContextTargetKind = 'folder';
 let workModeCreateKind = '';
-let workModeSettings = createDefaultWorkModeSettings ? createDefaultWorkModeSettings() : { includeRoleContext: false, useMemory: false, responseMode: 'auto' };
+let workModeObserverReviewEnabled = false;
+let workModeObserverSessionObserverId = '';
+let workModeObserverMaxPasses = 3;
+let workModeObserverPaused = false;
+let workModeObserverSessionState = null;
+let workModeObserverPollTimer = null;
+let workModeObserverPollBusy = false;
+let workModeObserverLastPollSignature = '';
+let workModeObserverLastFileStateSignature = '';
+let workModeReviewMessages = [];
+let workModeSettings = createDefaultWorkModeSettings ? createDefaultWorkModeSettings() : { includeRoleContext: false, useMemory: false, responseMode: 'auto', autoReadReplies: false };
+let workModeMemoryMenuOpen = '';
+let workModeMemoryState = { activeExists: false, activeBytes: 0, saved: [] };
+let workModeMemoryBusy = false;
 const workModeDefaultGuidance = "Select files in the projectwork tree if you want to send it to AI, click the filename to view/edit here.\nClick settings icon for more options. Enable Memory Mode if you want your AI to keep track of your chat, but this does use slightly more tokens per chat message.";
 let waveState = { visible: false, currentWave: 0, state: '', detail: '', promptSource: '', contextFilesUsed: 0 };
 let runtimeWaveSyncState = { signature: '', startedWave: null };
@@ -8041,7 +8107,45 @@ let lastChatModalTrigger = null;
 
 const POLL_REQUEST_TIMEOUT_MS = 15000;
 const LOGS_POLL_LIMIT = 150;
-const pollingInFlight = Object.create(null);
+const POLL_HIDDEN_MIN_INTERVAL_MS = 60000;
+const POLL_BACKOFF_STEPS_MS = [2000, 5000, 15000, 30000, 60000];
+const POLL_BASE_INTERVAL_MS = {
+  logs: 2000,
+  risk: 4000,
+  'wave-state': 4000,
+  'deaddrop-status': 15000,
+  'model-state': 4000,
+  'video-jobs': 5000,
+  'mesh-jobs': 5000
+};
+const pollingLaneState = Object.create(null);
+
+function getPollingLaneState(name) {
+  if (!pollingLaneState[name]) {
+    pollingLaneState[name] = { inFlight: false, failures: 0, nextAt: 0, startedAt: 0 };
+  }
+  return pollingLaneState[name];
+}
+
+function pollingBaseDelay(name) {
+  const base = Number(POLL_BASE_INTERVAL_MS[name] || 2000) || 2000;
+  if (document.visibilityState === 'hidden') return Math.max(base, POLL_HIDDEN_MIN_INTERVAL_MS);
+  return base;
+}
+
+function pollingFailureDelay(failures) {
+  const idx = Math.max(0, Math.min(POLL_BACKOFF_STEPS_MS.length - 1, Number(failures || 1) - 1));
+  const delay = POLL_BACKOFF_STEPS_MS[idx] || 60000;
+  if (document.visibilityState === 'hidden') return Math.max(delay, POLL_HIDDEN_MIN_INTERVAL_MS);
+  return delay;
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  Object.keys(pollingLaneState).forEach(name => {
+    pollingLaneState[name].nextAt = 0;
+  });
+});
 
 async function api(url, options = {}) {
   const { timeoutMs = 0, ...fetchOptions } = options || {};
@@ -8075,19 +8179,28 @@ async function api(url, options = {}) {
     err.statusText = res.statusText || '';
     throw err;
   }
+  if (res.status === 204) return null;
   return res.json();
 }
 
 async function runPollingLane(name, work) {
-  if (pollingInFlight[name]) return null;
-  pollingInFlight[name] = true;
+  const state = getPollingLaneState(name);
+  const now = Date.now();
+  if (state.inFlight || now < state.nextAt) return null;
+  state.inFlight = true;
+  state.startedAt = now;
   try {
-    return await work();
+    const result = await work();
+    state.failures = 0;
+    state.nextAt = Date.now() + pollingBaseDelay(name);
+    return result;
   } catch (err) {
     if (err && err.name !== 'TimeoutError') console.warn(`${name} polling failed`, err);
+    state.failures = Math.min(20, (Number(state.failures || 0) || 0) + 1);
+    state.nextAt = Date.now() + pollingFailureDelay(state.failures);
     return null;
   } finally {
-    pollingInFlight[name] = false;
+    state.inFlight = false;
   }
 }
 
@@ -8563,6 +8676,30 @@ function currentReviewerLabel() {
   if (!reviewerModelId) return '';
   const card = Array.from(document.querySelectorAll('.agent-card')).find(item => String(item.dataset.modelId || '').trim() === String(reviewerModelId || '').trim());
   return String(card?.dataset?.modelLabel || card?.querySelector('.agent-title')?.textContent || '').trim();
+}
+function getActiveObserverCard() {
+  const targetId = String(reviewerModelId || '').trim();
+  return Array.from(document.querySelectorAll('.agent-card')).find(card => {
+    if (!card) return false;
+    if (targetId && String(card.dataset.modelId || '').trim() === targetId) return true;
+    const btn = card.querySelector('.reviewer-toggle-btn');
+    return !!(btn && btn.classList.contains('is-active'));
+  }) || null;
+}
+function getActiveObserverModelId() {
+  const card = getActiveObserverCard();
+  return card ? String(card.dataset.modelId || '').trim() : '';
+}
+function getActiveObserverLabel() {
+  const card = getActiveObserverCard();
+  if (!card) return '';
+  return String(card.dataset.modelLabel || card.querySelector('.agent-title')?.textContent || 'Observer').trim() || 'Observer';
+}
+function activeObserverCount() {
+  return Array.from(document.querySelectorAll('.agent-card')).filter(card => {
+    const btn = card && card.querySelector('.reviewer-toggle-btn');
+    return !!(btn && btn.classList.contains('is-active'));
+  }).length;
 }
 
 function collectCurrentOutfitState() {
@@ -13301,6 +13438,7 @@ async function refreshDeadDropStatus(options = {}) {
   }
   try {
     const status = await fetchDeadDropStatus({ timeoutMs });
+    if (!status) return deadDropState.status;
     renderDeadDropStatus(status);
     return status;
   } catch (err) {
@@ -15924,6 +16062,8 @@ async function loadModelStates(options = {}) {
   updatePromptWorkflowStatusStrip();
   reorderModelCardsForDisplay(modelDefinitionsCache, models);
   updateAgentCardRuntimeVisibility(models);
+  updateWorkModeObserverControls({ render: workModeOpen });
+  if (yetiMenuOpen) updateRiskUI();
   await loadSessionTokenUsage(options);
   return models;
 }
@@ -15942,7 +16082,13 @@ async function toggleReviewer(card) {
     showToast(err.message || 'Could not update observer mode.');
   }
 }
-async function loadRiskState(options = {}) { riskState = await api('/api/risk', options); updateRiskUI(); }
+async function loadRiskState(options = {}) {
+  const nextRiskState = await api('/api/risk', options);
+  if (!nextRiskState) return riskState;
+  riskState = nextRiskState;
+  updateRiskUI();
+  return riskState;
+}
 function isDeadDropWaveStateActive(state) {
   const stateName = String((state && state.state) || '').trim().toLowerCase();
   const promptSource = String((state && state.promptSource) || '').trim().toLowerCase();
@@ -15957,7 +16103,9 @@ async function loadWaveState(options = {}) {
   const previous = waveState;
   const wasDeadDropActive = isDeadDropWaveStateActive(previous);
   const wasCypherActive = isCypherWaveStateActive(previous);
-  waveState = await api('/api/wave-state', options);
+  const nextWaveState = await api('/api/wave-state', options);
+  if (!nextWaveState) return waveState;
+  waveState = nextWaveState;
   updateWaveUI();
   if (wasDeadDropActive && !isDeadDropWaveStateActive(waveState)) {
     await refreshDeadDropStatus().catch(() => {});
@@ -16028,11 +16176,24 @@ function updateWaveUI() {
   updateClearContextButton();
   updateAgentCardRuntimeVisibility(latestModelStates);
 }
+function renderYetiWorkModeStatus() {
+  const workerCount = activeBuilderCount();
+  const observerCount = activeObserverCount();
+  const workerText = workerCount === 1 ? getActiveBuilderLabel() : (workerCount > 1 ? `${workerCount} selected` : 'Unset');
+  const observerText = observerCount === 1 ? getActiveObserverLabel() : (observerCount > 1 ? `${observerCount} selected` : 'None');
+  const workerClass = workerCount === 1 ? ' is-ready' : ' is-missing';
+  const observerClass = observerCount === 1 ? ' is-ready' : '';
+  return `<div class="yeti-menu-work-status" aria-label="Work Mode role status">
+    <div class="yeti-menu-work-status-row${workerClass}"><strong>Worker:</strong><span>${escapeHtml(workerText)}</span></div>
+    <div class="yeti-menu-work-status-row${observerClass}"><strong>Observer:</strong><span>${escapeHtml(observerText)}</span></div>
+  </div>`;
+}
 function renderYetiMenuBubble() {
   return `<div class="risk-indicator-title">YETI MENU</div>
     <div class="risk-indicator-line">What would you like to start?</div>
     <div class="yeti-menu-actions">
       <button class="yeti-menu-btn yeti-menu-work-btn" id="yetiStartWorkBtn" type="button">Work-Mode</button>
+      ${renderYetiWorkModeStatus()}
       <button class="yeti-menu-btn yeti-menu-risk-btn" id="yetiStartRiskBtn" type="button">Risk-Mode</button>
     </div>`;
 }
@@ -16083,18 +16244,47 @@ async function startRiskModeFromYetiMenu() {
   openRiskModal();
 }
 function createDefaultWorkModeSettings() {
-  return { includeRoleContext: false, useMemory: false, responseMode: 'auto' };
+  return { includeRoleContext: false, useMemory: false, responseMode: 'auto', autoReadReplies: false };
 }
 function getWorkModeSpeechRecognitionCtor() {
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
 }
+function isWorkModeReplySpeechSupported() {
+  return !!(window.speechSynthesis && window.SpeechSynthesisUtterance);
+}
 function updateWorkModeSpeechUI() {
   const micBtn = document.getElementById('workModeMicBtn');
-  if (!micBtn) return;
-  micBtn.classList.toggle('is-listening', !!workModeSpeechActive);
-  micBtn.setAttribute('aria-pressed', workModeSpeechActive ? 'true' : 'false');
-  micBtn.title = workModeSpeechActive ? 'Stop speech input' : 'Speech input';
-  micBtn.setAttribute('aria-label', workModeSpeechActive ? 'Stop speech input' : 'Start speech input');
+  if (micBtn) {
+    micBtn.classList.toggle('is-listening', !!workModeSpeechActive);
+    micBtn.setAttribute('aria-pressed', workModeSpeechActive ? 'true' : 'false');
+    micBtn.title = workModeSpeechActive ? 'Stop speech input' : 'Speech input';
+    micBtn.setAttribute('aria-label', workModeSpeechActive ? 'Stop speech input' : 'Start speech input');
+  }
+  const autoReadBtn = document.getElementById('workModeAutoReadBtn');
+  if (autoReadBtn) {
+    const supported = isWorkModeReplySpeechSupported();
+    const enabled = supported && !!workModeSettings.autoReadReplies;
+    autoReadBtn.disabled = !supported;
+    autoReadBtn.classList.toggle('is-auto-read', enabled);
+    autoReadBtn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+    autoReadBtn.title = supported ? (enabled ? 'Auto-read is on' : 'Auto-read AI replies') : 'Text-to-speech is not supported in this browser';
+    autoReadBtn.setAttribute('aria-label', supported ? (enabled ? 'Turn off auto-read AI replies' : 'Turn on auto-read AI replies') : 'Text-to-speech is not supported in this browser');
+  }
+}
+function updateWorkModeReplySpeechButtons() {
+  const feed = document.getElementById('workModeChatFeed');
+  if (!feed) return;
+  feed.querySelectorAll('[data-work-speak-message]').forEach(btn => {
+    const idx = Number(btn.getAttribute('data-work-speak-message'));
+    const speaking = Number.isFinite(idx) && idx === workModeReplySpeechMessageIndex;
+    btn.classList.toggle('is-speaking', speaking);
+    btn.title = speaking ? 'Stop reading this reply' : 'Read this reply aloud';
+    btn.setAttribute('aria-label', speaking ? 'Stop reading this reply' : 'Read this reply aloud');
+    btn.setAttribute('aria-pressed', speaking ? 'true' : 'false');
+  });
+}
+function renderWorkModeSpeakerIcon() {
+  return '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4.75 10.25v3.5h3.1L12 17.5v-11l-4.15 3.75h-3.1Z"/><path d="M15.25 9.25a4 4 0 0 1 0 5.5M17.75 7a7 7 0 0 1 0 10" stroke-linecap="round"/></svg>';
 }
 function setWorkModeStatus(message) {
   const status = document.getElementById('workModePromptStatus');
@@ -16103,6 +16293,79 @@ function setWorkModeStatus(message) {
 function setWorkModeStatusHTML(html) {
   const status = document.getElementById('workModePromptStatus');
   if (status) status.innerHTML = html || '';
+}
+function stopWorkModeReplySpeech(options = {}) {
+  if (!isWorkModeReplySpeechSupported()) {
+    workModeReplySpeechMessageIndex = null;
+    workModeReplySpeechUtterance = null;
+    updateWorkModeReplySpeechButtons();
+    return;
+  }
+  try { window.speechSynthesis.cancel(); } catch (_) {}
+  workModeReplySpeechMessageIndex = null;
+  workModeReplySpeechUtterance = null;
+  updateWorkModeReplySpeechButtons();
+  if (!options.silent && workModeOpen) updateWorkModeSettingsStatus();
+}
+function speakWorkModeReplyMessage(index, options = {}) {
+  if (!isWorkModeReplySpeechSupported()) {
+    if (!options.silent) showToast('Text-to-speech is not supported in this browser.', 'warning', 3200);
+    updateWorkModeSpeechUI();
+    return;
+  }
+  const idx = Number(index);
+  const msg = Number.isFinite(idx) ? workModeMessages[idx] : null;
+  if (!msg || msg.role !== 'ai') return;
+  const text = String(msg.text || '').trim();
+  if (!text) return;
+  if (workModeReplySpeechMessageIndex === idx && window.speechSynthesis.speaking) {
+    stopWorkModeReplySpeech({ silent: true });
+    return;
+  }
+  stopWorkModeReplySpeech({ silent: true });
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = navigator.language || 'en-US';
+  utterance.onstart = () => {
+    workModeReplySpeechMessageIndex = idx;
+    workModeReplySpeechUtterance = utterance;
+    updateWorkModeReplySpeechButtons();
+  };
+  utterance.onend = () => {
+    if (workModeReplySpeechUtterance === utterance) {
+      workModeReplySpeechMessageIndex = null;
+      workModeReplySpeechUtterance = null;
+      updateWorkModeReplySpeechButtons();
+    }
+  };
+  utterance.onerror = () => {
+    if (workModeReplySpeechUtterance === utterance) {
+      workModeReplySpeechMessageIndex = null;
+      workModeReplySpeechUtterance = null;
+      updateWorkModeReplySpeechButtons();
+    }
+    if (!options.silent) showToast('Could not read this reply aloud.', 'warning', 2800);
+  };
+  workModeReplySpeechMessageIndex = idx;
+  workModeReplySpeechUtterance = utterance;
+  updateWorkModeReplySpeechButtons();
+  try { window.speechSynthesis.speak(utterance); } catch (err) {
+    workModeReplySpeechMessageIndex = null;
+    workModeReplySpeechUtterance = null;
+    updateWorkModeReplySpeechButtons();
+    if (!options.silent) showToast('Could not read this reply aloud.', 'warning', 2800);
+  }
+}
+function toggleWorkModeAutoReadReplies() {
+  if (!isWorkModeReplySpeechSupported()) {
+    workModeSettings.autoReadReplies = false;
+    updateWorkModeSpeechUI();
+    showToast('Text-to-speech is not supported in this browser.', 'warning', 3200);
+    return;
+  }
+  workModeSettings.autoReadReplies = !workModeSettings.autoReadReplies;
+  if (!workModeSettings.autoReadReplies) stopWorkModeReplySpeech({ silent: true });
+  updateWorkModeSpeechUI();
+  setWorkModeStatus(workModeSettings.autoReadReplies ? 'Auto-read AI replies is on.' : 'Auto-read AI replies is off.');
 }
 function clearWorkModeWaitingNotice() {
   if (workModeWaitingNoticeTimer) clearInterval(workModeWaitingNoticeTimer);
@@ -16121,6 +16384,30 @@ function startWorkModeWaitingNotice(modelLabel) {
 }
 function formatWorkModeMessageText(value) {
   return escapeHtml(value || '').replace(/&lt;br\s*\/?&gt;/gi, '<br>');
+}
+function workModeMessageNeedsCollapse(value) {
+  const text = String(value || '');
+  if (text.length > 2400) return true;
+  return text.split(/\r?\n/).length > 10;
+}
+function workModeMessagePreview(value) {
+  const text = String(value || '');
+  const lines = text.split(/\r?\n/);
+  let preview = lines.length > 10 ? lines.slice(0, 10).join('\n') : text;
+  if (preview.length > 2400) preview = preview.slice(0, 2400);
+  if (preview.length < text.length) preview = preview.replace(/\s*$/, '') + '\n…';
+  return preview;
+}
+function renderWorkModeMessageBody(value, index) {
+  const text = String(value || '');
+  if (!workModeMessageNeedsCollapse(text) || !Number.isFinite(index)) {
+    return `<div>${formatWorkModeMessageText(text)}</div>`;
+  }
+  const msg = workModeMessages[index] || {};
+  const expanded = !!msg.expanded;
+  const shown = expanded ? text : workModeMessagePreview(text);
+  const label = expanded ? 'Collapse message ↑' : 'Show full message ↓';
+  return `<div>${formatWorkModeMessageText(shown)}</div><button class="work-mode-message-collapse-btn" data-work-message-toggle="${index}" type="button">${escapeHtml(label)}</button>`;
 }
 function extractWorkModeProviderErrorMessage(raw) {
   const text = String(raw || '').trim();
@@ -16206,6 +16493,143 @@ function workModeFullPathFromRelative(rel) {
   const clean = String(rel || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
   return root ? (clean ? `${root}/${clean}` : root) : clean;
 }
+function workModeTmpWorkRootPath() {
+  const root = workModeProjectworkRootPath();
+  return root ? `${root}/tmp-work` : '';
+}
+function isWorkModeTmpWorkPath(path) {
+  const root = workModeTmpWorkRootPath();
+  const clean = String(path || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+  return !!root && (clean === root || clean.startsWith(root + '/'));
+}
+function workModeTmpWorkRelativePath(path) {
+  const root = workModeTmpWorkRootPath();
+  let clean = String(path || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+  if (root && clean === root) return '';
+  if (root && clean.startsWith(root + '/')) clean = clean.slice(root.length + 1);
+  return clean.replace(/^\/+|\/+$/g, '');
+}
+function workModeTmpWorkTargetPath(path) {
+  const rel = workModeTmpWorkRelativePath(path);
+  return rel ? workModeFullPathFromRelative(rel) : '';
+}
+function workModeSessionStatus() {
+  return String((workModeObserverSessionState && workModeObserverSessionState.status) || '').trim();
+}
+function isWorkModeTmpWorkLocked() {
+  const state = workModeObserverSessionState || {};
+  if (String(state.mode || '') !== 'observer_review_mode') return false;
+  const status = String(state.status || '').trim();
+  return status === 'running' || status === 'paused_after_current_call' || status === 'finalizing';
+}
+function countWorkModeTmpWorkFiles(node = workModeTmpWorkTree) {
+  if (!node) return 0;
+  const children = Array.isArray(node.children) ? node.children : [];
+  let total = 0;
+  children.forEach(child => {
+    if (!child) return;
+    if (child.isDir) total += countWorkModeTmpWorkFiles(child);
+    else total += 1;
+  });
+  return total;
+}
+function shouldShowWorkModeTmpWorkTree() {
+  return isWorkModeObserverReviewActive() || countWorkModeTmpWorkFiles() > 0;
+}
+function isWorkModeTmpWorkRootPath(path) {
+  const root = workModeTmpWorkRootPath();
+  const clean = String(path || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+  return !!root && clean === root;
+}
+async function buildWorkModeTmpWorkNode() {
+  const root = workModeTmpWorkRootPath();
+  if (!root) return null;
+  try {
+    return await buildWorkModeDirNode(root, 'tmp-work');
+  } catch (err) {
+    return { name: 'tmp-work', path: root, isDir: true, rawCount: 0, children: [] };
+  }
+}
+function renderWorkModeTmpWorkNode(node, depth = 0) {
+  if (!node || !node.isDir) return '';
+  const children = Array.isArray(node.children) ? node.children : [];
+  const locked = isWorkModeTmpWorkLocked();
+  const html = [];
+  children.forEach(child => {
+    const pad = depth * 16;
+    if (child.isDir) {
+      const expanded = workModeExpandedFolders.has(child.path);
+      html.push(`<div class="work-mode-tree-row is-folder is-tmp-work-child" style="padding-left:${pad + 22}px" data-work-tmp-folder="${escapeHtml(child.path)}"><span class="work-mode-folder-caret">${expanded ? '▾' : '▸'}</span><button class="work-mode-folder-name" type="button" title="${escapeHtml(child.path)}">${escapeHtml(child.name)}/</button></div>`);
+      if (expanded) {
+        if (!child.rawCount) html.push(`<div class="work-mode-tree-row is-empty" style="padding-left:${pad + 44}px">Empty</div>`);
+        else if (!child.children.length) html.push(`<div class="work-mode-tree-row is-note" style="padding-left:${pad + 44}px">No supported files</div>`);
+        else html.push(renderWorkModeTmpWorkNode(child, depth + 1));
+      }
+      return;
+    }
+    const metaHtml = escapeHtml(child.kind || '');
+    const mergeBtn = locked ? '' : `<button class="work-mode-tmp-merge" type="button" data-work-tmp-merge="${escapeHtml(child.path)}" title="Merge this draft file into ${escapeHtml(workModeTmpWorkTargetPath(child.path))}">Merge</button>`;
+    html.push(`<div class="work-mode-tree-row is-file is-tmp-file" style="padding-left:${pad + 22}px" data-work-tmp-file="${escapeHtml(child.path)}"><button class="work-mode-file-name" type="button" title="${escapeHtml(child.path)}">${escapeHtml(child.name)}</button><span class="work-mode-file-meta">${metaHtml}</span><span class="work-mode-tmp-actions">${mergeBtn}</span></div>`);
+  });
+  if (!children.length && node.path === workModeTmpWorkRootPath()) {
+    return '<div class="work-mode-tree-row is-note">tmp-work has no draft files yet.</div>';
+  }
+  return html.join('');
+}
+function renderWorkModeTmpWorkTree() {
+  if (!shouldShowWorkModeTmpWorkTree()) return '';
+  const root = workModeTmpWorkRootPath();
+  if (!root) return '';
+  const expanded = workModeExpandedFolders.has(root) || true;
+  const locked = isWorkModeTmpWorkLocked();
+  const fileCount = countWorkModeTmpWorkFiles();
+  const mergeDisabled = locked || fileCount <= 0;
+  const note = locked ? 'tmp-work is read-only while Observer Review is running or paused.' : 'Review draft files here. You can edit, delete, Merge one file, or Merge all.';
+  const rows = expanded ? renderWorkModeTmpWorkNode(workModeTmpWorkTree || { name: 'tmp-work', path: root, isDir: true, rawCount: 0, children: [] }, 0) : '';
+  return `<div class="work-mode-tree-row is-tmp-work" title="Temporary draft workspace for Observer Review Mode" data-work-tmp-folder="${escapeHtml(root)}"><span class="work-mode-folder-caret">${expanded ? '▾' : '▸'}</span><button class="work-mode-folder-name" type="button">tmp-work</button><span class="work-mode-tmp-actions"><button class="work-mode-tmp-merge-all" type="button" ${mergeDisabled ? 'disabled' : ''} title="${locked ? 'tmp-work is read-only while review is active' : 'Merge all tmp-work files into projectwork'}">Merge all</button></span></div><div class="work-mode-tree-row is-note">${escapeHtml(note)}</div>${rows}`;
+}
+async function mergeWorkModeTmpWorkFile(path) {
+  const clean = String(path || '').trim();
+  if (!clean) return;
+  if (isWorkModeTmpWorkLocked()) return showToast('tmp-work is read-only while Observer Review is running or paused.', 'warning', 3200);
+  const target = workModeTmpWorkTargetPath(clean);
+  const confirmed = await openConfirmModal({ title: 'Merge Draft File?', message: `Merge this tmp-work draft into ${target || 'the project'}? This overwrites the target file if it exists.`, confirmLabel: 'Merge', destructive: false });
+  if (!confirmed) return;
+  const data = await api('/api/work-mode/tmp-work/merge', { method: 'POST', body: JSON.stringify({ path: clean }) });
+  const merged = Array.isArray(data.mergedFiles) ? data.mergedFiles : [];
+  merged.forEach(rel => {
+    const fullPath = workModeFullPathFromRelative(workModeProjectworkRelativePath(rel));
+    if (fullPath) workModeHighlightedFiles.add(fullPath);
+  });
+  const wasActive = !!(workModeActiveFile && workModeActiveFile.path === clean);
+  await refreshLogs().catch(() => {});
+  await loadWorkModeFileTree().catch(err => showToast(err.message || 'Could not refresh Work Mode files.', 'warning'));
+  if (wasActive) {
+    workModeActiveFile = null;
+    renderWorkModeDefaultStage();
+  }
+  showToast(data.message || 'tmp-work file merged.');
+}
+async function mergeAllWorkModeTmpWork() {
+  if (isWorkModeTmpWorkLocked()) return showToast('tmp-work is read-only while Observer Review is running or paused.', 'warning', 3200);
+  const count = countWorkModeTmpWorkFiles();
+  if (count <= 0) return showToast('tmp-work has no draft files to merge.', 'warning', 2400);
+  const confirmed = await openConfirmModal({ title: 'Merge All Draft Files?', message: `Merge all ${count} tmp-work draft file${count === 1 ? '' : 's'} into projectwork? Existing project files with the same paths will be overwritten.`, confirmLabel: 'Merge all', destructive: false });
+  if (!confirmed) return;
+  const data = await api('/api/work-mode/tmp-work/merge-all', { method: 'POST', body: JSON.stringify({}) });
+  const merged = Array.isArray(data.mergedFiles) ? data.mergedFiles : [];
+  merged.forEach(rel => {
+    const fullPath = workModeFullPathFromRelative(workModeProjectworkRelativePath(rel));
+    if (fullPath) workModeHighlightedFiles.add(fullPath);
+  });
+  if (workModeActiveFile && isWorkModeTmpWorkPath(workModeActiveFile.path)) workModeActiveFile = null;
+  await refreshLogs().catch(() => {});
+  await loadWorkModeFileTree().catch(err => showToast(err.message || 'Could not refresh Work Mode files.', 'warning'));
+  renderWorkModeDefaultStage();
+  showToast(data.message || 'tmp-work files merged.');
+}
+
+
 function workModeDisplayName(path) {
   const clean = String(path || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
   return clean.split('/').filter(Boolean).pop() || clean || 'file';
@@ -16242,6 +16666,7 @@ async function buildWorkModeDirNode(path, name = '') {
   const node = { name, path, isDir: true, rawCount: entries.length, children: [] };
   const visible = entries.filter(entry => entry && !isHiddenWorkModeName(entry.name));
   for (const entry of visible) {
+    if (path === workModeProjectworkRootPath() && String(entry.name || '') === 'tmp-work') continue;
     const entryPath = String(entry.path || '').trim();
     if (!entryPath || isHiddenWorkModePath(entryPath)) continue;
     if (entry.isDir) {
@@ -16732,7 +17157,46 @@ function renderWorkModeFileTree() {
     tree.innerHTML = '<div class="work-mode-tree-row is-note">Loading projectwork…</div>';
     return;
   }
-  tree.innerHTML = renderWorkModeTreeNode(workModeFileTree, 0);
+  let treeHtml = renderWorkModeTreeNode(workModeFileTree, 0);
+  const tmpWorkHtml = renderWorkModeTmpWorkTree();
+  if (tmpWorkHtml) treeHtml = tmpWorkHtml + treeHtml;
+  tree.innerHTML = treeHtml;
+  tree.querySelectorAll('[data-work-tmp-folder]').forEach(row => {
+    row.addEventListener('click', event => {
+      event.stopPropagation();
+      toggleWorkModeFolder(row.getAttribute('data-work-tmp-folder') || '');
+    });
+    row.addEventListener('contextmenu', event => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+  });
+  const mergeAllBtn = tree.querySelector('.work-mode-tmp-merge-all');
+  if (mergeAllBtn) mergeAllBtn.addEventListener('click', event => {
+    event.preventDefault();
+    event.stopPropagation();
+    mergeAllWorkModeTmpWork().catch(err => showToast(err.message || 'Could not merge tmp-work files.', 'warning'));
+  });
+  tree.querySelectorAll('[data-work-tmp-file]').forEach(row => {
+    row.addEventListener('contextmenu', event => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+  });
+  tree.querySelectorAll('[data-work-tmp-file] .work-mode-file-name').forEach(btn => {
+    btn.addEventListener('click', event => {
+      event.stopPropagation();
+      const row = event.currentTarget.closest('[data-work-tmp-file]');
+      openWorkModeFile(row ? row.getAttribute('data-work-tmp-file') : '').catch(err => showToast(err.message || 'Could not open tmp-work file.', 'warning'));
+    });
+  });
+  tree.querySelectorAll('[data-work-tmp-merge]').forEach(btn => {
+    btn.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      mergeWorkModeTmpWorkFile(event.currentTarget.getAttribute('data-work-tmp-merge') || '').catch(err => showToast(err.message || 'Could not merge tmp-work file.', 'warning'));
+    });
+  });
   tree.querySelectorAll('[data-work-folder]').forEach(row => {
     row.addEventListener('click', () => toggleWorkModeFolder(row.getAttribute('data-work-folder') || ''));
     row.addEventListener('contextmenu', event => {
@@ -16770,6 +17234,7 @@ function renderWorkModeFileTree() {
   });
   tree.oncontextmenu = event => {
     if (event.target.closest('[data-work-file]') || event.target.closest('[data-empty-folder]')) return;
+    if (event.target.closest('[data-work-tmp-file]') || event.target.closest('[data-work-tmp-folder]') || event.target.closest('.is-tmp-work')) return;
     if (event.target.closest('[data-work-folder]')) return;
     event.preventDefault();
     openWorkModeFolderContextMenu(workModeProjectworkRootPath(), event.clientX, event.clientY, 'root');
@@ -16778,6 +17243,7 @@ function renderWorkModeFileTree() {
 async function loadWorkModeFileTree({ reset = false } = {}) {
   if (!activeProject) {
     workModeFileTree = null;
+    workModeTmpWorkTree = null;
     workModeTreeLoadedProject = '';
     resetWorkModeDiffFiles({ render: false });
     resetWorkModeSearch({ render: false });
@@ -16799,9 +17265,11 @@ async function loadWorkModeFileTree({ reset = false } = {}) {
   const project = activeProject;
   workModeTreeLoadedProject = project;
   workModeFileTree = null;
+  workModeTmpWorkTree = null;
   renderWorkModeFileTree();
   try {
     workModeFileTree = await buildWorkModeDirNode(workModeProjectworkRootPath(), 'projectwork');
+    workModeTmpWorkTree = await buildWorkModeTmpWorkNode();
     if (workModeTreeLoadedProject !== project) return;
     renderWorkModeFileTree();
   } catch (err) {
@@ -16833,6 +17301,240 @@ function updateWorkModeProjectTitle() {
   const title = document.getElementById('workModeTitle');
   if (title) title.textContent = activeProject || 'Workspace';
 }
+function isWorkModeObserverReviewActive() {
+  return !!getActiveObserverModelId() && !!workModeObserverReviewEnabled;
+}
+function syncWorkModeObserverSelectionState({ opening = false } = {}) {
+  const observerId = getActiveObserverModelId();
+  if (!observerId) {
+    workModeObserverReviewEnabled = false;
+    workModeObserverSessionObserverId = '';
+    workModeObserverPaused = false;
+    workModeObserverSessionState = null;
+    return;
+  }
+  if (opening || workModeObserverSessionObserverId !== observerId) {
+    workModeObserverReviewEnabled = true;
+    workModeObserverSessionObserverId = observerId;
+    workModeObserverPaused = false;
+    workModeObserverSessionState = null;
+  }
+}
+function clampWorkModeObserverMaxPasses(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return 3;
+  return Math.max(1, Math.min(100, Math.round(num)));
+}
+function updateWorkModeObserverControls({ render = true } = {}) {
+  syncWorkModeObserverSelectionState({ opening: false });
+  const observerId = getActiveObserverModelId();
+  const hasObserver = !!observerId;
+  const reviewActive = isWorkModeObserverReviewActive();
+  const stage = document.getElementById('workModeStage');
+  const singlePane = document.getElementById('workModeSinglePane');
+  const reviewGrid = document.getElementById('workModeReviewGrid');
+  const controls = document.getElementById('workModeObserverControls');
+  const btn = document.getElementById('workModeObserverReviewBtn');
+  const passInput = document.getElementById('workModeMaxPassesInput');
+  const passWrap = document.getElementById('workModeMaxPassWrap');
+  const pauseBtn = document.getElementById('workModePauseBtn');
+  const unpauseBtn = document.getElementById('workModeUnpauseBtn');
+  const finalizeBtn = document.getElementById('workModeFinalizeBtn');
+  const workerName = document.getElementById('workModeWorkerPanelName');
+  const observerName = document.getElementById('workModeObserverPanelName');
+  const status = workModeSessionStatus();
+  const sessionMode = String((workModeObserverSessionState && workModeObserverSessionState.mode) || '').trim();
+  const hasObserverRun = reviewActive && sessionMode === 'observer_review_mode' && (workModeSending || status === 'running' || status === 'paused_after_current_call' || status === 'finalizing');
+  const showPausedControls = reviewActive && status === 'paused_after_current_call';
+  if (controls) controls.hidden = !hasObserver;
+  if (btn) {
+    btn.classList.toggle('is-observer-review', reviewActive);
+    btn.disabled = !hasObserver || hasObserverRun;
+    btn.setAttribute('aria-pressed', reviewActive ? 'true' : 'false');
+    btn.title = reviewActive ? 'Observer review is on' : 'Observer review is off';
+    btn.setAttribute('aria-label', reviewActive ? 'Turn Observer review off' : 'Turn Observer review on');
+  }
+  if (passInput) {
+    passInput.value = String(workModeObserverMaxPasses);
+    passInput.disabled = !reviewActive || hasObserverRun;
+  }
+  if (passWrap) passWrap.classList.toggle('is-disabled', !reviewActive || hasObserverRun);
+  if (pauseBtn) {
+    pauseBtn.hidden = showPausedControls;
+    pauseBtn.disabled = !reviewActive || !hasObserverRun || status === 'finalized' || status === 'emergency_stopped';
+  }
+  if (unpauseBtn) {
+    unpauseBtn.hidden = !showPausedControls;
+    unpauseBtn.disabled = !showPausedControls || status === 'finalized' || status === 'emergency_stopped';
+  }
+  if (finalizeBtn) {
+    finalizeBtn.hidden = !showPausedControls;
+    finalizeBtn.disabled = !showPausedControls || status === 'finalized' || status === 'emergency_stopped';
+  }
+  if (workerName) workerName.textContent = getActiveBuilderLabel();
+  if (observerName) observerName.textContent = getActiveObserverLabel() || 'Observer';
+  if (stage) stage.classList.toggle('is-review-mode', reviewActive);
+  if (singlePane) singlePane.hidden = reviewActive;
+  if (reviewGrid) reviewGrid.hidden = !reviewActive;
+  if (render) renderWorkModeMessages();
+}
+function normalizeWorkModeSessionState(state) {
+  if (!state || typeof state !== 'object') return null;
+  return {
+    projectName: String(state.projectName || ''),
+    mode: String(state.mode || ''),
+    status: String(state.status || ''),
+    workerId: String(state.workerId || ''),
+    workerLabel: String(state.workerLabel || ''),
+    observerId: String(state.observerId || ''),
+    observerLabel: String(state.observerLabel || ''),
+    observerReview: !!state.observerReview,
+    currentPass: Number(state.currentPass || 0),
+    maxPasses: clampWorkModeObserverMaxPasses(state.maxPasses || workModeObserverMaxPasses),
+    latestWorkerMessage: String(state.latestWorkerMessage || ''),
+    latestWorkerFileState: Array.isArray(state.latestWorkerFileState) ? state.latestWorkerFileState : [],
+    latestObserverMessage: String(state.latestObserverMessage || ''),
+    observerHasInput: typeof state.observerHasInput === 'boolean' ? state.observerHasInput : null,
+    reviewMessages: Array.isArray(state.reviewMessages) ? state.reviewMessages : [],
+    activeCallOwner: String(state.activeCallOwner || 'none'),
+    updatedAt: String(state.updatedAt || '')
+  };
+}
+function applyWorkModeObserverSessionState(state) {
+  const normalized = normalizeWorkModeSessionState(state);
+  workModeObserverSessionState = normalized;
+  if (!normalized) return;
+  if (normalized.maxPasses) workModeObserverMaxPasses = clampWorkModeObserverMaxPasses(normalized.maxPasses);
+  workModeObserverPaused = normalized.status === 'paused_after_current_call';
+  if (normalized.reviewMessages.length) applyWorkModeReviewMessages(normalized.reviewMessages);
+  updateWorkModeObserverControls({ render: false });
+  renderWorkModeFileTree();
+}
+function describeWorkModeSessionState(state) {
+  const normalized = normalizeWorkModeSessionState(state);
+  if (!normalized) return 'Work Mode session state updated.';
+  const mode = normalized.mode === 'observer_review_mode' ? 'Observer Review' : 'Normal Work Mode';
+  const passText = normalized.maxPasses ? ` · pass ${normalized.currentPass || 0}/${normalized.maxPasses}` : '';
+  const owner = normalized.activeCallOwner && normalized.activeCallOwner !== 'none' ? normalized.activeCallOwner : '';
+  if (normalized.mode === 'observer_review_mode') {
+    if (normalized.status === 'paused_after_current_call') {
+      if (owner) return `Pause requested. Waiting for the current ${owner} call to finish${passText}.`;
+      return `Observer Review paused${passText}. Inspect tmp-work, then Unpause or Finalize.`;
+    }
+    if (normalized.status === 'running') {
+      return owner ? `Observer Review running${passText} · active: ${owner}.` : `Observer Review running${passText}.`;
+    }
+    if (normalized.status === 'finalized') return 'Observer Review finalized. Review tmp-work, then merge selected draft files or use Merge all.';
+    if (normalized.status === 'emergency_stopped') return 'Observer Review stopped by Emergency Stop.';
+  }
+  const ownerText = owner ? ` · active: ${owner}` : '';
+  return `${mode} state: ${normalized.status || 'ready'}${passText}${ownerText}.`;
+}
+async function postWorkModeSessionState(action, prompt = '') {
+  const payload = {
+    action,
+    workerModelId: getActiveBuilderModelId(),
+    observerModelId: getActiveObserverModelId(),
+    observerReview: isWorkModeObserverReviewActive(),
+    maxPasses: workModeObserverMaxPasses,
+    prompt: String(prompt || '')
+  };
+  const data = await api('/api/work-mode/session', { method: 'POST', body: JSON.stringify(payload) });
+  applyWorkModeObserverSessionState(data.state || null);
+  return data;
+}
+function workModeObserverStateSignature(state) {
+  const normalized = normalizeWorkModeSessionState(state);
+  if (!normalized) return '';
+  return JSON.stringify({
+    status: normalized.status,
+    pass: normalized.currentPass,
+    max: normalized.maxPasses,
+    owner: normalized.activeCallOwner,
+    worker: normalized.latestWorkerMessage,
+    observer: normalized.latestObserverMessage,
+    hasInput: normalized.observerHasInput,
+    messages: normalized.reviewMessages.map(item => [item && item.owner, item && item.pass, item && item.reply, item && item.hasInput]).slice(-20)
+  });
+}
+function workModeObserverFileStateSignature(state) {
+  const normalized = normalizeWorkModeSessionState(state);
+  const files = normalized && Array.isArray(normalized.latestWorkerFileState) ? normalized.latestWorkerFileState : [];
+  return JSON.stringify(files.slice().sort());
+}
+async function pollWorkModeObserverSession({ force = false } = {}) {
+  if (workModeObserverPollBusy || !activeProject || !isWorkModeObserverReviewActive()) return;
+  workModeObserverPollBusy = true;
+  try {
+    const data = await api('/api/work-mode/session');
+    const state = data && data.state ? data.state : null;
+    const normalized = normalizeWorkModeSessionState(state);
+    if (!normalized || normalized.mode !== 'observer_review_mode') return;
+    const signature = workModeObserverStateSignature(normalized);
+    const fileSignature = workModeObserverFileStateSignature(normalized);
+    if (force || signature !== workModeObserverLastPollSignature) {
+      workModeObserverLastPollSignature = signature;
+      applyWorkModeObserverSessionState(normalized);
+      setWorkModeStatus(describeWorkModeSessionState(normalized));
+    }
+    if (force || fileSignature !== workModeObserverLastFileStateSignature) {
+      workModeObserverLastFileStateSignature = fileSignature;
+      await loadWorkModeFileTree().catch(() => {});
+    }
+    if (normalized.status === 'finalized' || normalized.status === 'emergency_stopped') stopWorkModeObserverSessionPolling();
+  } catch (_) {
+    // Polling is best-effort; the main send/finalize requests surface real errors.
+  } finally {
+    workModeObserverPollBusy = false;
+  }
+}
+function startWorkModeObserverSessionPolling() {
+  stopWorkModeObserverSessionPolling();
+  workModeObserverLastPollSignature = '';
+  workModeObserverLastFileStateSignature = '';
+  workModeObserverPollTimer = setInterval(() => pollWorkModeObserverSession(), 1200);
+  pollWorkModeObserverSession({ force: true });
+}
+function stopWorkModeObserverSessionPolling() {
+  if (workModeObserverPollTimer) clearInterval(workModeObserverPollTimer);
+  workModeObserverPollTimer = null;
+  workModeObserverPollBusy = false;
+}
+function renderWorkModeReviewSidePanels() {
+  const workerFeed = document.getElementById('workModeWorkerFeed');
+  const observerFeed = document.getElementById('workModeObserverFeed');
+  const list = Array.isArray(workModeReviewMessages) ? workModeReviewMessages : [];
+  const workerItems = list.filter(item => String(item.owner || '').toLowerCase() === 'worker');
+  const observerItems = list.filter(item => String(item.owner || '').toLowerCase() === 'observer');
+  const renderReviewItem = item => {
+    const pass = Number(item.pass || 0);
+    const owner = String(item.owner || '').toLowerCase() === 'observer' ? 'Observer' : 'Worker';
+    const hasInput = item.hasInput === true ? ' · has_input=true' : (item.hasInput === false ? ' · has_input=false' : '');
+    const kicker = `${owner}${pass ? ` Pass ${pass}` : ''}${hasInput}`;
+    const changed = Array.isArray(item.changedFiles) ? item.changedFiles.filter(Boolean) : [];
+    const blocked = Array.isArray(item.blockedFiles) ? item.blockedFiles : [];
+    const outputs = [];
+    changed.forEach(path => outputs.push({ status: 'changed', action: 'draft', path, reason: 'saved to tmp-work' }));
+    blocked.forEach(entry => outputs.push(Object.assign({ status: 'blocked' }, entry || {})));
+    const files = outputs.length ? renderWorkModeFileOutputs(outputs) : '';
+    return `<div class="work-mode-message ai${outputs.length ? ' has-file-output' : ''}"><div class="work-mode-message-kicker">${escapeHtml(kicker)}</div><div>${formatWorkModeMessageText(item.reply || '')}</div>${files}</div>`;
+  };
+  if (workerFeed) workerFeed.innerHTML = workerItems.length ? workerItems.map(renderReviewItem).join('') : `<div class="work-mode-review-placeholder"><strong>${escapeHtml(getActiveBuilderLabel())}</strong> draft responses will appear here during Observer Review.</div>`;
+  if (observerFeed) observerFeed.innerHTML = observerItems.length ? observerItems.map(renderReviewItem).join('') : `<div class="work-mode-review-placeholder"><strong>${escapeHtml(getActiveObserverLabel() || 'Observer')}</strong> review notes will appear here. The Observer can advise, but cannot write files or finalize.</div>`;
+}
+function applyWorkModeReviewMessages(messages) {
+  workModeReviewMessages = (Array.isArray(messages) ? messages : []).map(item => ({
+    owner: String((item && item.owner) || '').toLowerCase(),
+    pass: Number((item && item.pass) || 0),
+    reply: String((item && item.reply) || ''),
+    hasInput: item && typeof item.hasInput === 'boolean' ? item.hasInput : null,
+    changedFiles: Array.isArray(item && item.changedFiles) ? item.changedFiles : [],
+    skippedFiles: Array.isArray(item && item.skippedFiles) ? item.skippedFiles : [],
+    blockedFiles: Array.isArray(item && item.blockedFiles) ? item.blockedFiles : [],
+    inlineFiles: Array.isArray(item && item.inlineFiles) ? item.inlineFiles : []
+  })).filter(item => item.reply || item.changedFiles.length || item.blockedFiles.length);
+  renderWorkModeReviewSidePanels();
+}
 function renderWorkModeDefaultStage() {
   renderWorkModeMessages();
 }
@@ -16861,8 +17563,15 @@ function renderWorkModeInlineFiles(files, messageIndex) {
   }).join('')}</div>`;
 }
 function attachWorkModeMessageEvents() {
-  const feed = document.getElementById('workModeChatFeed');
+  const feed = document.getElementById('workModeStage') || document.getElementById('workModeChatFeed');
   if (!feed) return;
+  feed.querySelectorAll('[data-work-speak-message]').forEach(btn => {
+    btn.addEventListener('click', event => {
+      event.preventDefault();
+      const idx = Number(event.currentTarget.getAttribute('data-work-speak-message'));
+      speakWorkModeReplyMessage(idx);
+    });
+  });
   feed.querySelectorAll('[data-work-file-output-toggle]').forEach(btn => {
     btn.addEventListener('click', event => {
       event.preventDefault();
@@ -16892,18 +17601,32 @@ function attachWorkModeMessageEvents() {
       renderWorkModeMessages();
     });
   });
+  feed.querySelectorAll('[data-work-message-toggle]').forEach(btn => {
+    btn.addEventListener('click', event => {
+      event.preventDefault();
+      const idx = Number(event.currentTarget.getAttribute('data-work-message-toggle'));
+      if (!Number.isFinite(idx) || !workModeMessages[idx]) return;
+      workModeMessages[idx].expanded = !workModeMessages[idx].expanded;
+      renderWorkModeMessages();
+    });
+  });
 }
 function renderWorkModeMessages() {
-  const feed = document.getElementById('workModeChatFeed');
+  const reviewActive = isWorkModeObserverReviewActive();
+  const feed = reviewActive ? document.getElementById('workModeFinalFeed') : document.getElementById('workModeChatFeed');
+  const inactiveFeed = reviewActive ? document.getElementById('workModeChatFeed') : document.getElementById('workModeFinalFeed');
   if (!feed) return;
+  if (inactiveFeed) inactiveFeed.innerHTML = '';
+  if (reviewActive) renderWorkModeReviewSidePanels();
   if (!workModeMessages.length) {
-    feed.innerHTML = `<div class="work-mode-message agentgo"><div class="work-mode-message-kicker">AgentGO Says:</div><div>${formatWorkModeMessageText(workModeDefaultGuidance)}</div></div>`;
+    const guidance = reviewActive ? `${workModeDefaultGuidance}\n\nObserver Review Mode is active. The center panel is the official user/final conversation; Worker drafts and Observer notes appear in the side panels.` : workModeDefaultGuidance;
+    feed.innerHTML = `<div class="work-mode-message agentgo"><div class="work-mode-message-kicker">AgentGO Says:</div><div>${formatWorkModeMessageText(guidance)}</div></div>`;
     requestAnimationFrame(updateWorkModeScrollButton);
     return;
   }
   feed.innerHTML = workModeMessages.map((msg, index) => {
     const role = msg.role === 'user' ? 'user' : (msg.role === 'agentgo' ? 'agentgo' : 'ai');
-    const text = formatWorkModeMessageText(msg.text || '');
+    const text = renderWorkModeMessageBody(msg.text || '', index);
     if (role === 'agentgo') {
       const detail = String(msg.detail || '').trim();
       const sections = Array.isArray(msg.detailSections) ? msg.detailSections.filter(section => section && String(section.text || '').trim()) : [];
@@ -16929,7 +17652,9 @@ function renderWorkModeMessages() {
       const toggle = hasFileOutput ? `<button class="work-mode-ai-file-toggle${openClass}" data-work-file-output-toggle="${index}" type="button" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 12.75 3 3m0 0 3-3m-3 3v-7.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"/></svg></button>` : '';
       const files = hasFileOutput && msg.fileOutputOpen ? renderWorkModeFileOutputs(outputs) : '';
       const inlineFiles = renderWorkModeInlineFiles(msg.inlineFiles, index);
-      return `<div class="work-mode-message ai${hasFileOutput ? ' has-file-output' : ''}"><div>${text}</div>${inlineFiles}${toggle}${files}</div>`;
+      const speaking = index === workModeReplySpeechMessageIndex;
+      const speakBtn = isWorkModeReplySpeechSupported() ? `<button class="work-mode-ai-speak-btn${speaking ? ' is-speaking' : ''}" data-work-speak-message="${index}" type="button" aria-pressed="${speaking ? 'true' : 'false'}" aria-label="${speaking ? 'Stop reading this reply' : 'Read this reply aloud'}" title="${speaking ? 'Stop reading this reply' : 'Read this reply aloud'}">${renderWorkModeSpeakerIcon()}</button>` : '';
+      return `<div class="work-mode-message ai${hasFileOutput ? ' has-file-output' : ''}"><div>${text}</div>${inlineFiles}${speakBtn}${toggle}${files}</div>`;
     }
     return `<div class="work-mode-message ${role}">${text}</div>`;
   }).join('');
@@ -16968,8 +17693,13 @@ function appendWorkModeMessage(role, text, options = {}) {
   }
   workModeMessages.push(msg);
   workModeMessages = workModeMessages.slice(-80);
+  const index = workModeMessages.length - 1;
   workModeActiveFile = null;
   renderWorkModeMessages();
+  if (role === 'ai' && options.autoRead && workModeOpen && workModeSettings.autoReadReplies) {
+    setTimeout(() => speakWorkModeReplyMessage(index, { silent: true, auto: true }), 0);
+  }
+  return index;
 }
 function updateWorkModeScrollButton() {
   const stage = document.getElementById('workModeStage');
@@ -17024,7 +17754,7 @@ function toggleWorkModeOpenedPopup(force) {
   updateWorkModeOpenedFilesUI();
   pop.hidden = !open;
   btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-  if (open) { toggleWorkModeSettingsPopup(false); toggleWorkModeAttachPopup(false); }
+  if (open) { toggleWorkModeSettingsPopup(false); toggleWorkModeAttachPopup(false); closeWorkModeMemoryMenu(); }
 }
 function renderWorkModeSettingsPopup() {
   const pop = document.getElementById('workModeSettingsPopup');
@@ -17036,6 +17766,46 @@ function renderWorkModeSettingsPopup() {
   const response = document.getElementById('workModeResponseModeSelect');
   if (response) response.addEventListener('change', e => { workModeSettings.responseMode = normalizeResponseMode(e.target.value); updateWorkModeSettingsStatus(); });
 }
+function normalizeWorkModeMemoryFiles(data) {
+  const saved = Array.isArray(data && data.saved) ? data.saved : [];
+  return {
+    activeExists: !!(data && data.activeExists),
+    activeBytes: Number((data && data.activeBytes) || 0) || 0,
+    saved: saved.map(item => ({
+      name: String((item && item.name) || '').trim(),
+      fileName: String((item && item.fileName) || '').trim()
+    })).filter(item => item.name)
+  };
+}
+async function refreshWorkModeMemoryState() {
+  const modelId = getActiveBuilderModelId();
+  if (!activeProject) throw new Error('Select a project first.');
+  if (!modelId) throw new Error('Activate exactly one Builder AI first.');
+  const data = await api(`/api/work-mode/memory?modelId=${encodeURIComponent(modelId)}`);
+  workModeMemoryState = normalizeWorkModeMemoryFiles(data);
+  return workModeMemoryState;
+}
+function renderWorkModeMemoryMenu() {
+  const mode = String(workModeMemoryMenuOpen || '');
+  if (!mode) return '';
+  if (mode === 'disable') {
+    return `<div class="work-mode-memory-menu" data-work-memory-menu><div class="work-mode-memory-menu-title">Turn memory off</div><div class="work-mode-memory-menu-note">Save this memory as a file?</div><div class="work-mode-memory-save-form"><input class="work-mode-memory-save-input" data-work-memory-save-name placeholder="Memory file name" maxlength="80"><div class="work-mode-memory-save-actions"><button class="work-mode-memory-save-btn secondary" data-work-memory-dont-save type="button">Don’t Save</button><button class="work-mode-memory-save-btn primary" data-work-memory-save type="button">Save</button></div></div></div>`;
+  }
+  const state = workModeMemoryState || { activeExists: false, saved: [] };
+  const saved = Array.isArray(state.saved) ? state.saved : [];
+  const rows = [];
+  rows.push(`<button class="work-mode-memory-menu-btn" data-work-memory-new type="button">New Memory</button>`);
+  if (state.activeExists) rows.push(`<button class="work-mode-memory-menu-btn" data-work-memory-continue type="button">Continue Last Memory</button>`);
+  if (saved.length) {
+    saved.forEach(item => {
+      rows.push(`<div class="work-mode-memory-menu-row"><button class="work-mode-memory-menu-btn" data-work-memory-load="${escapeHtml(item.name)}" type="button" title="Load ${escapeHtml(item.name)}">Load: ${escapeHtml(item.name)}</button><button class="work-mode-memory-delete-btn" data-work-memory-delete="${escapeHtml(item.name)}" type="button" aria-label="Delete ${escapeHtml(item.name)}" title="Delete ${escapeHtml(item.name)}">×</button></div>`);
+    });
+  } else {
+    rows.push(`<div class="work-mode-memory-menu-note">No saved memory files yet.</div>`);
+  }
+  if (workModeMemoryBusy) rows.push(`<div class="work-mode-memory-menu-note">Loading memories…</div>`);
+  return `<div class="work-mode-memory-menu" data-work-memory-menu><div class="work-mode-memory-menu-title">Start memory</div><div class="work-mode-memory-menu-list">${rows.join('')}</div></div>`;
+}
 function updateWorkModeSettingsStatus() {
   const mode = getResponseModeOption(workModeSettings.responseMode);
   const roleText = workModeSettings.includeRoleContext !== false ? 'Roles: On' : 'Roles: Off';
@@ -17043,12 +17813,105 @@ function updateWorkModeSettingsStatus() {
   const memoryText = workModeSettings.useMemory ? 'Memory: On' : 'Memory: Off';
   const memoryToggleClass = workModeSettings.useMemory ? 'is-on' : 'is-off';
   const memoryPressed = workModeSettings.useMemory ? 'true' : 'false';
-  const memoryHTML = `<button class="work-mode-status-memory-toggle ${memoryToggleClass}" data-work-memory-toggle type="button" aria-pressed="${memoryPressed}" title="Toggle Work Mode Memory"><span class="work-mode-status-memory-bubble" aria-hidden="true"></span><span class="${memoryClass}">${escapeHtml(memoryText)}</span></button>`;
+  const memoryHTML = `<span class="work-mode-status-memory-wrap"><button class="work-mode-status-memory-toggle ${memoryToggleClass}" data-work-memory-toggle type="button" aria-pressed="${memoryPressed}" title="Manage Work Mode Memory"><span class="work-mode-status-memory-bubble" aria-hidden="true"></span><span class="${memoryClass}">${escapeHtml(memoryText)}</span></button>${renderWorkModeMemoryMenu()}</span>`;
   setWorkModeStatusHTML(`${escapeHtml(`Response Mode: ${mode.label}`)} • ${escapeHtml(roleText)} • ${memoryHTML}`);
 }
-function toggleWorkModeMemorySetting() {
-  workModeSettings.useMemory = !workModeSettings.useMemory;
+function closeWorkModeMemoryMenu() {
+  if (!workModeMemoryMenuOpen) return;
+  workModeMemoryMenuOpen = '';
   updateWorkModeSettingsStatus();
+}
+async function openWorkModeMemoryMenu() {
+  if (!activeProject) return showToast('Select a project first before using Work Mode Memory.', 'warning', 3200);
+  if (activeBuilderCount() !== 1) return showToast('Work Mode Memory requires exactly one active Builder AI.', 'warning', 3400);
+  if (workModeSettings.useMemory) {
+    workModeMemoryMenuOpen = 'disable';
+    updateWorkModeSettingsStatus();
+    setTimeout(() => document.querySelector('[data-work-memory-save-name]')?.focus(), 0);
+    return;
+  }
+  workModeMemoryMenuOpen = 'enable';
+  workModeMemoryBusy = true;
+  updateWorkModeSettingsStatus();
+  try {
+    await refreshWorkModeMemoryState();
+  } catch (err) {
+    showToast(err.message || 'Could not load Work Mode memories.', 'warning', 3600);
+  } finally {
+    workModeMemoryBusy = false;
+    updateWorkModeSettingsStatus();
+  }
+}
+async function postWorkModeMemoryAction(url, body = {}) {
+  const modelId = getActiveBuilderModelId();
+  if (!modelId) throw new Error('Could not identify the active Builder AI.');
+  const data = await api(url, { method: 'POST', body: JSON.stringify(Object.assign({ modelId }, body)) });
+  workModeMemoryState = normalizeWorkModeMemoryFiles(data);
+  return data || {};
+}
+async function startNewWorkModeMemory() {
+  try {
+    const data = await postWorkModeMemoryAction('/api/work-mode/memory/new');
+    workModeSettings.useMemory = true;
+    workModeMemoryMenuOpen = '';
+    updateWorkModeSettingsStatus();
+    showToast(data.message || 'New Work Mode memory started.', 'success', 2800);
+  } catch (err) {
+    showToast(err.message || 'Could not start a new memory.', 'warning', 3600);
+  }
+}
+function continueLastWorkModeMemory() {
+  workModeSettings.useMemory = true;
+  workModeMemoryMenuOpen = '';
+  updateWorkModeSettingsStatus();
+  showToast('Continuing last Work Mode memory.', 'success', 2600);
+}
+async function loadWorkModeMemoryFile(name) {
+  try {
+    const data = await postWorkModeMemoryAction('/api/work-mode/memory/load', { name });
+    workModeSettings.useMemory = true;
+    workModeMemoryMenuOpen = '';
+    updateWorkModeSettingsStatus();
+    showToast(data.message || 'Loaded Work Mode memory.', 'success', 3000);
+  } catch (err) {
+    showToast(err.message || 'Could not load saved memory.', 'warning', 3800);
+  }
+}
+async function deleteWorkModeMemoryFile(name) {
+  const clean = String(name || '').trim();
+  if (!clean) return;
+  if (!window.confirm(`Delete saved memory "${clean}"?`)) return;
+  try {
+    const data = await postWorkModeMemoryAction('/api/work-mode/memory/delete', { name: clean });
+    workModeMemoryMenuOpen = 'enable';
+    updateWorkModeSettingsStatus();
+    showToast(data.message || 'Deleted saved memory.', 'success', 2800);
+  } catch (err) {
+    showToast(err.message || 'Could not delete saved memory.', 'warning', 3600);
+  }
+}
+async function saveCurrentWorkModeMemory() {
+  const input = document.querySelector('[data-work-memory-save-name]');
+  const name = String((input && input.value) || '').trim();
+  if (!name) {
+    if (input) input.focus();
+    return showToast('Enter a memory file name first.', 'warning', 2600);
+  }
+  try {
+    const data = await postWorkModeMemoryAction('/api/work-mode/memory/save', { name });
+    workModeSettings.useMemory = false;
+    workModeMemoryMenuOpen = '';
+    updateWorkModeSettingsStatus();
+    showToast(data.message || 'Saved Work Mode memory.', 'success', 3000);
+  } catch (err) {
+    showToast(err.message || 'Could not save Work Mode memory.', 'warning', 3800);
+  }
+}
+function turnOffWorkModeMemoryWithoutSaving() {
+  workModeSettings.useMemory = false;
+  workModeMemoryMenuOpen = '';
+  updateWorkModeSettingsStatus();
+  showToast('Work Mode memory is off. Last memory was kept for Continue Last Memory.', 'success', 3200);
 }
 function toggleWorkModeSettingsPopup(force) {
   const pop = document.getElementById('workModeSettingsPopup');
@@ -17058,7 +17921,7 @@ function toggleWorkModeSettingsPopup(force) {
   if (open) renderWorkModeSettingsPopup();
   pop.hidden = !open;
   btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-  if (open) { toggleWorkModeOpenedPopup(false); toggleWorkModeAttachPopup(false); }
+  if (open) { toggleWorkModeOpenedPopup(false); toggleWorkModeAttachPopup(false); closeWorkModeMemoryMenu(); }
 }
 function renderWorkModeAttachments() {
   const list = document.getElementById('workModeAttachmentList');
@@ -17134,6 +17997,7 @@ function toggleWorkModeAttachPopup(force) {
   if (open) {
     toggleWorkModeOpenedPopup(false);
     toggleWorkModeSettingsPopup(false);
+    closeWorkModeMemoryMenu();
     renderWorkModePasteTargetPreview();
     requestAnimationFrame(() => document.getElementById('workModePasteTarget')?.focus());
   }
@@ -17230,23 +18094,27 @@ async function openWorkModeFile(path) {
   renderWorkModeActiveFile();
 }
 function renderWorkModeActiveFile() {
-  const feed = document.getElementById('workModeChatFeed');
+  const feed = isWorkModeObserverReviewActive() ? document.getElementById('workModeFinalFeed') : document.getElementById('workModeChatFeed');
   if (!feed) return;
   const file = workModeActiveFile;
   if (!file) return renderWorkModeDefaultStage();
+  const isTmpWork = isWorkModeTmpWorkPath(file.path);
+  const tmpLocked = isTmpWork && isWorkModeTmpWorkLocked();
   const fullTitle = escapeHtml(file.path || 'File');
   const title = escapeHtml(workModeDisplayTitle(file.path || 'File'));
-  const deleteBtn = `<button class="work-mode-card-btn danger" id="workModeDeleteFileBtn" type="button">Delete</button>`;
+  const deleteBtn = tmpLocked ? '' : `<button class="work-mode-card-btn danger" id="workModeDeleteFileBtn" type="button">Delete</button>`;
+  const mergeBtn = isTmpWork && !tmpLocked ? `<button class="work-mode-card-btn merge" id="workModeMergeFileBtn" type="button">Merge</button>` : '';
   const closeBtn = `<button class="work-mode-card-btn" id="workModeCloseFileBtn" type="button">X</button>`;
+  const readonlyNote = tmpLocked ? '<div class="work-mode-readonly-note">tmp-work is read-only while Observer Review is running or paused.</div>' : '';
   let body = '';
-  let actions = deleteBtn + closeBtn;
+  let actions = mergeBtn + deleteBtn + closeBtn;
   if (file.isText || file.kind === 'text') {
     const diff = getWorkModeDiffForPath(file.path);
     const diffKey = normalizeWorkModeDiffPath(file.path);
     const diffOn = !!(diff && workModeDiffOpenFiles.has(diffKey));
-    if (!diffOn) actions = `<button class="work-mode-card-btn" id="workModeSaveFileBtn" type="button">Save</button>` + actions;
+    if (!diffOn && !tmpLocked) actions = `<button class="work-mode-card-btn" id="workModeSaveFileBtn" type="button">Save</button>` + actions;
     const diffToolbar = diff ? `<div class="work-mode-diff-toolbar"><button class="work-mode-card-btn diff" id="workModeDiffToggleBtn" type="button" aria-pressed="${diffOn ? 'true' : 'false'}">${diffOn ? '− Diff' : '+ Diff'}</button><span class="work-mode-diff-note">Last AI change preview${diffOn ? ' is read-only.' : ''}</span></div>` : '';
-    body = diffOn ? `${diffToolbar}${renderWorkModeDiffPreview(diff)}` : `${diffToolbar}<textarea class="work-mode-card-editor" id="workModeFileEditor">${escapeHtml(file.content || '')}</textarea>`;
+    body = diffOn ? `${diffToolbar}${renderWorkModeDiffPreview(diff)}${readonlyNote}` : `${diffToolbar}<textarea class="work-mode-card-editor" id="workModeFileEditor" ${tmpLocked ? 'readonly' : ''}>${escapeHtml(file.content || '')}</textarea>${readonlyNote}`;
   } else if (file.kind === 'image' && (file.blobUrl || file.imageDataUrl)) {
     const src = escapeHtml(file.blobUrl || file.imageDataUrl);
     body = `<div class="work-mode-media-frame"><img alt="${title}" src="${src}"></div>`;
@@ -17263,12 +18131,15 @@ function renderWorkModeActiveFile() {
   if (saveBtn) saveBtn.addEventListener('click', saveWorkModeActiveFile);
   const delBtn = document.getElementById('workModeDeleteFileBtn');
   if (delBtn) delBtn.addEventListener('click', () => deleteWorkModeFile(file.path).catch(err => showToast(err.message || 'Could not delete file.', 'warning')));
+  const mergeBtnEl = document.getElementById('workModeMergeFileBtn');
+  if (mergeBtnEl) mergeBtnEl.addEventListener('click', () => mergeWorkModeTmpWorkFile(file.path).catch(err => showToast(err.message || 'Could not merge tmp-work file.', 'warning')));
   const close = document.getElementById('workModeCloseFileBtn');
   if (close) close.addEventListener('click', () => { workModeActiveFile = null; renderWorkModeDefaultStage(); });
   requestAnimationFrame(updateWorkModeScrollButton);
 }
 async function saveWorkModeActiveFile() {
   if (!workModeActiveFile || !workModeActiveFile.path) return;
+  if (isWorkModeTmpWorkPath(workModeActiveFile.path) && isWorkModeTmpWorkLocked()) return showToast('tmp-work is read-only while Observer Review is running or paused.', 'warning', 3200);
   const editor = document.getElementById('workModeFileEditor');
   if (!editor) return;
   await api('/api/file/save', { method: 'POST', body: JSON.stringify({ path: workModeActiveFile.path, content: editor.value }) });
@@ -17282,6 +18153,7 @@ async function saveWorkModeActiveFile() {
 async function deleteWorkModeFile(path) {
   const clean = String(path || '').trim();
   if (!clean) return;
+  if (isWorkModeTmpWorkPath(clean) && isWorkModeTmpWorkLocked()) return showToast('tmp-work is read-only while Observer Review is running or paused.', 'warning', 3200);
   const wasActive = !!(workModeActiveFile && workModeActiveFile.path === clean);
   const confirmed = await openConfirmModal({ title: 'Delete File?', message: 'Delete this file?', confirmLabel: 'Delete File', destructive: true });
   if (!confirmed) return;
@@ -17324,11 +18196,94 @@ async function sendWorkModePrompt() {
   const prompt = String((input && input.value) || '').trim();
   if (!prompt) return showToast('Enter a Work Mode prompt first.', 'warning', 2800);
   if (!activeProject) return showToast('Select a project first before using Work Mode.', 'warning', 3200);
-  if (isObserverEnabled() || reviewerModelId) return showToast('Work Mode does not support Observer Mode. Turn off Observer Mode first.', 'warning', 3600);
   const builderCount = activeBuilderCount();
   if (builderCount !== 1) return showToast('Work Mode requires exactly one active Builder AI.', 'warning', 3400);
   const modelId = getActiveBuilderModelId();
   if (!modelId) return showToast('Could not identify the active Builder AI.', 'warning', 3200);
+  if (activeObserverCount() > 1) return showToast('Work Mode supports one Observer. Disable the extra Observers first.', 'warning', 3600);
+  const observerReviewActive = isWorkModeObserverReviewActive();
+
+  stopWorkModeReplySpeech({ silent: true });
+  workModeMemoryMenuOpen = '';
+  if (observerReviewActive) {
+    const observerModelId = getActiveObserverModelId();
+    if (!observerModelId) return showToast('Select an Observer before using Observer Review Mode.', 'warning', 3200);
+    const selectedRel = Array.from(workModeSelectedFiles).map(workModeProjectworkRelativePath).filter(Boolean);
+    const tempAttachments = workModeTemporaryAttachments.slice();
+    workModeTemporaryAttachments = [];
+    renderWorkModeAttachments();
+    toggleWorkModeAttachPopup(false);
+    toggleWorkModeOpenedPopup(false);
+    toggleWorkModeSettingsPopup(false);
+    workModeHighlightedFiles = new Set();
+    resetWorkModeDiffFiles({ render: false });
+    workModeReviewMessages = [];
+    renderWorkModeReviewSidePanels();
+    renderWorkModeFileTree();
+
+    workModeSending = true;
+    updateWorkModeObserverControls({ render: false });
+    const sendBtn = document.getElementById('workModeSendBtn');
+    if (sendBtn) sendBtn.disabled = true;
+    appendWorkModeMessage('user', prompt);
+    if (input) {
+      input.value = '';
+      workModePromptDraft = '';
+      autosizeWorkModePrompt();
+    }
+    setWorkModeStatus(`Observer Review running · max passes ${workModeObserverMaxPasses}.`);
+    startWorkModeWaitingNotice(`${getActiveBuilderLabel()} + ${getActiveObserverLabel() || 'Observer'}`);
+    try {
+      const startState = await postWorkModeSessionState('start_observer', prompt);
+      setWorkModeStatus(startState.message || `Observer Review running · max passes ${workModeObserverMaxPasses}.`);
+      startWorkModeObserverSessionPolling();
+      const data = await api('/api/work-mode/send', {
+        method: 'POST',
+        body: JSON.stringify({
+          modelId,
+          observerModelId,
+          observerReview: true,
+          maxPasses: workModeObserverMaxPasses,
+          prompt,
+          selectedFiles: selectedRel,
+          temporaryAttachments: tempAttachments,
+          includeRoleContext: workModeSettings.includeRoleContext !== false,
+          useMemory: !!workModeSettings.useMemory,
+          responseMode: normalizeResponseMode(workModeSettings.responseMode)
+        })
+      });
+      if (data.state) applyWorkModeObserverSessionState(data.state);
+      applyWorkModeReviewMessages(data.reviewMessages || []);
+      const changed = Array.isArray(data.changedFiles) ? data.changedFiles : [];
+      storeWorkModeDiffFiles(data.diffFiles);
+      appendWorkModeMessage('ai', data.reply || '(No visible final reply returned.)', { changedFiles: changed, blockedFiles: Array.isArray(data.blockedFiles) ? data.blockedFiles : [], inlineFiles: Array.isArray(data.inlineFiles) ? data.inlineFiles : [], autoRead: true });
+      if (data.agentMessage) appendWorkModeMessage('agentgo', data.agentMessage);
+      workModeSelectedFiles = new Set();
+      changed.forEach(rel => {
+        const fullPath = workModeFullPathFromRelative(rel);
+        if (fullPath) workModeHighlightedFiles.add(fullPath);
+      });
+      await refreshLogs().catch(() => {});
+      await loadWorkModeFileTree().catch(err => showToast(err.message || 'Could not refresh tmp-work.', 'warning'));
+      if (data.memoryWarning) showToast(data.memoryWarning, 'warning', 4200);
+      const skipped = Array.isArray(data.skippedFiles) ? data.skippedFiles.length : 0;
+      if (skipped) setWorkModeStatus(`Observer Review finalized. ${skipped} file request${skipped === 1 ? '' : 's'} skipped by AgentGO. Review tmp-work before merging.`);
+      else setWorkModeStatus('Observer Review finalized. Review tmp-work, then merge selected draft files or use Merge all.');
+    } catch (err) {
+      const friendly = summarizeWorkModeError(err);
+      appendWorkModeMessage('agentgo', friendly.summary, { detail: friendly.detail, detailSections: friendly.detailSections });
+      showErrorToast(friendly.summary);
+      updateWorkModeSettingsStatus();
+    } finally {
+      clearWorkModeWaitingNotice();
+      stopWorkModeObserverSessionPolling();
+      workModeSending = false;
+      updateWorkModeObserverControls({ render: false });
+      if (sendBtn) sendBtn.disabled = false;
+      requestAnimationFrame(updateWorkModeScrollButton);
+    }
+    return;
+  }
 
   const selectedRel = Array.from(workModeSelectedFiles).map(workModeProjectworkRelativePath).filter(Boolean);
   const tempAttachments = workModeTemporaryAttachments.slice();
@@ -17350,6 +18305,7 @@ async function sendWorkModePrompt() {
     workModePromptDraft = '';
     autosizeWorkModePrompt();
   }
+
   setWorkModeStatus('Sending Work Mode prompt...');
   startWorkModeWaitingNotice(getActiveBuilderLabel());
 
@@ -17368,7 +18324,7 @@ async function sendWorkModePrompt() {
     });
     const changed = Array.isArray(data.changedFiles) ? data.changedFiles : [];
     storeWorkModeDiffFiles(data.diffFiles);
-    appendWorkModeMessage('ai', data.reply || '(No visible reply returned.)', { changedFiles: changed, blockedFiles: Array.isArray(data.blockedFiles) ? data.blockedFiles : [], inlineFiles: Array.isArray(data.inlineFiles) ? data.inlineFiles : [] });
+    appendWorkModeMessage('ai', data.reply || '(No visible reply returned.)', { changedFiles: changed, blockedFiles: Array.isArray(data.blockedFiles) ? data.blockedFiles : [], inlineFiles: Array.isArray(data.inlineFiles) ? data.inlineFiles : [], autoRead: true });
     if (data.agentMessage) appendWorkModeMessage('agentgo', data.agentMessage);
     workModeSelectedFiles = new Set();
     changed.forEach(rel => {
@@ -17399,13 +18355,16 @@ function openWorkModeOverlay() {
   workModeOpen = true;
   overlay.classList.add('open');
   overlay.setAttribute('aria-hidden', 'false');
+  syncWorkModeObserverSelectionState({ opening: true });
   updateWorkModeBuilderLabel();
   updateWorkModeProjectTitle();
+  updateWorkModeObserverControls({ render: false });
   if (!workModeFileTree || workModeTreeLoadedProject !== activeProject) loadWorkModeFileTree({ reset: true }).catch(err => showToast(err.message || 'Could not load Work Mode files.', 'warning'));
   else renderWorkModeFileTree();
   renderWorkModeAttachments();
   updateWorkModeOpenedFilesUI();
   updateWorkModeSearchUI();
+  updateWorkModeSpeechUI();
   const input = document.getElementById('workModePromptInput');
   if (input) {
     input.value = workModePromptDraft || '';
@@ -17420,6 +18379,8 @@ function hideWorkModeOverlay() {
   const overlay = document.getElementById('workModeOverlay');
   if (!overlay) return;
   stopWorkModeSpeechInput();
+  stopWorkModeReplySpeech({ silent: true });
+  stopWorkModeObserverSessionPolling();
   toggleWorkModeOpenedPopup(false);
   toggleWorkModeSettingsPopup(false);
   toggleWorkModeAttachPopup(false);
@@ -17431,9 +18392,12 @@ function hideWorkModeOverlay() {
 }
 function resetWorkModeState() {
   stopWorkModeSpeechInput();
+  stopWorkModeReplySpeech({ silent: true });
+  stopWorkModeObserverSessionPolling();
   workModePromptDraft = '';
   workModeOpen = false;
   workModeFileTree = null;
+  workModeTmpWorkTree = null;
   workModeTreeLoadedProject = '';
   workModeExpandedFolders = new Set();
   workModeSelectedFiles = new Set();
@@ -17449,6 +18413,14 @@ function resetWorkModeState() {
   workModeContextTargetPath = '';
   workModeContextTargetKind = 'folder';
   workModeCreateKind = '';
+  workModeObserverReviewEnabled = false;
+  workModeObserverSessionObserverId = '';
+  workModeObserverMaxPasses = 3;
+  workModeObserverPaused = false;
+  workModeObserverSessionState = null;
+  workModeObserverLastPollSignature = '';
+  workModeObserverLastFileStateSignature = '';
+  workModeReviewMessages = [];
   resetWorkModeSearch({ render: false });
   workModeSettings = createDefaultWorkModeSettings();
   closeWorkModeFolderContextMenu();
@@ -17473,10 +18445,10 @@ function resetWorkModeState() {
 }
 function startWorkModeFromYetiMenu() {
   if (!activeProject) return showToast('Select a project first before starting Work Mode.', 'warning', 3200);
-  if (isObserverEnabled() || reviewerModelId) return showToast('Work Mode does not support Observer Mode. Turn off Observer Mode first.', 'warning', 3600);
   const builderCount = activeBuilderCount();
   if (builderCount < 1) return showToast('Activate exactly one Builder AI before starting Work Mode.', 'warning', 3400);
   if (builderCount > 1) return showToast('Work Mode supports exactly one active Builder. Disable the extra Builders first.', 'warning', 3800);
+  if (activeObserverCount() > 1) return showToast('Work Mode supports one Observer. Disable the extra Observers first.', 'warning', 3600);
   closeYetiMenu();
   openWorkModeOverlay();
 }
@@ -17812,6 +18784,7 @@ function appendDiagnosticsEntry(entry) {
 
 function openDiagnosticsModal() {
   diagnosticsOpen = true;
+  ensureDiagnosticsStream();
   const modal = document.getElementById('diagnosticsModal');
   const spiderBtn = document.getElementById('diagnosticsSpiderBtn');
   const spiderImage = document.getElementById('diagnosticsSpiderImage');
@@ -17843,6 +18816,7 @@ function closeDiagnosticsModal() {
   }
   if (spiderBtn) spiderBtn.setAttribute('aria-expanded', 'false');
   if (spiderImage) spiderImage.src = '/assets/bat_01.png';
+  closeDiagnosticsStream();
 }
 
 function ensureDiagnosticsStream() {
@@ -17862,8 +18836,17 @@ function ensureDiagnosticsStream() {
   };
   diagnosticsStream.onerror = function () {
     diagnosticsStreamConnected = false;
+    if (!diagnosticsOpen) closeDiagnosticsStream();
     renderDiagnostics();
   };
+}
+
+function closeDiagnosticsStream() {
+  if (!diagnosticsStream) return;
+  try { diagnosticsStream.close(); } catch (_) {}
+  diagnosticsStream = null;
+  diagnosticsStreamConnected = false;
+  renderDiagnostics();
 }
 
 async function executePrompt() {
@@ -19426,6 +20409,66 @@ const workModeSearchInput = document.getElementById('workModeSearchInput');
 if (workModeSearchInput) workModeSearchInput.addEventListener('input', scheduleWorkModeSearch);
 const workModeSearchClearBtn = document.getElementById('workModeSearchClearBtn');
 if (workModeSearchClearBtn) workModeSearchClearBtn.addEventListener('click', () => resetWorkModeSearch());
+const workModeObserverReviewBtn = document.getElementById('workModeObserverReviewBtn');
+if (workModeObserverReviewBtn) workModeObserverReviewBtn.addEventListener('click', () => {
+  if (!getActiveObserverModelId()) return showToast('Select an Observer before enabling Observer Review Mode.', 'warning', 2800);
+  if (workModeSending) return showToast('Finish, pause/finalize, or stop the current Observer Review run before changing this toggle.', 'warning', 3400);
+  workModeObserverReviewEnabled = !workModeObserverReviewEnabled;
+  workModeObserverPaused = false;
+  updateWorkModeObserverControls();
+  setWorkModeStatus(workModeObserverReviewEnabled ? `Observer review on · max passes ${workModeObserverMaxPasses}.` : 'Observer review off. Prompts will go directly to the Worker.');
+});
+const workModeMaxPassesInput = document.getElementById('workModeMaxPassesInput');
+if (workModeMaxPassesInput) workModeMaxPassesInput.addEventListener('input', () => {
+  if (workModeSending) {
+    workModeMaxPassesInput.value = String(workModeObserverMaxPasses);
+    return;
+  }
+  workModeObserverMaxPasses = clampWorkModeObserverMaxPasses(workModeMaxPassesInput.value);
+  workModeMaxPassesInput.value = String(workModeObserverMaxPasses);
+  updateWorkModeObserverControls({ render: false });
+});
+const workModePauseBtn = document.getElementById('workModePauseBtn');
+if (workModePauseBtn) workModePauseBtn.addEventListener('click', async () => {
+  if (!isWorkModeObserverReviewActive()) return;
+  workModeObserverPaused = true;
+  updateWorkModeObserverControls({ render: false });
+  if (workModeSending) startWorkModeObserverSessionPolling();
+  try {
+    const data = await postWorkModeSessionState('pause');
+    setWorkModeStatus(data.message || describeWorkModeSessionState(data.state || null));
+  } catch (err) {
+    showErrorToast(err.message || 'Could not update Work Mode pause state.');
+    setWorkModeStatus('Pause state could not be saved, but the UI pause control is still active.');
+  }
+});
+const workModeUnpauseBtn = document.getElementById('workModeUnpauseBtn');
+if (workModeUnpauseBtn) workModeUnpauseBtn.addEventListener('click', async () => {
+  workModeObserverPaused = false;
+  updateWorkModeObserverControls({ render: false });
+  if (workModeSending) startWorkModeObserverSessionPolling();
+  try {
+    const data = await postWorkModeSessionState('resume');
+    setWorkModeStatus(data.message || describeWorkModeSessionState(data.state || null));
+  } catch (err) {
+    showErrorToast(err.message || 'Could not resume Work Mode state.');
+    setWorkModeStatus(`Observer review on · max passes ${workModeObserverMaxPasses}.`);
+  }
+});
+const workModeFinalizeBtn = document.getElementById('workModeFinalizeBtn');
+if (workModeFinalizeBtn) workModeFinalizeBtn.addEventListener('click', async () => {
+  workModeObserverPaused = false;
+  updateWorkModeObserverControls({ render: false });
+  if (workModeSending) startWorkModeObserverSessionPolling();
+  try {
+    const data = await postWorkModeSessionState('finalize');
+    await loadWorkModeFileTree().catch(err => showToast(err.message || 'Could not refresh tmp-work.', 'warning'));
+    setWorkModeStatus(data.message || describeWorkModeSessionState(data.state || null));
+  } catch (err) {
+    showErrorToast(err.message || 'Could not finalize Work Mode state.');
+    setWorkModeStatus('Finalize requested, but backend state could not be updated.');
+  }
+});
 const workModePromptInput = document.getElementById('workModePromptInput');
 if (workModePromptInput) {
   workModePromptInput.addEventListener('input', () => {
@@ -19449,6 +20492,11 @@ if (workModePromptInput) {
 }
 const workModeMicBtn = document.getElementById('workModeMicBtn');
 if (workModeMicBtn) workModeMicBtn.addEventListener('click', toggleWorkModeSpeechInput);
+const workModeAutoReadBtn = document.getElementById('workModeAutoReadBtn');
+if (workModeAutoReadBtn) {
+  workModeAutoReadBtn.addEventListener('click', toggleWorkModeAutoReadReplies);
+  updateWorkModeSpeechUI();
+}
 const workModeSendBtn = document.getElementById('workModeSendBtn');
 if (workModeSendBtn) workModeSendBtn.addEventListener('click', () => sendWorkModePrompt().catch(err => showErrorToast(err.message || 'Work Mode request failed.')));
 const workModeAttachBtn = document.getElementById('workModeAttachBtn');
@@ -19478,9 +20526,33 @@ const workModeScrollBottomBtn = document.getElementById('workModeScrollBottomBtn
 if (workModeScrollBottomBtn) workModeScrollBottomBtn.addEventListener('click', scrollWorkModeStageToBottom);
 const workModePromptStatus = document.getElementById('workModePromptStatus');
 if (workModePromptStatus) workModePromptStatus.addEventListener('click', event => {
-  if (!event.target.closest('[data-work-memory-toggle]')) return;
+  const toggle = event.target.closest('[data-work-memory-toggle]');
+  const newMemory = event.target.closest('[data-work-memory-new]');
+  const continueMemory = event.target.closest('[data-work-memory-continue]');
+  const loadMemory = event.target.closest('[data-work-memory-load]');
+  const deleteMemory = event.target.closest('[data-work-memory-delete]');
+  const saveMemory = event.target.closest('[data-work-memory-save]');
+  const dontSaveMemory = event.target.closest('[data-work-memory-dont-save]');
+  if (!toggle && !newMemory && !continueMemory && !loadMemory && !deleteMemory && !saveMemory && !dontSaveMemory) return;
   event.preventDefault();
-  toggleWorkModeMemorySetting();
+  event.stopPropagation();
+  if (toggle) return openWorkModeMemoryMenu();
+  if (newMemory) return startNewWorkModeMemory();
+  if (continueMemory) return continueLastWorkModeMemory();
+  if (loadMemory) return loadWorkModeMemoryFile(loadMemory.getAttribute('data-work-memory-load') || '');
+  if (deleteMemory) return deleteWorkModeMemoryFile(deleteMemory.getAttribute('data-work-memory-delete') || '');
+  if (saveMemory) return saveCurrentWorkModeMemory();
+  if (dontSaveMemory) return turnOffWorkModeMemoryWithoutSaving();
+});
+if (workModePromptStatus) workModePromptStatus.addEventListener('keydown', event => {
+  if (event.key !== 'Enter' || !event.target.closest('[data-work-memory-save-name]')) return;
+  event.preventDefault();
+  saveCurrentWorkModeMemory();
+});
+document.addEventListener('click', event => {
+  if (!workModeMemoryMenuOpen) return;
+  if (event.target.closest('#workModePromptStatus')) return;
+  closeWorkModeMemoryMenu();
 });
 const workModeStage = document.getElementById('workModeStage');
 if (workModeStage) workModeStage.addEventListener('scroll', updateWorkModeScrollButton, { passive: true });
@@ -19526,6 +20598,7 @@ const workModeCreateModal = document.getElementById('workModeCreateModal');
 if (workModeCreateModal) workModeCreateModal.addEventListener('click', event => {
   if (event.target.id === 'workModeCreateModal') closeWorkModeCreateModal();
 });
+window.addEventListener('beforeunload', () => stopWorkModeReplySpeech({ silent: true }));
 document.addEventListener('click', event => {
   const attachGroup = document.getElementById('workModeAttachBtn')?.closest('.work-mode-control-group');
   const openedGroup = document.getElementById('workModeOpenedBtn')?.closest('.work-mode-control-group');
@@ -20128,7 +21201,6 @@ async function initializeFileManagerRoot() {
 
 async function initializeApp() {
   stopModelStatePolling();
-  ensureDiagnosticsStream();
   initializeKnowledgeSurface();
   await initializeFileManagerRoot();
   populateRiskIterationOptions();
