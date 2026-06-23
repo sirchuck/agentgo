@@ -2086,7 +2086,7 @@ body.deaddrop-popover-open {
   position: fixed;
   left: 14px;
   bottom: -3px;
-  z-index: 26;
+  z-index: 2600;
   appearance: none;
   border: none;
   background: none;
@@ -2101,6 +2101,164 @@ body.deaddrop-popover-open {
 .knowledge-toggle-btn:active { filter: drop-shadow(0 14px 24px rgba(0,0,0,0.26)); }
 .knowledge-toggle-btn.is-open { bottom: -3px; }
 .knowledge-toggle-icon { width: 70px; min-width: 70px; height: auto; display: block; }
+
+.knowledge-sticky-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  pointer-events: none;
+  display: none;
+}
+.knowledge-sticky-layer.open { display: block; }
+.global-sticky-note {
+  position: absolute;
+  width: 230px;
+  height: 150px;
+  min-width: 160px;
+  min-height: 110px;
+  max-width: min(720px, calc(100vw - 24px));
+  max-height: min(640px, calc(100vh - 24px));
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.22);
+  background: var(--sticky-bg, #cfeeff);
+  color: var(--sticky-fg, #000);
+  box-shadow: 0 18px 34px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.36);
+  pointer-events: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+}
+.global-sticky-head {
+  height: 34px;
+  min-height: 34px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 7px 4px 10px;
+  cursor: grab;
+  background: linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.06));
+}
+.global-sticky-head:active { cursor: grabbing; }
+.global-sticky-title {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: .78rem;
+  font-weight: 900;
+  color: var(--sticky-fg, #000);
+  opacity: .88;
+}
+.global-sticky-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding-left: 6px;
+  border-radius: 999px;
+  background: var(--sticky-bg, #cfeeff);
+  box-shadow: -10px 0 12px var(--sticky-bg, #cfeeff);
+}
+.global-sticky-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.22);
+  background: rgba(255,255,255,0.5);
+  color: var(--sticky-fg, #000);
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 900;
+  cursor: pointer;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+}
+.global-sticky-color-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #000;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.58);
+  display: block;
+}
+.global-sticky-body {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: 0;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: var(--sticky-fg, #000);
+  padding: 8px 10px 13px;
+  font: 700 .9rem/1.35 system-ui, -apple-system, Segoe UI, sans-serif;
+  user-select: text;
+}
+.global-sticky-body::placeholder { color: color-mix(in srgb, var(--sticky-fg, #000) 48%, transparent); }
+.global-sticky-resize {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  opacity: .68;
+}
+.global-sticky-resize::after {
+  content: "";
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid var(--sticky-fg, #000);
+  border-bottom: 2px solid var(--sticky-fg, #000);
+}
+.global-sticky-color-panel {
+  position: absolute;
+  top: 32px;
+  right: 10px;
+  width: 184px;
+  padding: 10px;
+  border-radius: 13px;
+  background: rgba(255,255,255,0.98);
+  color: #17325c;
+  border: 1px solid rgba(23,53,95,.16);
+  box-shadow: 0 16px 32px rgba(0,0,0,.25);
+  display: none;
+  z-index: 2;
+}
+.global-sticky-note.is-color-open .global-sticky-color-panel { display: grid; gap: 8px; }
+.global-sticky-color-panel label {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+  font-size: .72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.global-sticky-color-panel input[type="color"] {
+  width: 38px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid rgba(23,53,95,.2);
+  border-radius: 8px;
+  background: #fff;
+}
+.global-sticky-reset-btn {
+  border: 0;
+  border-radius: 10px;
+  background: rgba(31,67,115,.1);
+  color: #17325c;
+  padding: 7px 9px;
+  font-weight: 900;
+  cursor: pointer;
+}
 
 .diagnostics-spider-btn {
   position: fixed;
@@ -3227,9 +3385,12 @@ body.deaddrop-popover-open {
 .work-mode-ai-file-toggle:hover{background:rgba(74,163,255,.20);color:#fff}
 .work-mode-ai-file-toggle svg{width:23px;height:23px;stroke:currentColor;fill:none;transition:transform .16s ease}
 .work-mode-ai-file-toggle.is-open svg{transform:rotate(180deg)}
-.work-mode-ai-speak-btn{appearance:none;margin-top:8px;width:30px;height:30px;border-radius:999px;border:1px solid rgba(74,163,255,.30);background:rgba(74,163,255,.10);color:#d9eeff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
-.work-mode-ai-speak-btn:hover{background:rgba(74,163,255,.18);color:#fff}.work-mode-ai-speak-btn.is-speaking{background:rgba(74,163,255,.24);color:#fff;box-shadow:0 0 0 1px rgba(74,163,255,.32)}
-.work-mode-ai-speak-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9}
+.work-mode-message-actions{display:inline-flex;align-items:center;gap:7px;margin-top:8px}
+.work-mode-message-action-btn{appearance:none;width:30px;height:30px;border-radius:999px;border:1px solid rgba(74,163,255,.30);background:rgba(74,163,255,.10);color:#d9eeff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.work-mode-message-action-btn:hover{background:rgba(74,163,255,.18);color:#fff}.work-mode-message-action-btn.is-speaking{background:rgba(74,163,255,.24);color:#fff;box-shadow:0 0 0 1px rgba(74,163,255,.32)}
+.work-mode-message-action-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9}
+.work-mode-ai-speak-btn{margin:0}
+.work-mode-reset-btn{color:rgba(245,247,251,.74)}.work-mode-reset-btn:hover{background:rgba(209,75,160,.14);color:#fff}.work-mode-reset-btn svg{stroke-width:2.2}
 .work-mode-file-outputs{margin-top:12px;display:grid;gap:10px;border:1px solid rgba(74,163,255,.28);border-radius:16px;background:rgba(74,163,255,.08);padding:10px}
 .work-mode-file-output-head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#d9eeff;font-size:.82rem;font-weight:900}
 .work-mode-file-output-state{color:rgba(245,247,251,.62);font-weight:700}
@@ -6974,7 +7135,8 @@ body.deaddrop-popover-open {
 <div class="knowledge-panel-host" id="knowledgeActivePanel"></div>
 </div>
 </div>
-<button aria-controls="knowledgeDrawer" aria-expanded="false" aria-label="Open README and NOTES drawer" class="knowledge-toggle-btn" id="knowledgePumpkinBtn" type="button">
+<div aria-hidden="true" class="knowledge-sticky-layer" id="knowledgeStickyLayer"></div>
+<button aria-controls="knowledgeDrawer" aria-expanded="false" aria-label="Open README, NOTES, and sticky notes" class="knowledge-toggle-btn" id="knowledgePumpkinBtn" type="button">
 <img alt="Pumpkin notes drawer toggle" class="knowledge-toggle-icon" id="knowledgePumpkinImage" src="/assets/pumpkin01.png"/>
 </button>
 <div aria-live="polite" class="risk-indicator" id="riskIndicator" role="dialog"></div><img alt="Yeti mascot" aria-controls="riskIndicator" aria-expanded="false" class="yeti" id="riskYeti" src="/assets/fc_agentgo_yetti.png" tabindex="0"/>
@@ -7021,6 +7183,7 @@ body.deaddrop-popover-open {
 <textarea aria-label="Work Mode prompt" class="work-mode-input" id="workModePromptInput" placeholder="Ask AgentGO to work on this project..." rows="1"></textarea>
 <div class="work-mode-attachment-list" id="workModeAttachmentList" aria-live="polite"></div>
 <div class="work-mode-control-row">
+<button aria-label="Reset Work Mode session" class="work-mode-icon-btn work-mode-reset-btn" id="workModeResetSessionBtn" title="Reset Work Mode session" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6.25 6.25 17.75 17.75M17.75 6.25 6.25 17.75" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 <div class="work-mode-control-group">
 <button aria-label="Add temporary attachment" class="work-mode-icon-btn work-mode-attach-btn" id="workModeAttachBtn" title="Add temporary attachment" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z"/></svg></button>
 <div class="work-mode-popup" hidden id="workModeAttachPopup">
@@ -7515,6 +7678,9 @@ let workModeSearchRunning = false;
 let workModeSearchPending = false;
 let workModeSearchError = '';
 let workModeSending = false;
+const WORK_MODE_LARGE_FILE_OPEN_BYTES = 20 * 1024 * 1024;
+const WORK_MODE_LARGE_CONTEXT_SEND_BYTES = 2 * 1024 * 1024;
+let workModeLargeFileOpenConfirmed = new Set();
 let workModeWaitingNoticeTimer = null;
 let workModeWaitingNoticeStartedAt = 0;
 let workModeContextFolderPath = '';
@@ -7552,6 +7718,12 @@ let outfitProjectReference = '';
 let activeProjectLabelOverride = '';
 const KNOWLEDGE_AUTOSAVE_DELAY_MS = 1200;
 let knowledgeState = { drawerOpen: false, activeTab: "readme", readme: "", notes: "", savedNotes: "", saveTimer: null, savePromise: null, loadPromise: null };
+const STICKY_DEFAULT_BG = '#cfeeff';
+const STICKY_DEFAULT_FG = '#000000';
+const STICKY_DEFAULT_WIDTH = 230;
+const STICKY_DEFAULT_HEIGHT = 150;
+const STICKY_AUTOSAVE_DELAY_MS = 650;
+let stickyState = { notes: [], loadPromise: null, savePromise: null, saveTimer: null, drag: null, resize: null, newOffset: 0 };
 let openProjectSettingsName = "";
 let mergeReviewState = { modelId: "", modelTitle: "", files: [] };
 let mergePreviewState = { mode: "merge", path: "", preview: null, isEditing: false, draft: "", title: "", diffOpenPanels: {} };
@@ -9843,6 +10015,7 @@ function updateKnowledgeUI() {
   });
   if (notesInput && notesInput.value !== knowledgeState.notes && document.activeElement !== notesInput) notesInput.value = knowledgeState.notes;
   if (knowledgeState.activeTab === 'notes' && knowledgeState.drawerOpen && notesInput) requestAnimationFrame(() => notesInput.focus());
+  renderStickyNotes();
   updateKnowledgePumpkinPosition();
 }
 
@@ -9901,6 +10074,7 @@ function handleKnowledgeNotesInput() {
 
 async function openKnowledgeDrawer() {
   await loadKnowledgeContent();
+  await loadStickyNotes();
   knowledgeState.drawerOpen = true;
   setKnowledgeStatus(knowledgeNotesChanged() ? 'Unsaved changes' : 'Saved', 'idle');
   updateKnowledgeUI();
@@ -9909,6 +10083,7 @@ async function openKnowledgeDrawer() {
 async function closeKnowledgeDrawer() {
   if (knowledgeNotesChanged()) await saveKnowledgeNotes();
   else clearKnowledgeAutosaveTimer();
+  if (stickyState.saveTimer) await saveStickyNotesNow().catch(() => {});
   knowledgeState.drawerOpen = false;
   updateKnowledgeUI();
 }
@@ -9924,6 +10099,311 @@ async function switchKnowledgeTab(tab) {
 async function toggleKnowledgeDrawer() {
   if (knowledgeState.drawerOpen) { await closeKnowledgeDrawer(); return; }
   await openKnowledgeDrawer();
+}
+
+function stickyViewportDefaultPosition(width = STICKY_DEFAULT_WIDTH, offset = 0) {
+  const safeWidth = Math.max(160, Number(width || STICKY_DEFAULT_WIDTH));
+  const baseX = Math.round((window.innerWidth - safeWidth) / 2);
+  return {
+    x: Math.max(12, baseX + offset),
+    y: Math.max(72, 88 + offset)
+  };
+}
+
+function createDefaultStickyNote(offset = 0) {
+  const pos = stickyViewportDefaultPosition(STICKY_DEFAULT_WIDTH, offset);
+  const now = new Date().toISOString();
+  return {
+    id: `sticky_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    body: '',
+    x: pos.x,
+    y: pos.y,
+    width: STICKY_DEFAULT_WIDTH,
+    height: STICKY_DEFAULT_HEIGHT,
+    backgroundColor: STICKY_DEFAULT_BG,
+    foregroundColor: STICKY_DEFAULT_FG,
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
+function normalizeStickyColor(value, fallback) {
+  const clean = String(value || '').trim();
+  return /^#[0-9a-fA-F]{6}$/.test(clean) ? clean.toLowerCase() : fallback;
+}
+
+function normalizeStickyNote(note = {}, index = 0) {
+  const width = Math.min(Math.max(Number(note.width || STICKY_DEFAULT_WIDTH), 160), Math.max(160, window.innerWidth - 24));
+  const height = Math.min(Math.max(Number(note.height || STICKY_DEFAULT_HEIGHT), 110), Math.max(110, window.innerHeight - 24));
+  let x = Number.isFinite(Number(note.x)) ? Number(note.x) : -1;
+  let y = Number.isFinite(Number(note.y)) ? Number(note.y) : 90;
+  if (x < 0) x = stickyViewportDefaultPosition(width, index * 18).x;
+  if (y < 0) y = 90;
+  x = Math.min(Math.max(8, x), Math.max(8, window.innerWidth - width - 8));
+  y = Math.min(Math.max(8, y), Math.max(8, window.innerHeight - height - 8));
+  const now = new Date().toISOString();
+  return {
+    id: String(note.id || `sticky_${Date.now()}_${index}`).trim(),
+    body: String(note.body || ''),
+    x: Math.round(x),
+    y: Math.round(y),
+    width: Math.round(width),
+    height: Math.round(height),
+    backgroundColor: normalizeStickyColor(note.backgroundColor, STICKY_DEFAULT_BG),
+    foregroundColor: normalizeStickyColor(note.foregroundColor, STICKY_DEFAULT_FG),
+    createdAt: String(note.createdAt || now),
+    updatedAt: String(note.updatedAt || now)
+  };
+}
+
+function ensureStickyNotes() {
+  if (!Array.isArray(stickyState.notes)) stickyState.notes = [];
+  stickyState.notes = stickyState.notes.map((note, index) => normalizeStickyNote(note, index));
+  if (!stickyState.notes.length) stickyState.notes = [createDefaultStickyNote(0)];
+}
+
+function stickyTitle(note = {}) {
+  const text = String(note.body || '').replace(/\s+/g, ' ').trim();
+  return text ? text.slice(0, 30) : 'New sticky';
+}
+
+function stickyById(id) {
+  const cleanId = String(id || '');
+  return stickyState.notes.find(note => String(note.id || '') === cleanId) || null;
+}
+
+function stickyElement(id) {
+  return document.querySelector(`.global-sticky-note[data-sticky-id="${CSS.escape(String(id || ''))}"]`);
+}
+
+function applyStickyElementStyle(el, note) {
+  if (!el || !note) return;
+  el.style.left = `${Math.round(note.x)}px`;
+  el.style.top = `${Math.round(note.y)}px`;
+  el.style.width = `${Math.round(note.width)}px`;
+  el.style.height = `${Math.round(note.height)}px`;
+  el.style.setProperty('--sticky-bg', note.backgroundColor || STICKY_DEFAULT_BG);
+  el.style.setProperty('--sticky-fg', note.foregroundColor || STICKY_DEFAULT_FG);
+}
+
+function renderStickyNotes() {
+  const layer = document.getElementById('knowledgeStickyLayer');
+  if (!layer) return;
+  ensureStickyNotes();
+  layer.classList.toggle('open', knowledgeState.drawerOpen);
+  layer.setAttribute('aria-hidden', knowledgeState.drawerOpen ? 'false' : 'true');
+  if (!knowledgeState.drawerOpen) return;
+  layer.innerHTML = stickyState.notes.map(note => `
+    <article class="global-sticky-note" data-sticky-id="${escapeHtml(note.id)}" style="left:${Math.round(note.x)}px;top:${Math.round(note.y)}px;width:${Math.round(note.width)}px;height:${Math.round(note.height)}px;--sticky-bg:${escapeHtml(note.backgroundColor)};--sticky-fg:${escapeHtml(note.foregroundColor)};">
+      <header class="global-sticky-head" data-sticky-drag="true">
+        <div class="global-sticky-title">${escapeHtml(stickyTitle(note))}</div>
+        <div class="global-sticky-actions">
+          <button class="global-sticky-btn" data-sticky-color="true" type="button" title="Sticky colors"><span class="global-sticky-color-dot" aria-hidden="true"></span></button>
+          <button class="global-sticky-btn" data-sticky-new="true" type="button" title="New sticky">+</button>
+          <button class="global-sticky-btn" data-sticky-delete="true" type="button" title="Delete sticky">×</button>
+        </div>
+      </header>
+      <textarea class="global-sticky-body" data-sticky-body="true" spellcheck="true" placeholder="Quick note...">${escapeHtml(note.body || '')}</textarea>
+      <div class="global-sticky-color-panel" data-sticky-color-panel="true">
+        <label>Background <input data-sticky-bg="true" type="color" value="${escapeHtml(note.backgroundColor || STICKY_DEFAULT_BG)}"></label>
+        <label>Text <input data-sticky-fg="true" type="color" value="${escapeHtml(note.foregroundColor || STICKY_DEFAULT_FG)}"></label>
+        <button class="global-sticky-reset-btn" data-sticky-reset-colors="true" type="button">Reset colors</button>
+      </div>
+      <div class="global-sticky-resize" data-sticky-resize="true" title="Resize sticky"></div>
+    </article>`).join('');
+}
+
+async function loadStickyNotes() {
+  if (stickyState.loadPromise) return stickyState.loadPromise;
+  stickyState.loadPromise = (async () => {
+    const data = await api('/api/stickies');
+    stickyState.notes = Array.isArray(data.notes) ? data.notes : [];
+    ensureStickyNotes();
+    renderStickyNotes();
+    return stickyState.notes;
+  })();
+  try { return await stickyState.loadPromise; } finally { stickyState.loadPromise = null; }
+}
+
+function clearStickySaveTimer() {
+  if (stickyState.saveTimer) {
+    clearTimeout(stickyState.saveTimer);
+    stickyState.saveTimer = null;
+  }
+}
+
+async function saveStickyNotesNow() {
+  clearStickySaveTimer();
+  ensureStickyNotes();
+  if (stickyState.savePromise) return stickyState.savePromise;
+  const notes = stickyState.notes.map(note => ({ ...note, updatedAt: new Date().toISOString() }));
+  stickyState.savePromise = (async () => {
+    try {
+      const data = await api('/api/stickies', { method: 'POST', body: JSON.stringify({ notes }) });
+      stickyState.notes = Array.isArray(data.notes) ? data.notes : notes;
+      ensureStickyNotes();
+      return true;
+    } catch (err) {
+      showToast(err.message || 'Could not save sticky notes.', 'warning', 3200);
+      throw err;
+    } finally {
+      stickyState.savePromise = null;
+    }
+  })();
+  return stickyState.savePromise;
+}
+
+function scheduleStickySave(delay = STICKY_AUTOSAVE_DELAY_MS) {
+  clearStickySaveTimer();
+  stickyState.saveTimer = setTimeout(() => { saveStickyNotesNow().catch(() => {}); }, delay);
+}
+
+function createStickyNoteNearTop() {
+  stickyState.newOffset = (Number(stickyState.newOffset || 0) + 22) % 110;
+  const note = createDefaultStickyNote(stickyState.newOffset);
+  stickyState.notes.push(note);
+  renderStickyNotes();
+  scheduleStickySave(80);
+  requestAnimationFrame(() => {
+    const el = stickyElement(note.id);
+    const body = el ? el.querySelector('[data-sticky-body]') : null;
+    if (body) body.focus();
+  });
+}
+
+async function deleteStickyNote(id) {
+  const note = stickyById(id);
+  if (!note) return;
+  const confirmed = await openConfirmModal({
+    title: 'Delete Sticky Note?',
+    message: 'Delete this sticky note? This cannot be undone.',
+    confirmLabel: 'Delete Sticky',
+    cancelLabel: 'Cancel',
+    destructive: true,
+    elevated: true
+  });
+  if (!confirmed) return;
+  stickyState.notes = stickyState.notes.filter(item => String(item.id || '') !== String(id || ''));
+  if (!stickyState.notes.length) stickyState.notes = [createDefaultStickyNote(0)];
+  renderStickyNotes();
+  scheduleStickySave(80);
+}
+
+function clampStickyToViewport(note) {
+  note.width = Math.min(Math.max(Number(note.width || STICKY_DEFAULT_WIDTH), 160), Math.max(160, window.innerWidth - 24));
+  note.height = Math.min(Math.max(Number(note.height || STICKY_DEFAULT_HEIGHT), 110), Math.max(110, window.innerHeight - 24));
+  note.x = Math.min(Math.max(8, Number(note.x || 8)), Math.max(8, window.innerWidth - note.width - 8));
+  note.y = Math.min(Math.max(8, Number(note.y || 8)), Math.max(8, window.innerHeight - note.height - 8));
+}
+
+function handleStickyPointerMove(event) {
+  if (stickyState.drag) {
+    const { id, offsetX, offsetY } = stickyState.drag;
+    const note = stickyById(id);
+    const el = stickyElement(id);
+    if (!note || !el) return;
+    note.x = Math.round(event.clientX - offsetX);
+    note.y = Math.round(event.clientY - offsetY);
+    clampStickyToViewport(note);
+    applyStickyElementStyle(el, note);
+    event.preventDefault();
+  } else if (stickyState.resize) {
+    const { id, startX, startY, startWidth, startHeight } = stickyState.resize;
+    const note = stickyById(id);
+    const el = stickyElement(id);
+    if (!note || !el) return;
+    note.width = Math.round(startWidth + (event.clientX - startX));
+    note.height = Math.round(startHeight + (event.clientY - startY));
+    clampStickyToViewport(note);
+    applyStickyElementStyle(el, note);
+    event.preventDefault();
+  }
+}
+
+function handleStickyPointerUp() {
+  if (stickyState.drag || stickyState.resize) {
+    stickyState.drag = null;
+    stickyState.resize = null;
+    scheduleStickySave(80);
+  }
+}
+
+function bindStickyLayerEvents() {
+  const layer = document.getElementById('knowledgeStickyLayer');
+  if (!layer || layer.dataset.bound === 'true') return;
+  layer.addEventListener('pointerdown', event => {
+    const noteEl = event.target.closest('.global-sticky-note');
+    if (!noteEl) return;
+    noteEl.classList.remove('is-color-open');
+    const id = noteEl.dataset.stickyId || '';
+    const note = stickyById(id);
+    if (!note) return;
+    if (event.target.closest('[data-sticky-color]')) {
+      event.stopPropagation();
+      noteEl.classList.toggle('is-color-open');
+      return;
+    }
+    if (event.target.closest('[data-sticky-new]')) {
+      event.stopPropagation();
+      createStickyNoteNearTop();
+      return;
+    }
+    if (event.target.closest('[data-sticky-delete]')) {
+      event.stopPropagation();
+      deleteStickyNote(id).catch(err => showToast(err.message || 'Could not delete sticky note.'));
+      return;
+    }
+    if (event.target.closest('[data-sticky-resize]')) {
+      stickyState.resize = { id, startX: event.clientX, startY: event.clientY, startWidth: note.width, startHeight: note.height };
+      noteEl.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+      return;
+    }
+    if (event.target.closest('[data-sticky-drag]') && !event.target.closest('button')) {
+      const rect = noteEl.getBoundingClientRect();
+      stickyState.drag = { id, offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top };
+      noteEl.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+    }
+  });
+  layer.addEventListener('input', event => {
+    const noteEl = event.target.closest('.global-sticky-note');
+    if (!noteEl) return;
+    const id = noteEl.dataset.stickyId || '';
+    const note = stickyById(id);
+    if (!note) return;
+    if (event.target.matches('[data-sticky-body]')) {
+      note.body = event.target.value;
+      note.updatedAt = new Date().toISOString();
+      const title = noteEl.querySelector('.global-sticky-title');
+      if (title) title.textContent = stickyTitle(note);
+      scheduleStickySave();
+    } else if (event.target.matches('[data-sticky-bg]')) {
+      note.backgroundColor = normalizeStickyColor(event.target.value, STICKY_DEFAULT_BG);
+      applyStickyElementStyle(noteEl, note);
+      scheduleStickySave(120);
+    } else if (event.target.matches('[data-sticky-fg]')) {
+      note.foregroundColor = normalizeStickyColor(event.target.value, STICKY_DEFAULT_FG);
+      applyStickyElementStyle(noteEl, note);
+      scheduleStickySave(120);
+    }
+  });
+  layer.addEventListener('click', event => {
+    const noteEl = event.target.closest('.global-sticky-note');
+    if (!noteEl) return;
+    const id = noteEl.dataset.stickyId || '';
+    const note = stickyById(id);
+    if (!note) return;
+    if (event.target.closest('[data-sticky-reset-colors]')) {
+      note.backgroundColor = STICKY_DEFAULT_BG;
+      note.foregroundColor = STICKY_DEFAULT_FG;
+      renderStickyNotes();
+      scheduleStickySave(120);
+    }
+  });
+  window.addEventListener('pointermove', handleStickyPointerMove);
+  window.addEventListener('pointerup', handleStickyPointerUp);
+  layer.dataset.bound = 'true';
 }
 
 function buildEmptyState(title, bodyHtml = '', extraClass = '', titleActionHtml = '') {
@@ -12902,7 +13382,7 @@ async function openCypherPopover() {
   closeWireTapPopover();
   closeDoubleTapPopover();
   const builders = activeBuilderModelClients();
-  if (builders.length < 1) return flashCypherError('Must select at least one AI Builder', true);
+  if (builders.length < 1) return flashCypherError('Must select at least one AI Builder');
   if (builders.length > 2) return flashCypherError('Only two maximum AI Builders allowed', true);
   const status = await loadCypherStatusSafe();
   if (status && status.lastBuilderSelection) {
@@ -13181,7 +13661,7 @@ async function runCypherBuild() {
 async function acceptCypherPopover() {
   if (!activeProject) return flashCypherError('You must select a project.');
   const builders = activeBuilderModelClients();
-  if (builders.length < 1) return flashCypherError('Must select at least one AI Builder', true);
+  if (builders.length < 1) return flashCypherError('Must select at least one AI Builder');
   if (builders.length > 2) return flashCypherError('Only two maximum AI Builders allowed', true);
   if (cypherState.working) return;
   const payload = selectedCypherBuilderPayload();
@@ -16286,6 +16766,23 @@ function updateWorkModeReplySpeechButtons() {
 function renderWorkModeSpeakerIcon() {
   return '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4.75 10.25v3.5h3.1L12 17.5v-11l-4.15 3.75h-3.1Z"/><path d="M15.25 9.25a4 4 0 0 1 0 5.5M17.75 7a7 7 0 0 1 0 10" stroke-linecap="round"/></svg>';
 }
+function renderWorkModeCopyIcon() {
+  return '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8.25 8.25h8.25a1.5 1.5 0 0 1 1.5 1.5V18a1.5 1.5 0 0 1-1.5 1.5H8.25a1.5 1.5 0 0 1-1.5-1.5V9.75a1.5 1.5 0 0 1 1.5-1.5Z"/><path d="M6.75 15.75H5.5A1.5 1.5 0 0 1 4 14.25V6a1.5 1.5 0 0 1 1.5-1.5h8.25a1.5 1.5 0 0 1 1.5 1.5v1.25"/></svg>';
+}
+function renderWorkModeEditIcon() {
+  return '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 18.75h3.4L18.3 8.85a2.05 2.05 0 0 0-2.9-2.9l-9.9 9.9L5 18.75Z"/><path d="m14.25 7.1 2.65 2.65"/></svg>';
+}
+function renderWorkModeMessageActions(index, options = {}) {
+  if (!Number.isFinite(index)) return '';
+  const buttons = [];
+  if (options.edit) buttons.push(`<button class="work-mode-message-action-btn work-mode-message-edit-btn" data-work-edit-message="${index}" type="button" aria-label="Edit this message" title="Edit this message">${renderWorkModeEditIcon()}</button>`);
+  buttons.push(`<button class="work-mode-message-action-btn work-mode-message-copy-btn" data-work-copy-message="${index}" type="button" aria-label="Copy this message" title="Copy this message">${renderWorkModeCopyIcon()}</button>`);
+  if (options.speak) {
+    const speaking = index === workModeReplySpeechMessageIndex;
+    buttons.push(`<button class="work-mode-message-action-btn work-mode-ai-speak-btn${speaking ? ' is-speaking' : ''}" data-work-speak-message="${index}" type="button" aria-pressed="${speaking ? 'true' : 'false'}" aria-label="${speaking ? 'Stop reading this reply' : 'Read this reply aloud'}" title="${speaking ? 'Stop reading this reply' : 'Read this reply aloud'}">${renderWorkModeSpeakerIcon()}</button>`);
+  }
+  return `<div class="work-mode-message-actions">${buttons.join('')}</div>`;
+}
 function setWorkModeStatus(message) {
   const status = document.getElementById('workModePromptStatus');
   if (status) status.textContent = message || '';
@@ -16562,12 +17059,12 @@ function renderWorkModeTmpWorkNode(node, depth = 0) {
       html.push(`<div class="work-mode-tree-row is-folder is-tmp-work-child" style="padding-left:${pad + 22}px" data-work-tmp-folder="${escapeHtml(child.path)}"><span class="work-mode-folder-caret">${expanded ? '▾' : '▸'}</span><button class="work-mode-folder-name" type="button" title="${escapeHtml(child.path)}">${escapeHtml(child.name)}/</button></div>`);
       if (expanded) {
         if (!child.rawCount) html.push(`<div class="work-mode-tree-row is-empty" style="padding-left:${pad + 44}px">Empty</div>`);
-        else if (!child.children.length) html.push(`<div class="work-mode-tree-row is-note" style="padding-left:${pad + 44}px">No supported files</div>`);
+        else if (!child.children.length) html.push(`<div class="work-mode-tree-row is-note" style="padding-left:${pad + 44}px">No files</div>`);
         else html.push(renderWorkModeTmpWorkNode(child, depth + 1));
       }
       return;
     }
-    const metaHtml = escapeHtml(child.kind || '');
+    const metaHtml = escapeHtml(workModeFileMetaLabel(child));
     const mergeBtn = locked ? '' : `<button class="work-mode-tmp-merge" type="button" data-work-tmp-merge="${escapeHtml(child.path)}" title="Merge this draft file into ${escapeHtml(workModeTmpWorkTargetPath(child.path))}">Merge</button>`;
     html.push(`<div class="work-mode-tree-row is-file is-tmp-file" style="padding-left:${pad + 22}px" data-work-tmp-file="${escapeHtml(child.path)}"><button class="work-mode-file-name" type="button" title="${escapeHtml(child.path)}">${escapeHtml(child.name)}</button><span class="work-mode-file-meta">${metaHtml}</span><span class="work-mode-tmp-actions">${mergeBtn}</span></div>`);
   });
@@ -16642,29 +17139,87 @@ function truncateWorkModeFileName(name, max = 40) {
 function workModeDisplayTitle(path) {
   return truncateWorkModeFileName(workModeDisplayName(path), 40);
 }
+const workModeSystemFolderNames = new Set(['.git', '.hg', '.svn']);
+const workModeIgnoredFileNames = new Set(['.ds_store', 'thumbs.db', 'desktop.ini']);
 function isHiddenWorkModeName(name) {
-  return String(name || '').startsWith('.');
+  return workModeSystemFolderNames.has(String(name || '').trim().toLowerCase());
 }
 function isHiddenWorkModePath(path) {
-  return String(path || '').split('/').filter(Boolean).some(isHiddenWorkModeName);
+  return String(path || '').split('/').filter(Boolean).some(part => workModeSystemFolderNames.has(String(part || '').trim().toLowerCase()));
+}
+function isIgnoredWorkModeFileName(name) {
+  return workModeIgnoredFileNames.has(String(name || '').trim().toLowerCase());
 }
 function workModeFileKind(name) {
   const lower = String(name || '').toLowerCase();
-  if (/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(lower)) return 'image';
+  if (/\.(png|jpe?g|gif|webp|bmp|svg|tiff?|ico|avif|heic)$/i.test(lower)) return 'image';
   if (/\.pdf$/i.test(lower)) return 'pdf';
-  if (/\.(txt|log|md|markdown|json|jsonl|csv|tsv|yaml|yml|xml|html?|css|scss|sass|less|js|jsx|ts|tsx|mjs|cjs|go|py|php|java|c|cc|cpp|cxx|h|hpp|cs|rs|rb|swift|kt|kts|sql|sh|bash|zsh|ps1|bat|cmd|ini|cfg|conf|toml|env|gitignore|dockerfile|makefile)$/i.test(lower)) return 'text';
+  if (/\.(glb|gltf|obj|fbx|stl|ply|usdz)$/i.test(lower)) return 'model';
+  if (/\.(mp4|mov|avi|mkv|webm|m4v)$/i.test(lower)) return 'video';
+  if (/\.(mp3|wav|ogg|flac|m4a|aac)$/i.test(lower)) return 'audio';
+  if (/\.(zip|rar|7z|tar|gz|tgz|bz2|xz)$/i.test(lower)) return 'archive';
+  if (/\.(exe|dll|so|dylib|class|jar|bin)$/i.test(lower)) return 'binary';
+  if (/\.(txt|log|md|markdown|json|jsonl|csv|tsv|yaml|yml|xml|html?|erb|rhtml|haml|slim|builder|liquid|twig|njk|ejs|vue|svelte|astro|css|scss|sass|less|js|jsx|ts|tsx|mjs|cjs|go|py|php|java|c|cc|cpp|cxx|h|hpp|cs|rs|rb|swift|kt|kts|sql|sh|bash|zsh|ps1|bat|cmd|ini|cfg|conf|toml|env|gitignore|dockerfile|makefile|gradle|lock)$/i.test(lower)) return 'text';
   if (!lower.includes('.')) return 'text';
-  return '';
+  return 'file';
 }
 function workModeAllowedFile(entry) {
   const name = String((entry && entry.name) || '').trim();
-  return !!name && !isHiddenWorkModeName(name) && !!workModeFileKind(name);
+  return !!name && !isIgnoredWorkModeFileName(name);
+}
+function formatWorkModeCompactSize(bytes) {
+  const value = Number(bytes) || 0;
+  if (value < 1024 * 1024) return '';
+  const gb = 1024 * 1024 * 1024;
+  if (value >= gb) {
+    const raw = value / gb;
+    const rounded = raw < 10 ? Math.round(raw * 10) / 10 : Math.round(raw);
+    return `${String(rounded).replace(/\.0$/, '')}G`;
+  }
+  return `${Math.max(1, Math.round(value / (1024 * 1024)))}M`;
+}
+function workModeFileMetaLabel(file) {
+  const sizeLabel = formatWorkModeCompactSize(file && file.size);
+  if (sizeLabel) return sizeLabel;
+  return String((file && file.kind) || 'file');
+}
+function workModeFileSizeForPath(path) {
+  const node = findWorkModeTreeNodeByPath(path);
+  return node && !node.isDir ? Number(node.size) || 0 : 0;
+}
+function workModeSelectedContextBytes(selectedPaths, tempAttachments = []) {
+  const fileBytes = (Array.isArray(selectedPaths) ? selectedPaths : []).reduce((sum, path) => sum + workModeFileSizeForPath(path), 0);
+  const attachmentBytes = (Array.isArray(tempAttachments) ? tempAttachments : []).reduce((sum, item) => sum + (Number(item && (item.size_bytes || item.sizeBytes || item.size)) || 0), 0);
+  return fileBytes + attachmentBytes;
+}
+async function confirmWorkModeLargeFileOpen(path, bytes) {
+  const clean = String(path || '').trim();
+  const value = Number(bytes) || 0;
+  if (!clean || value < WORK_MODE_LARGE_FILE_OPEN_BYTES || workModeLargeFileOpenConfirmed.has(clean)) return true;
+  const confirmed = await openConfirmModal({
+    title: 'Open Large File?',
+    message: `This file is ${formatBytes(value)} and may be slow to open in Work Mode. Open anyway?`,
+    confirmLabel: 'Open File',
+    destructive: false
+  });
+  if (confirmed) workModeLargeFileOpenConfirmed.add(clean);
+  return confirmed;
+}
+async function confirmWorkModeLargeContextSend(selectedPaths, tempAttachments) {
+  const bytes = workModeSelectedContextBytes(selectedPaths, tempAttachments);
+  if (bytes < WORK_MODE_LARGE_CONTEXT_SEND_BYTES) return true;
+  return openConfirmModal({
+    title: 'Send Large AI Context?',
+    message: `You are about to send about ${formatBytes(bytes)} of file/context to the AI model. This may use a lot of tokens or fail. Continue?`,
+    confirmLabel: 'Continue',
+    destructive: false
+  });
 }
 async function buildWorkModeDirNode(path, name = '') {
   const data = await api('/api/files?path=' + encodeURIComponent(path));
   const entries = Array.isArray(data.entries) ? data.entries : [];
   const node = { name, path, isDir: true, rawCount: entries.length, children: [] };
-  const visible = entries.filter(entry => entry && !isHiddenWorkModeName(entry.name));
+  const visible = entries.filter(entry => entry && !(entry.isDir && isHiddenWorkModeName(entry.name)) && !(entry.isDir ? false : isIgnoredWorkModeFileName(entry.name)));
   for (const entry of visible) {
     if (path === workModeProjectworkRootPath() && String(entry.name || '') === 'tmp-work') continue;
     const entryPath = String(entry.path || '').trim();
@@ -17008,7 +17563,7 @@ function renderWorkModeTreeNode(node, depth = 0) {
         if (!child.rawCount) {
           html.push(`<div class="work-mode-tree-row is-empty is-deletable" style="padding-left:${pad + 28}px" data-empty-folder="${escapeHtml(child.path)}">Empty</div>`);
         } else if (!child.children.length) {
-          html.push(`<div class="work-mode-tree-row is-note" style="padding-left:${pad + 28}px">No supported files</div>`);
+          html.push(`<div class="work-mode-tree-row is-note" style="padding-left:${pad + 28}px">No files</div>`);
         } else {
           html.push(renderWorkModeTreeNode(child, depth + 1));
         }
@@ -17019,12 +17574,12 @@ function renderWorkModeTreeNode(node, depth = 0) {
     const changed = workModeHighlightedFiles.has(child.path);
     const matchCount = Number(workModeSearchResults.get(child.path) || 0);
     const matchClass = matchCount > 0 ? ' is-search-match' : '';
-    const metaHtml = matchCount > 0 ? `<span class="work-mode-search-badge" title="${matchCount} content match${matchCount === 1 ? '' : 'es'}">${formatWorkModeSearchBadgeCount(matchCount)}</span>` : escapeHtml(child.kind || '');
+    const metaHtml = matchCount > 0 ? `<span class="work-mode-search-badge" title="${matchCount} content match${matchCount === 1 ? '' : 'es'}">${formatWorkModeSearchBadgeCount(matchCount)}</span>` : escapeHtml(workModeFileMetaLabel(child));
     html.push(`<div class="work-mode-tree-row is-file" style="padding-left:${pad + 6}px" data-work-file="${escapeHtml(child.path)}"><button class="work-mode-file-bubble ${selected ? 'is-selected' : ''}" type="button" aria-pressed="${selected ? 'true' : 'false'}" aria-label="${selected ? 'Remove from' : 'Add to'} Work Mode send list"></button><button class="work-mode-file-name ${changed ? 'is-work-changed' : ''}${matchClass}" type="button" title="${escapeHtml(child.path)}">${escapeHtml(child.name)}</button><span class="work-mode-file-meta">${metaHtml}</span></div>`);
   });
   if (!children.length && node.path === rootPath) {
     if (!node.rawCount) return '<div class="work-mode-tree-row is-note">No projectwork files yet</div>';
-    return '<div class="work-mode-tree-row is-note">No supported files</div>';
+    return '<div class="work-mode-tree-row is-note">No files</div>';
   }
   return html.join('');
 }
@@ -17572,6 +18127,20 @@ function attachWorkModeMessageEvents() {
       speakWorkModeReplyMessage(idx);
     });
   });
+  feed.querySelectorAll('[data-work-copy-message]').forEach(btn => {
+    btn.addEventListener('click', event => {
+      event.preventDefault();
+      const idx = Number(event.currentTarget.getAttribute('data-work-copy-message'));
+      copyWorkModeMessage(idx);
+    });
+  });
+  feed.querySelectorAll('[data-work-edit-message]').forEach(btn => {
+    btn.addEventListener('click', event => {
+      event.preventDefault();
+      const idx = Number(event.currentTarget.getAttribute('data-work-edit-message'));
+      editWorkModeUserMessage(idx);
+    });
+  });
   feed.querySelectorAll('[data-work-file-output-toggle]').forEach(btn => {
     btn.addEventListener('click', event => {
       event.preventDefault();
@@ -17641,7 +18210,8 @@ function renderWorkModeMessages() {
         detailBody = `<div class="work-mode-agent-details-section"><div class="work-mode-agent-details-label">Raw details</div><pre class="work-mode-agent-details-pre">${escapeHtml(detail)}</pre></div>`;
       }
       const details = hasDetails && msg.detailsOpen ? `<div class="work-mode-agent-details">${detailBody}</div>` : '';
-      return `<div class="work-mode-message agentgo${hasDetails ? ' has-details' : ''}"><div class="work-mode-message-kicker">AgentGO Says:</div><div>${text}</div>${toggle}${details}</div>`;
+      const actions = renderWorkModeMessageActions(index);
+      return `<div class="work-mode-message agentgo${hasDetails ? ' has-details' : ''}"><div class="work-mode-message-kicker">AgentGO Says:</div><div>${text}</div>${actions}${toggle}${details}</div>`;
     }
     if (role === 'ai') {
       const outputs = Array.isArray(msg.fileOutputs) ? msg.fileOutputs : [];
@@ -17652,11 +18222,11 @@ function renderWorkModeMessages() {
       const toggle = hasFileOutput ? `<button class="work-mode-ai-file-toggle${openClass}" data-work-file-output-toggle="${index}" type="button" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 12.75 3 3m0 0 3-3m-3 3v-7.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"/></svg></button>` : '';
       const files = hasFileOutput && msg.fileOutputOpen ? renderWorkModeFileOutputs(outputs) : '';
       const inlineFiles = renderWorkModeInlineFiles(msg.inlineFiles, index);
-      const speaking = index === workModeReplySpeechMessageIndex;
-      const speakBtn = isWorkModeReplySpeechSupported() ? `<button class="work-mode-ai-speak-btn${speaking ? ' is-speaking' : ''}" data-work-speak-message="${index}" type="button" aria-pressed="${speaking ? 'true' : 'false'}" aria-label="${speaking ? 'Stop reading this reply' : 'Read this reply aloud'}" title="${speaking ? 'Stop reading this reply' : 'Read this reply aloud'}">${renderWorkModeSpeakerIcon()}</button>` : '';
-      return `<div class="work-mode-message ai${hasFileOutput ? ' has-file-output' : ''}"><div>${text}</div>${inlineFiles}${speakBtn}${toggle}${files}</div>`;
+      const actions = renderWorkModeMessageActions(index, { speak: isWorkModeReplySpeechSupported() });
+      return `<div class="work-mode-message ai${hasFileOutput ? ' has-file-output' : ''}"><div>${text}</div>${inlineFiles}${actions}${toggle}${files}</div>`;
     }
-    return `<div class="work-mode-message ${role}">${text}</div>`;
+    const actions = renderWorkModeMessageActions(index, { edit: role === 'user' });
+    return `<div class="work-mode-message ${role}">${text}${actions}</div>`;
   }).join('');
   attachWorkModeMessageEvents();
   requestAnimationFrame(() => { scrollWorkModeStageToBottom(); updateWorkModeScrollButton(); });
@@ -17700,6 +18270,92 @@ function appendWorkModeMessage(role, text, options = {}) {
     setTimeout(() => speakWorkModeReplyMessage(index, { silent: true, auto: true }), 0);
   }
   return index;
+}
+async function copyWorkModeMessage(index) {
+  const idx = Number(index);
+  const msg = Number.isFinite(idx) ? workModeMessages[idx] : null;
+  if (!msg) return;
+  let text = String(msg.text || '').trim();
+  if (msg.role === 'agentgo') {
+    const sections = Array.isArray(msg.detailSections) ? msg.detailSections.filter(section => section && String(section.text || '').trim()) : [];
+    const detail = String(msg.detail || '').trim();
+    if (sections.length) text += '\n\nRaw details\n' + sections.map(section => `${String(section.label || 'Details').trim() || 'Details'}:\n${String(section.text || '').trim()}`).join('\n\n');
+    else if (detail) text += '\n\nRaw details\n' + detail;
+  }
+  if (!text) return;
+  try {
+    if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(text);
+    else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    showToast('Copied message.', 'success', 1800);
+  } catch (err) {
+    showToast('Could not copy message.', 'warning', 2600);
+  }
+}
+function editWorkModeUserMessage(index) {
+  const idx = Number(index);
+  const msg = Number.isFinite(idx) ? workModeMessages[idx] : null;
+  if (!msg || msg.role !== 'user') return;
+  const input = document.getElementById('workModePromptInput');
+  if (!input) return;
+  input.value = String(msg.text || '');
+  workModePromptDraft = input.value;
+  autosizeWorkModePrompt();
+  toggleWorkModeAttachPopup(false);
+  toggleWorkModeOpenedPopup(false);
+  toggleWorkModeSettingsPopup(false);
+  closeWorkModeMemoryMenu();
+  input.focus();
+  setWorkModeStatus('Loaded that message into the prompt box. Edit it or submit again. Reattach temporary files if needed.');
+}
+async function resetWorkModeCurrentSession() {
+  if (workModeSending) return showToast('Wait for the current Work Mode request to finish or use Emergency Stop first.', 'warning', 3400);
+  const confirmed = await openConfirmModal({ title: 'Reset Work Session?', message: 'Do you want to reset this work session? This clears the chat area, turns Memory off, and clears temporary attachments. It keeps your active project and selected AI workers.', confirmLabel: 'Reset Session', destructive: true });
+  if (!confirmed) return;
+  stopWorkModeSpeechInput();
+  stopWorkModeReplySpeech({ silent: true });
+  stopWorkModeObserverSessionPolling();
+  clearWorkModeWaitingNotice();
+  toggleWorkModeAttachPopup(false);
+  toggleWorkModeOpenedPopup(false);
+  toggleWorkModeSettingsPopup(false);
+  closeWorkModeMemoryMenu();
+  workModeMessages = [];
+  workModeReviewMessages = [];
+  workModeTemporaryAttachments = [];
+  workModePromptDraft = '';
+  workModeSettings.useMemory = false;
+  workModeMemoryMenuOpen = '';
+  workModeObserverPaused = false;
+  workModeObserverSessionState = null;
+  workModeObserverLastPollSignature = '';
+  workModeObserverLastFileStateSignature = '';
+  const input = document.getElementById('workModePromptInput');
+  if (input) {
+    input.value = '';
+    autosizeWorkModePrompt();
+  }
+  renderWorkModeAttachments();
+  renderWorkModeReviewSidePanels();
+  renderWorkModeMessages();
+  updateWorkModeObserverControls({ render: false });
+  updateWorkModeSettingsStatus();
+  try {
+    if (activeProject && activeBuilderCount() === 1) await postWorkModeSessionState('clear');
+  } catch (err) {
+    console.warn('Could not clear Work Mode server session state:', err);
+  }
+  showToast('Work session reset.', 'success', 2200);
+  requestAnimationFrame(updateWorkModeScrollButton);
 }
 function updateWorkModeScrollButton() {
   const stage = document.getElementById('workModeStage');
@@ -17951,10 +18607,12 @@ function renderWorkModePasteTargetPreview() {
   }
 }
 async function handleWorkModeAttachmentPaste(event) {
+  if (event && event.defaultPrevented) return;
   const items = Array.from((event.clipboardData && event.clipboardData.items) || []);
   const imageItems = items.filter(item => String(item.type || '').startsWith('image/')).map(item => item.getAsFile()).filter(Boolean);
   if (!imageItems.length) return;
   event.preventDefault();
+  event.stopPropagation();
   await addWorkModeTemporaryFiles(imageItems);
   showToast('Temporary screenshot added.');
 }
@@ -18083,13 +18741,16 @@ function autosizeWorkModePrompt() {
 async function openWorkModeFile(path) {
   const clean = String(path || '').trim();
   if (!clean) return;
+  const listedSize = workModeFileSizeForPath(clean);
+  if (!(await confirmWorkModeLargeFileOpen(clean, listedSize))) return;
   if (workModeHighlightedFiles.has(clean)) {
     workModeHighlightedFiles.delete(clean);
     renderWorkModeFileTree();
   }
   const file = await api('/api/file?path=' + encodeURIComponent(clean));
-  const kind = file.previewKind || workModeFileKind(clean) || (file.isText ? 'text' : 'other');
-  workModeActiveFile = { path: file.path || clean, content: file.content || '', kind, isText: !!file.isText, imageDataUrl: file.imageDataUrl || '', blobUrl: file.blobUrl || buildWorkspaceBlobUrl(clean), contentType: file.contentType || '' };
+  const sizeBytes = Number(file.sizeBytes || file.size_bytes || listedSize) || 0;
+  const kind = file.previewKind || (file.isText ? 'text' : workModeFileKind(clean) || 'file');
+  workModeActiveFile = { path: file.path || clean, content: file.content || '', kind, isText: !!file.isText, imageDataUrl: file.imageDataUrl || '', blobUrl: file.blobUrl || buildWorkspaceBlobUrl(clean), contentType: file.contentType || '', sizeBytes };
   noteWorkModeOpenedFile(workModeActiveFile.path);
   renderWorkModeActiveFile();
 }
@@ -18122,7 +18783,10 @@ function renderWorkModeActiveFile() {
     const src = escapeHtml(file.blobUrl || buildWorkspaceBlobUrl(file.path));
     body = `<div class="work-mode-media-frame"><iframe title="${fullTitle}" src="${src}"></iframe></div>`;
   } else {
-    body = `<div class="work-mode-message agentgo"><div class="work-mode-message-kicker">AgentGO Says:</div><div>This file type can be selected for AI context, but Work Mode cannot preview it yet.</div></div>`;
+    const kindLabel = escapeHtml(file.kind || 'file');
+    const typeLabel = escapeHtml(file.contentType || 'unknown content type');
+    const sizeLabel = escapeHtml(formatBytes(file.sizeBytes || 0));
+    body = `<div class="work-mode-message agentgo"><div class="work-mode-message-kicker">AgentGO Says:</div><div><strong>${kindLabel}</strong> file preview is not available in Work Mode yet.</div><div class="work-mode-binary-file-meta">Size: ${sizeLabel}<br>Type: ${typeLabel}</div><div>This file can stay visible in the file list and can be selected for AI context when useful, but AgentGO will not open raw binary data as editable text.</div></div>`;
   }
   feed.innerHTML = `<div class="work-mode-file-card"><div class="work-mode-file-card-head"><div class="work-mode-file-card-title" title="${fullTitle}">${title}</div><div class="work-mode-card-actions">${actions}</div></div>${body}</div>`;
   const diffBtn = document.getElementById('workModeDiffToggleBtn');
@@ -18208,8 +18872,10 @@ async function sendWorkModePrompt() {
   if (observerReviewActive) {
     const observerModelId = getActiveObserverModelId();
     if (!observerModelId) return showToast('Select an Observer before using Observer Review Mode.', 'warning', 3200);
-    const selectedRel = Array.from(workModeSelectedFiles).map(workModeProjectworkRelativePath).filter(Boolean);
+    const selectedFullPaths = Array.from(workModeSelectedFiles);
+    const selectedRel = selectedFullPaths.map(workModeProjectworkRelativePath).filter(Boolean);
     const tempAttachments = workModeTemporaryAttachments.slice();
+    if (!(await confirmWorkModeLargeContextSend(selectedFullPaths, tempAttachments))) return;
     workModeTemporaryAttachments = [];
     renderWorkModeAttachments();
     toggleWorkModeAttachPopup(false);
@@ -18285,8 +18951,10 @@ async function sendWorkModePrompt() {
     return;
   }
 
-  const selectedRel = Array.from(workModeSelectedFiles).map(workModeProjectworkRelativePath).filter(Boolean);
+  const selectedFullPaths = Array.from(workModeSelectedFiles);
+  const selectedRel = selectedFullPaths.map(workModeProjectworkRelativePath).filter(Boolean);
   const tempAttachments = workModeTemporaryAttachments.slice();
+  if (!(await confirmWorkModeLargeContextSend(selectedFullPaths, tempAttachments))) return;
   workModeTemporaryAttachments = [];
   renderWorkModeAttachments();
   toggleWorkModeAttachPopup(false);
@@ -18401,6 +19069,7 @@ function resetWorkModeState() {
   workModeTreeLoadedProject = '';
   workModeExpandedFolders = new Set();
   workModeSelectedFiles = new Set();
+  workModeLargeFileOpenConfirmed = new Set();
   workModeHighlightedFiles = new Set();
   resetWorkModeDiffFiles({ render: false });
   workModeOpenedFiles = [];
@@ -19073,6 +19742,8 @@ const MESH_EXTRA_VIEW_INPUTS = [
 ];
 let meshJobSettingsModelId = '';
 let meshJobSettingsOverrides = {};
+let meshRetextureSourcePath = '';
+let meshRetextureSourceLabel = '';
 const VIDEO_JOB_DEFAULTS = { duration: '8', aspectRatio: '16:9', resolution: '720p' };
 function updateMeshPromptLimitHint() {
   const label = document.getElementById('meshJobPromptLabel');
@@ -19080,7 +19751,8 @@ function updateMeshPromptLimitHint() {
   const prompt = document.getElementById('meshJobPrompt');
   const length = prompt ? String(prompt.value || '').length : 0;
   const showWarning = length >= 200;
-  label.innerHTML = `Prompt <span class="media-job-warning-badge${showWarning ? '' : ' is-hidden'}">Warning: some models have character limits</span>`;
+  const base = String(label.getAttribute('data-base-label') || 'Prompt');
+  label.innerHTML = `${escapeHtml(base)} <span class="media-job-warning-badge${showWarning ? '' : ' is-hidden'}">Warning: some models have character limits</span>`;
 }
 let lastFocusedBeforeVideoJobs = null;
 let lastFocusedBeforeMeshJobs = null;
@@ -19210,6 +19882,15 @@ function meshModelIsHunyuanPro(model = {}) {
   const route = meshModelRouteValue(model);
   return meshModelIsFal(model) && (route.includes('/pro/') || route.includes('v3.1/pro'));
 }
+function meshModelIsMeshyRetexture(model = {}) {
+  return meshModelIsFal(model) && meshModelRouteValue(model).includes('meshy/v5/retexture');
+}
+function meshModelIsTrellis2Retexture(model = {}) {
+  return meshModelIsFal(model) && meshModelRouteValue(model).includes('trellis-2/retexture');
+}
+function meshModelIsRetexture(model = {}) {
+  return meshModelIsMeshyRetexture(model) || meshModelIsTrellis2Retexture(model);
+}
 function meshModelSupportsExtraImageInputs(model = {}) {
   return meshModelIsHunyuanPro(model);
 }
@@ -19241,10 +19922,26 @@ function meshSettingsControlsForModel(model = null) {
       { key: 'fal_face_count', type: 'number', label: 'Face count', help: 'Optional. Leave blank to let the provider choose its default.', min: 1, step: 1, placeholder: 'Provider default' }
     ];
   }
+  if (meshModelIsTrellis2Retexture(model)) {
+    return [
+      { key: 'fal_resolution', type: 'select', label: 'Resolution', help: 'Trellis 2 Retexture supports 512 or 1024. Leave blank for provider default.', options: [['', 'Provider Default'], ['512', '512'], ['1024', '1024']] },
+      { key: 'fal_texture_size', type: 'select', label: 'Texture size', help: 'Leave blank for provider default.', options: [['', 'Provider Default'], ['1024', '1024'], ['2048', '2048'], ['4096', '4096']] },
+      { key: 'fal_seed', type: 'number', label: 'Seed', help: 'Optional reproducible seed. Leave blank for random.', min: 0, step: 1, placeholder: 'Provider default' },
+      { key: 'fal_tex_slat_guidance_strength', type: 'number', label: 'Texture guidance strength', help: 'Optional. Higher follows the style image more strongly.', min: 0, step: 0.1, placeholder: 'Provider default' },
+      { key: 'fal_tex_slat_sampling_steps', type: 'number', label: 'Texture sampling steps', help: 'Optional. More steps may improve texture at additional cost/time.', min: 1, step: 1, placeholder: 'Provider default' }
+    ];
+  }
   if (meshModelIsTrellis2(model)) {
     return [
       { key: 'fal_resolution', type: 'select', label: 'Resolution', help: 'Higher resolution can cost more. Leave blank for provider default.', options: [['', 'Provider Default'], ['512', '512'], ['1024', '1024'], ['1536', '1536']] },
       { key: 'fal_texture_size', type: 'select', label: 'Texture size', help: 'Leave blank for provider default.', options: [['', 'Provider Default'], ['1024', '1024'], ['2048', '2048'], ['4096', '4096']] }
+    ];
+  }
+  if (meshModelIsMeshyRetexture(model)) {
+    return [
+      { key: 'fal_enable_pbr', type: 'checkbox', label: 'Enable PBR maps', help: 'Requests metallic, roughness, and normal maps in addition to the base color texture.' },
+      { key: 'fal_enable_original_uv', type: 'select', label: 'Original UVs', help: 'Leave blank for provider default (currently true).', options: [['', 'Provider Default'], ['true', 'Use original UVs'], ['false', 'Generate new UVs']] },
+      { key: 'fal_enable_safety_checker', type: 'select', label: 'Safety checker', help: 'Leave blank for provider default (currently true).', options: [['', 'Provider Default'], ['true', 'Enabled'], ['false', 'Disabled']] }
     ];
   }
   if (meshModelIsTrellis(model)) {
@@ -19500,6 +20197,53 @@ function clearMeshJobReferenceInputs() {
   MESH_VIEW_INPUTS.forEach(([inputId, previewId, boxId]) => clearMediaFramePreview(inputId, previewId, boxId));
   MESH_EXTRA_VIEW_INPUTS.forEach(([inputId, previewId, boxId]) => clearMediaFramePreview(inputId, previewId, boxId));
 }
+function clearMeshRetextureSource() {
+  meshRetextureSourcePath = '';
+  meshRetextureSourceLabel = '';
+  const note = document.getElementById('meshJobSourceModelNote');
+  if (note) note.textContent = 'Choose a 3D model file, or click “Retexture This Model” on a completed mesh job below.';
+}
+function updateMeshRetextureSourceNote() {
+  const note = document.getElementById('meshJobSourceModelNote');
+  if (!note) return;
+  const uploadEl = document.getElementById('meshJobSourceModel');
+  const uploaded = uploadEl && uploadEl.files && uploadEl.files[0] ? uploadEl.files[0].name : '';
+  if (uploaded) {
+    note.textContent = `Using uploaded source model: ${uploaded}`;
+    return;
+  }
+  if (meshRetextureSourcePath) {
+    note.textContent = `Using completed mesh job output: ${meshRetextureSourceLabel || mediaPathBasename(meshRetextureSourcePath)}`;
+    return;
+  }
+  note.textContent = 'Choose a 3D model file, or click “Retexture This Model” on a completed mesh job below.';
+}
+function meshJobCanRetexture(job = {}) {
+  const model = requireSingleActiveMediaModel('mesh', { toast: false });
+  if (!model || !meshModelIsRetexture(model)) return false;
+  if (meshJobIsActive(job)) return false;
+  return !!String(job.primaryModelPath || job.primaryProjectworkPath || '').trim();
+}
+async function useMeshJobAsRetextureSource(jobId, trigger = null) {
+  const cleanId = String(jobId || '').trim();
+  if (!cleanId) return;
+  const data = await api(`/api/mesh/jobs${meshJobsFilterModelId ? `?modelId=${encodeURIComponent(meshJobsFilterModelId)}` : ''}`);
+  const job = Array.isArray(data.jobs) ? data.jobs.find(item => String(item && item.jobId || '') === cleanId) : null;
+  if (!job) throw new Error('Could not find that mesh job.');
+  const sourcePath = String(job.primaryProjectworkPath || job.primaryModelPath || '').trim();
+  if (!sourcePath) throw new Error('This mesh job does not have a saved model file to retexture.');
+  const uploadEl = document.getElementById('meshJobSourceModel');
+  if (uploadEl) uploadEl.value = '';
+  meshRetextureSourcePath = sourcePath;
+  meshRetextureSourceLabel = `${String(job.jobId || '')} — ${mediaPathBasename(sourcePath)}`;
+  updateMeshRetextureSourceNote();
+  const sourceSection = document.getElementById('meshJobSourceModelSection');
+  if (sourceSection && sourceSection.hidden) sourceSection.hidden = false;
+  const prompt = document.getElementById('meshJobPrompt');
+  if (prompt) prompt.focus();
+  showToast('Retexture source loaded from the completed mesh job. Add the required style image/prompt for the selected retexture model, then create the job.', 'info', 4200);
+}
+
 function selectedMeshReferenceFiles() {
   return MESH_VIEW_INPUTS.map(([inputId]) => {
     const input = document.getElementById(inputId);
@@ -19525,6 +20269,9 @@ function setMeshJobSubmitWorking(working) {
 function resetMeshJobTransientInputs() {
   const prompt = document.getElementById('meshJobPrompt');
   if (prompt) prompt.value = '';
+  const sourceModel = document.getElementById('meshJobSourceModel');
+  if (sourceModel) sourceModel.value = '';
+  clearMeshRetextureSource();
   updateMeshPromptLimitHint();
   clearMediaFramePreview('meshJobInputImage', 'meshJobInputPreview', 'meshJobInputBox');
   clearMeshJobReferenceInputs();
@@ -19564,19 +20311,55 @@ function syncMeshJobCapabilityUI() {
   const imageAllowed = !model || !!(model.mesh_image_input || ['meshy_mesh', 'tripo_mesh', 'hyper3d_mesh', 'fal_mesh'].includes(adapter));
   const multiViewAllowed = !model || !!(model.mesh_multi_image || ['tripo_mesh', 'meshy_mesh', 'fal_mesh'].includes(adapter));
   const extraInputsAllowed = !!(model && meshModelSupportsExtraImageInputs(model));
-  if (imageInput) { imageInput.disabled = false; if (model && !imageAllowed) clearMediaFramePreview('meshJobInputImage', 'meshJobInputPreview', 'meshJobInputBox'); }
+  const retextureMode = !!(model && meshModelIsRetexture(model));
+  const trellis2RetextureMode = !!(model && meshModelIsTrellis2Retexture(model));
+  const sourceSection = document.getElementById('meshJobSourceModelSection');
+  const promptLabel = document.getElementById('meshJobPromptLabel');
+  const promptInput = document.getElementById('meshJobPrompt');
+  const capabilityHint = document.getElementById('meshJobCapabilityHint');
+  const inputLabel = document.querySelector('#meshJobInputBox .media-frame-label');
+  if (imageInput) {
+    imageInput.disabled = false;
+    imageInput.accept = retextureMode ? 'image/png,image/jpeg,image/webp' : 'image/*';
+    if (model && !imageAllowed) clearMediaFramePreview('meshJobInputImage', 'meshJobInputPreview', 'meshJobInputBox');
+  }
+  if (inputLabel) inputLabel.textContent = retextureMode ? 'Style Reference Image (optional)' : 'Primary / Front View (optional)';
+  if (promptLabel) promptLabel.setAttribute('data-base-label', trellis2RetextureMode ? 'Prompt (not used by Trellis 2 Retexture)' : (retextureMode ? 'Style Prompt (optional if image is provided)' : 'Prompt'));
+  if (promptInput) promptInput.placeholder = trellis2RetextureMode ? 'Trellis 2 Retexture uses the style image; prompt is ignored.' : (retextureMode ? 'Describe the material / color style to apply to the source model...' : 'Describe the object, shape, style, and material details.');
+  updateMeshPromptLimitHint();
+  if (sourceSection) sourceSection.hidden = !retextureMode;
+  const sourceInput = document.getElementById('meshJobSourceModel');
+  if (sourceInput) {
+    sourceInput.disabled = !retextureMode;
+    sourceInput.accept = trellis2RetextureMode ? '.glb,.obj,.ply,.stl,model/*,application/octet-stream,text/plain' : '.glb,.gltf,.obj,.fbx,.stl,.ply,model/gltf-binary,model/gltf+json,model/*,application/octet-stream,text/plain';
+    if (!retextureMode) sourceInput.value = '';
+  }
+  if (!retextureMode) clearMeshRetextureSource();
+  updateMeshRetextureSourceNote();
   MESH_VIEW_INPUTS.forEach(([inputId, previewId, boxId]) => {
     const input = document.getElementById(inputId);
-    if (input) input.disabled = false;
-    if (model && !multiViewAllowed) clearMediaFramePreview(inputId, previewId, boxId);
+    const enabled = !retextureMode && multiViewAllowed;
+    if (input) input.disabled = !enabled;
+    if (!enabled) clearMediaFramePreview(inputId, previewId, boxId);
+    const box = document.getElementById(boxId);
+    if (box) box.hidden = retextureMode;
   });
   const extraSection = document.getElementById('meshJobExtraInputsSection');
-  if (extraSection) extraSection.hidden = !extraInputsAllowed;
+  if (extraSection) extraSection.hidden = retextureMode || !extraInputsAllowed;
   MESH_EXTRA_VIEW_INPUTS.forEach(([inputId, previewId, boxId]) => {
     const input = document.getElementById(inputId);
-    if (input) input.disabled = !extraInputsAllowed;
-    if (!extraInputsAllowed) clearMediaFramePreview(inputId, previewId, boxId);
+    const enabled = !retextureMode && extraInputsAllowed;
+    if (input) input.disabled = !enabled;
+    if (!enabled) clearMediaFramePreview(inputId, previewId, boxId);
   });
+  if (capabilityHint) {
+    if (!model) capabilityHint.textContent = '';
+    else if (trellis2RetextureMode) capabilityHint.textContent = 'Trellis 2 Retexture expects a source 3D model plus a required style reference image. Multi-view slots and prompt guidance are disabled in this mode.';
+    else if (retextureMode) capabilityHint.textContent = 'Meshy Retexture expects a source 3D model plus either a style prompt or a style reference image. Multi-view image slots are disabled in this mode.';
+    else if (meshModelIsTrellis2(model)) capabilityHint.textContent = 'Trellis 2 supports one or more input images and returns a saved mesh artifact bundle.';
+    else if (meshModelIsHunyuanPro(model)) capabilityHint.textContent = 'Hunyuan Pro supports primary/back/left/right images plus optional top, bottom, and diagonal helper views.';
+    else capabilityHint.textContent = 'Create text-to-mesh or image-guided mesh jobs with the active model.';
+  }
   refreshMediaJobSubtitle('mesh', model);
 }
 function fillVideoJobDefaults(model) {
@@ -19911,10 +20694,11 @@ function buildMeshJobActionsHtml(job = {}) {
   const title = String(job.modelLabel || '3D Mesh Viewer');
   const view = meshJobCanView(job) ? `<button class="model-secondary-btn" type="button" onclick="openMeshViewerModal('${escapeHtml(escJsSingle(primaryUrl))}','${escapeHtml(escJsSingle(title))}','${escapeHtml(escJsSingle(previewUrl))}', this)">View Mesh</button>` : '';
   const refine = meshJobCanRefine(job) ? `<button class="model-secondary-btn" type="button" onclick="refineMeshJob('${escapeHtml(escJsSingle(String(job.jobId || '')))}', this).catch(err =&gt; showErrorToast(err.message))">Refine / Texture</button>` : '';
+  const retexture = meshJobCanRetexture(job) ? `<button class="model-secondary-btn" type="button" onclick="useMeshJobAsRetextureSource('${escapeHtml(escJsSingle(String(job.jobId || '')))}', this).catch(err =&gt; showErrorToast(err.message))">Retexture This Model</button>` : '';
   const downloadUrl = meshJobDownloadUrl(job);
   const canDownload = downloadUrl && !meshJobIsActive(job) && (job.primaryModelPath || job.previewImagePath || job.artifactBundleRoot || job.metadataPath);
   const download = canDownload ? `<a class="model-secondary-btn" href="${escapeHtml(downloadUrl)}" target="_blank" rel="noopener noreferrer">Download Job ZIP</a>` : '';
-  return `${refine}${view}${download}`;
+  return `${refine}${retexture}${view}${download}`;
 }
 function meshJobsStructuralSignature(jobs = []) {
   return JSON.stringify((jobs || []).map(job => ({
@@ -20019,7 +20803,8 @@ async function openVideoJobsModal() {
   await loadModelDefinitions();
   await loadModelStates();
   const model = requireSingleActiveMediaModel('video', { toast: true });
-  videoJobsFilterModelId = model ? String(model.id) : '';
+  if (!model) return;
+  videoJobsFilterModelId = String(model.id);
   fillVideoJobDefaults(model);
   syncVideoJobCapabilityUI();
   const modal = document.getElementById('videoJobsModal');
@@ -20040,7 +20825,8 @@ async function openMeshJobsModal() {
   await loadModelDefinitions();
   await loadModelStates();
   const model = requireSingleActiveMediaModel('mesh', { toast: true });
-  meshJobsFilterModelId = model ? String(model.id) : '';
+  if (!model) return;
+  meshJobsFilterModelId = String(model.id);
   fillMeshJobDefaults(model);
   syncMeshJobCapabilityUI();
   updateMeshPromptLimitHint();
@@ -20098,14 +20884,31 @@ async function submitMeshJob() {
   if (!requireActiveProjectSelection()) return;
   const model = requireSingleActiveMediaModel('mesh', { toast: true });
   if (!model) return;
+  const retextureMode = meshModelIsRetexture(model);
+  const trellis2RetextureMode = meshModelIsTrellis2Retexture(model);
   const promptValue = String(document.getElementById('meshJobPrompt')?.value || '').trim();
   const qualityValue = String(document.getElementById('meshJobQuality')?.value || '').trim();
   const outputFormatValue = String(document.getElementById('meshJobOutputFormat')?.value || '').trim();
   const inputEl = document.getElementById('meshJobInputImage');
   const inputFile = inputEl && inputEl.files && inputEl.files[0] ? inputEl.files[0] : null;
+  const sourceEl = document.getElementById('meshJobSourceModel');
+  const sourceFile = sourceEl && sourceEl.files && sourceEl.files[0] ? sourceEl.files[0] : null;
   const referenceFiles = selectedMeshReferenceFiles();
   const extraFiles = selectedMeshExtraFiles();
-  if (!promptValue && !inputFile && !referenceFiles.length && !extraFiles.length) {
+  if (retextureMode) {
+    if (!sourceFile && !meshRetextureSourcePath) {
+      showToast('Add a source 3D model file, or use “Retexture This Model” from a completed mesh job.', 'warning');
+      return;
+    }
+    if (trellis2RetextureMode && !inputFile) {
+      showToast('Add a style reference image for Trellis 2 retexture.', 'warning');
+      return;
+    }
+    if (!trellis2RetextureMode && !promptValue && !inputFile) {
+      showToast('Add either a style prompt or a style reference image for Meshy retexture.', 'warning');
+      return;
+    }
+  } else if (!promptValue && !inputFile && !referenceFiles.length && !extraFiles.length) {
     showToast('Add a prompt or at least one image before creating a 3D mesh job.', 'warning');
     return;
   }
@@ -20117,11 +20920,17 @@ async function submitMeshJob() {
   const settingsPayload = currentMeshJobSettingsPayload();
   if (Object.keys(settingsPayload).length) form.append('meshSettings', JSON.stringify(settingsPayload));
   if (inputFile) form.append('inputImage', inputFile);
-  referenceFiles.forEach(([inputId, file]) => {
-    const field = inputId === 'meshJobBackViewImage' ? 'backViewImage' : inputId === 'meshJobLeftViewImage' ? 'leftViewImage' : 'rightViewImage';
-    form.append(field, file);
-  });
-  extraFiles.forEach(([field, file]) => form.append(field, file));
+  if (retextureMode) {
+    if (sourceFile) form.append('sourceModel', sourceFile);
+    else if (meshRetextureSourcePath) form.append('sourceModelPath', meshRetextureSourcePath);
+  }
+  if (!retextureMode) {
+    referenceFiles.forEach(([inputId, file]) => {
+      const field = inputId === 'meshJobBackViewImage' ? 'backViewImage' : inputId === 'meshJobLeftViewImage' ? 'leftViewImage' : 'rightViewImage';
+      form.append(field, file);
+    });
+    extraFiles.forEach(([field, file]) => form.append(field, file));
+  }
   setMeshJobSubmitWorking(true);
   try {
     const res = await fetch('/api/mesh/jobs', { method: 'POST', body: form, credentials: 'same-origin' });
@@ -20499,6 +21308,8 @@ if (workModeAutoReadBtn) {
 }
 const workModeSendBtn = document.getElementById('workModeSendBtn');
 if (workModeSendBtn) workModeSendBtn.addEventListener('click', () => sendWorkModePrompt().catch(err => showErrorToast(err.message || 'Work Mode request failed.')));
+const workModeResetSessionBtn = document.getElementById('workModeResetSessionBtn');
+if (workModeResetSessionBtn) workModeResetSessionBtn.addEventListener('click', () => resetWorkModeCurrentSession().catch(err => showErrorToast(err.message || 'Could not reset Work Mode session.')));
 const workModeAttachBtn = document.getElementById('workModeAttachBtn');
 if (workModeAttachBtn) workModeAttachBtn.addEventListener('click', () => toggleWorkModeAttachPopup());
 const workModeAttachFileInput = document.getElementById('workModeAttachFileInput');
@@ -20517,7 +21328,10 @@ if (workModePasteTarget) {
   workModePasteTarget.addEventListener('click', () => workModePasteTarget.focus());
 }
 const workModeAttachPopup = document.getElementById('workModeAttachPopup');
-if (workModeAttachPopup) workModeAttachPopup.addEventListener('paste', event => handleWorkModeAttachmentPaste(event).catch(err => showToast(err.message || 'Could not add pasted image.', 'warning')));
+if (workModeAttachPopup) workModeAttachPopup.addEventListener('paste', event => {
+  if (event.defaultPrevented) return;
+  handleWorkModeAttachmentPaste(event).catch(err => showToast(err.message || 'Could not add pasted image.', 'warning'));
+});
 const workModeOpenedBtn = document.getElementById('workModeOpenedBtn');
 if (workModeOpenedBtn) workModeOpenedBtn.addEventListener('click', () => toggleWorkModeOpenedPopup());
 const workModeSettingsBtn = document.getElementById('workModeSettingsBtn');
@@ -21176,6 +21990,11 @@ document.querySelectorAll('[data-knowledge-tab]').forEach(btn => {
 });
 window.addEventListener('resize', function () {
   updateKnowledgePumpkinPosition();
+  if (knowledgeState.drawerOpen) {
+    stickyState.notes.forEach(clampStickyToViewport);
+    renderStickyNotes();
+    scheduleStickySave(500);
+  }
   const popover = document.getElementById('runOrderPopover');
   const trigger = document.querySelector('.run-order-badge.is-open');
   if (popover && popover.classList.contains('open') && trigger) openRunOrderPopover(trigger, trigger.getAttribute('data-model-id') || '');
@@ -21183,6 +22002,7 @@ window.addEventListener('resize', function () {
 
 function initializeKnowledgeSurface() {
   try {
+    bindStickyLayerEvents();
     renderKnowledgeActivePanel(true);
     updateKnowledgeUI();
   } catch (err) {
@@ -21298,7 +22118,7 @@ setInterval(() => {
 <div class="mesh-jobs-grid">
 <div class="mesh-jobs-form">
 <div class="media-job-section">
-<div class="field"><div class="media-job-prompt-head"><label for="meshJobPrompt"><span id="meshJobPromptLabel">Prompt</span></label><button class="mesh-selected-settings-btn" id="meshModelSettingsBtn" onclick="openMeshModelSettings(event)" type="button" aria-label="Open 3D model settings">Settings <span class="mesh-settings-cog" aria-hidden="true">⚙</span></button></div><textarea id="meshJobPrompt" placeholder="Describe the object, shape, style, and material details." rows="4"></textarea></div>
+<div class="field"><div class="media-job-prompt-head"><label for="meshJobPrompt"><span id="meshJobPromptLabel" data-base-label="Prompt">Prompt</span></label><button class="mesh-selected-settings-btn" id="meshModelSettingsBtn" onclick="openMeshModelSettings(event)" type="button" aria-label="Open 3D model settings">Settings <span class="mesh-settings-cog" aria-hidden="true">⚙</span></button></div><textarea id="meshJobPrompt" placeholder="Describe the object, shape, style, and material details." rows="4"></textarea></div>
 </div>
 <div class="media-job-section"><div class="media-reference-grid mesh-view-grid">
 <button class="media-frame-picker" id="meshJobInputBox" onclick="triggerMediaFrameInput('meshJobInputImage','meshJobInputPreview','meshJobInputBox')" ondragover="handleMediaFrameDragOver(event,'meshJobInputBox')" ondragleave="handleMediaFrameDragLeave(event,'meshJobInputBox')" ondrop="handleMediaFrameDrop(event,'meshJobInputImage','meshJobInputPreview','meshJobInputBox')" type="button"><img id="meshJobInputPreview" alt=""/><span class="media-frame-empty">Click or drop image</span><span class="media-frame-label">Primary / Front View (optional)</span><span class="media-frame-error" id="meshJobInputImageError" aria-live="polite"></span></button>
@@ -21323,6 +22143,8 @@ setInterval(() => {
 <input accept="image/*" class="media-frame-file" id="meshJobRightFrontViewImage" onchange="handleMediaFrameSelected('meshJobRightFrontViewImage','meshJobRightFrontViewPreview','meshJobRightFrontViewBox')" type="file"/>
 </div>
 </div></div>
+<div class="mesh-source-model-section" id="meshJobSourceModelSection" hidden><label class="video-job-label" for="meshJobSourceModel">Source 3D Model</label><input accept=".glb,.gltf,.obj,.fbx,.stl,.ply,model/*,application/octet-stream,text/plain" id="meshJobSourceModel" onchange="updateMeshRetextureSourceNote()" type="file"/><div class="mesh-small-note" id="meshJobSourceModelNote">Choose a 3D model file, or click “Retexture This Model” on a completed mesh job below.</div></div>
+<div class="mesh-small-note" id="meshJobCapabilityHint"></div>
 <input id="meshJobQuality" type="hidden"/>
 <input id="meshJobOutputFormat" type="hidden"/>
 <div class="mesh-jobs-actions">

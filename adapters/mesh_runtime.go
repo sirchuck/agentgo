@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -26,6 +27,7 @@ type MeshRequest struct {
 	JobID               string
 	Prompt              string
 	InputImage          *MeshBinary
+	SourceModel         *MeshBinary
 	ReferenceImages     []MeshBinary
 	NamedImages         map[string]MeshBinary
 	Settings            map[string]any
@@ -724,7 +726,32 @@ func executeFalMesh(ctx context.Context, model ModelConfig, req MeshRequest) (Me
 	body := map[string]any{}
 	taskType := "text-to-3d"
 	falFamily := falMeshFamily(prepared)
-	if falFamily == "trellis" || falFamily == "trellis2" {
+	if falMeshIsMeshyRetexture(prepared) {
+		if req.SourceModel == nil || len(req.SourceModel.Data) == 0 {
+			return MeshResult{}, errors.New("fal Meshy Retexture requires a source 3D model file")
+		}
+		prompt := strings.TrimSpace(req.Prompt)
+		if prompt == "" && (req.InputImage == nil || len(req.InputImage.Data) == 0) {
+			return MeshResult{}, errors.New("fal Meshy Retexture requires either a style prompt or a style reference image")
+		}
+		taskType = "retexture"
+		body["model_url"] = falBinaryDataURI(*req.SourceModel, defaultMeshMIME(req.SourceModel.Name, req.SourceModel.MIMEType), "application/octet-stream")
+		if req.InputImage != nil && len(req.InputImage.Data) > 0 {
+			body["image_style_url"] = falBinaryDataURI(*req.InputImage, defaultMeshMIME(req.InputImage.Name, req.InputImage.MIMEType), "image/png")
+		} else {
+			body["text_style_prompt"] = prompt
+		}
+	} else if falMeshIsTrellis2Retexture(prepared) {
+		if req.SourceModel == nil || len(req.SourceModel.Data) == 0 {
+			return MeshResult{}, errors.New("fal Trellis 2 Retexture requires a source 3D model file")
+		}
+		if req.InputImage == nil || len(req.InputImage.Data) == 0 {
+			return MeshResult{}, errors.New("fal Trellis 2 Retexture requires a style reference image")
+		}
+		taskType = "retexture"
+		body["mesh_url"] = falBinaryDataURI(*req.SourceModel, defaultMeshMIME(req.SourceModel.Name, req.SourceModel.MIMEType), "application/octet-stream")
+		body["image_url"] = falImageDataURI(*req.InputImage)
+	} else if falFamily == "trellis" || falFamily == "trellis2" {
 		imageURLs := falMeshInputImageURLs(req)
 		if len(imageURLs) == 0 {
 			if falFamily == "trellis2" {
@@ -799,8 +826,22 @@ func executeFalMesh(ctx context.Context, model ModelConfig, req MeshRequest) (Me
 	return pollFalMeshResult(ctx, prepared, req, jobID, route, statusURL, responseURL, taskType, string(respBody))
 }
 
+func falBinaryDataURI(file MeshBinary, detectedMIME, fallbackMIME string) string {
+	mimeType := strings.TrimSpace(detectedMIME)
+	if mimeType == "" {
+		mimeType = strings.TrimSpace(file.MIMEType)
+	}
+	if mimeType == "" {
+		mimeType = fallbackMIME
+	}
+	if mimeType == "" {
+		mimeType = "application/octet-stream"
+	}
+	return "data:" + mimeType + ";base64," + base64.StdEncoding.EncodeToString(file.Data)
+}
+
 func falImageDataURI(image MeshBinary) string {
-	return "data:" + defaultMeshMIME(image.Name, image.MIMEType) + ";base64," + base64.StdEncoding.EncodeToString(image.Data)
+	return falBinaryDataURI(image, defaultMeshMIME(image.Name, image.MIMEType), "image/png")
 }
 
 func falMeshInputImageURLs(req MeshRequest) []string {
@@ -830,6 +871,14 @@ func falMeshRouteContains(model ModelConfig, needle string) bool {
 	return strings.Contains(strings.ToLower(falMeshRouteValue(model)), strings.ToLower(needle))
 }
 
+func falMeshIsMeshyRetexture(model ModelConfig) bool {
+	return falMeshRouteContains(model, "meshy/v5/retexture")
+}
+
+func falMeshIsTrellis2Retexture(model ModelConfig) bool {
+	return falMeshRouteContains(model, "trellis-2/retexture")
+}
+
 func falMeshIsHunyuanV2(model ModelConfig) bool {
 	route := strings.ToLower(falMeshRouteValue(model))
 	return strings.Contains(route, "hunyuan3d/v2") || strings.Contains(route, "hunyuan-3d/v2")
@@ -853,6 +902,12 @@ func falMeshIsHunyuanPro(model ModelConfig, route string) bool {
 
 func falMeshFamily(model ModelConfig) string {
 	route := strings.ToLower(falMeshRouteValue(model))
+	if strings.Contains(route, "trellis-2/retexture") {
+		return "trellis2_retexture"
+	}
+	if strings.Contains(route, "meshy/v5/retexture") {
+		return "meshy_retexture"
+	}
 	if strings.Contains(route, "trellis-2") {
 		return "trellis2"
 	}
@@ -876,6 +931,12 @@ func falMeshRoute(model ModelConfig, taskType string) string {
 	}
 	if family == "trellis2" {
 		return "fal-ai/trellis-2"
+	}
+	if family == "trellis2_retexture" {
+		return "fal-ai/trellis-2/retexture"
+	}
+	if family == "meshy_retexture" {
+		return "fal-ai/meshy/v5/retexture"
 	}
 	if falMeshIsHunyuanV2(model) {
 		return route
@@ -927,6 +988,62 @@ func addFalNamedImageInputs(body map[string]any, model ModelConfig, req MeshRequ
 
 func addFalMeshOptions(body map[string]any, model ModelConfig, req MeshRequest, route string) {
 	family := falMeshFamily(model)
+	if family == "meshy_retexture" {
+		if meshRequestSettingBool(req, "fal_enable_pbr") || providerOptionBool(model, "fal_enable_pbr", false) {
+			body["enable_pbr"] = true
+		}
+		if enableOriginalUV, ok := meshRequestSettingOptionalBool(req, "fal_enable_original_uv"); ok {
+			body["enable_original_uv"] = enableOriginalUV
+		} else if value, ok := providerOptionOptionalBool(model, "fal_enable_original_uv"); ok {
+			body["enable_original_uv"] = value
+		}
+		if safetyChecker, ok := meshRequestSettingOptionalBool(req, "fal_enable_safety_checker"); ok {
+			body["enable_safety_checker"] = safetyChecker
+		} else if value, ok := providerOptionOptionalBool(model, "fal_enable_safety_checker"); ok {
+			body["enable_safety_checker"] = value
+		}
+		if seed := strings.TrimSpace(providerOptionString(model, "fal_seed", "")); seed != "" {
+			body["seed"] = seed
+		}
+		for k, v := range providerOptionMap(model, "mesh_submit_fields") {
+			body[k] = v
+		}
+		return
+	}
+	if family == "trellis2_retexture" {
+		if resolution, ok := meshRequestSettingInt(req, "fal_resolution"); ok {
+			body["resolution"] = resolution
+		}
+		if size, ok := meshRequestSettingInt(req, "fal_texture_size"); ok {
+			body["texture_size"] = size
+		}
+		for _, field := range []struct {
+			setting string
+			bodyKey string
+		}{
+			{setting: "fal_tex_slat_guidance_strength", bodyKey: "tex_slat_guidance_strength"},
+			{setting: "fal_tex_slat_guidance_rescale", bodyKey: "tex_slat_guidance_rescale"},
+			{setting: "fal_tex_slat_guidance_interval_start", bodyKey: "tex_slat_guidance_interval_start"},
+			{setting: "fal_tex_slat_guidance_interval_end", bodyKey: "tex_slat_guidance_interval_end"},
+			{setting: "fal_tex_slat_rescale_t", bodyKey: "tex_slat_rescale_t"},
+		} {
+			if value, ok := meshRequestSettingFloat(req, field.setting); ok {
+				body[field.bodyKey] = value
+			}
+		}
+		if steps, ok := meshRequestSettingInt(req, "fal_tex_slat_sampling_steps"); ok {
+			body["tex_slat_sampling_steps"] = steps
+		}
+		if seed, ok := meshRequestSettingInt(req, "fal_seed"); ok {
+			body["seed"] = seed
+		} else if seedText := strings.TrimSpace(providerOptionString(model, "fal_seed", "")); seedText != "" {
+			body["seed"] = seedText
+		}
+		for k, v := range providerOptionMap(model, "mesh_submit_fields") {
+			body[k] = v
+		}
+		return
+	}
 	if family == "trellis" || family == "trellis2" {
 		if size, ok := meshRequestSettingInt(req, "fal_texture_size"); ok {
 			body["texture_size"] = size
@@ -1016,25 +1133,32 @@ func meshRequestSettingValue(req MeshRequest, key string) (any, bool) {
 	return value, ok
 }
 
-func meshRequestSettingBool(req MeshRequest, key string) bool {
+func meshRequestSettingOptionalBool(req MeshRequest, key string) (bool, bool) {
 	value, ok := meshRequestSettingValue(req, key)
 	if !ok {
-		return false
+		return false, false
 	}
 	switch typed := value.(type) {
 	case bool:
-		return typed
+		return typed, true
 	case string:
 		switch strings.ToLower(strings.TrimSpace(typed)) {
 		case "1", "true", "yes", "on":
-			return true
+			return true, true
+		case "0", "false", "no", "off":
+			return false, true
 		}
 	case float64:
-		return typed != 0
+		return typed != 0, true
 	case int:
-		return typed != 0
+		return typed != 0, true
 	}
-	return false
+	return false, false
+}
+
+func meshRequestSettingBool(req MeshRequest, key string) bool {
+	value, ok := meshRequestSettingOptionalBool(req, key)
+	return ok && value
 }
 
 func meshRequestSettingString(req MeshRequest, key string) string {
@@ -1043,6 +1167,36 @@ func meshRequestSettingString(req MeshRequest, key string) string {
 		return ""
 	}
 	return strings.TrimSpace(asString(value))
+}
+
+func meshRequestSettingFloat(req MeshRequest, key string) (float64, bool) {
+	value, ok := meshRequestSettingValue(req, key)
+	if !ok {
+		return 0, false
+	}
+	switch typed := value.(type) {
+	case float64:
+		return typed, true
+	case float32:
+		return float64(typed), true
+	case int:
+		return float64(typed), true
+	case int64:
+		return float64(typed), true
+	case json.Number:
+		if n, err := typed.Float64(); err == nil {
+			return n, true
+		}
+	case string:
+		text := strings.TrimSpace(typed)
+		if text == "" {
+			return 0, false
+		}
+		if n, err := strconv.ParseFloat(text, 64); err == nil {
+			return n, true
+		}
+	}
+	return 0, false
 }
 
 func meshRequestSettingInt(req MeshRequest, key string) (int, bool) {

@@ -696,6 +696,28 @@ type notesSaveRequest struct {
 	Content string `json:"content"`
 }
 
+type stickyNoteRecord struct {
+	ID              string `json:"id"`
+	Body            string `json:"body"`
+	X               int    `json:"x"`
+	Y               int    `json:"y"`
+	Width           int    `json:"width"`
+	Height          int    `json:"height"`
+	BackgroundColor string `json:"backgroundColor"`
+	ForegroundColor string `json:"foregroundColor"`
+	CreatedAt       string `json:"createdAt"`
+	UpdatedAt       string `json:"updatedAt"`
+}
+
+type stickyNotesResponse struct {
+	Notes   []stickyNoteRecord `json:"notes"`
+	SavedAt string             `json:"savedAt,omitempty"`
+}
+
+type stickyNotesSaveRequest struct {
+	Notes []stickyNoteRecord `json:"notes"`
+}
+
 type projectInfo struct {
 	Name         string        `json:"name"`
 	LastAccessed string        `json:"lastAccessed"`
@@ -2613,6 +2635,7 @@ func main() {
 	mux.HandleFunc("/api/session/usage", app.handleSessionUsage)
 	mux.HandleFunc("/api/knowledge", app.handleKnowledge)
 	mux.HandleFunc("/api/knowledge/notes", app.handleKnowledgeNotesSave)
+	mux.HandleFunc("/api/stickies", app.handleStickyNotes)
 
 	httpEnabled := cfg.HTTPPort > 0
 	httpsRequested := cfg.HTTPSPort > 0
@@ -2983,6 +3006,7 @@ const (
 	defaultProjectMaxPayloadKB  = 512
 	knowledgeReadmeFilename     = "README.md"
 	knowledgeNotesFilename      = "agentgo_notes.md"
+	knowledgeStickiesFilename   = "stickies.json"
 )
 
 func defaultProjectLimits() ProjectLimits {
@@ -4736,11 +4760,12 @@ func uniqueWorkModeOutputPath(projectworkRoot, rel string) (string, error) {
 
 func isHiddenWorkModePath(rel string) bool {
 	for _, part := range strings.Split(filepath.ToSlash(rel), "/") {
-		part = strings.TrimSpace(part)
+		part = strings.ToLower(strings.TrimSpace(part))
 		if part == "" {
 			continue
 		}
-		if strings.HasPrefix(part, ".") {
+		switch part {
+		case ".git", ".hg", ".svn":
 			return true
 		}
 	}
@@ -4796,25 +4821,51 @@ Use the "reply" field for normal chat responses, explanations, summaries, brains
 
 You must output valid JSON only, with no markdown outside the JSON.
 
-Use this exact response shape:
+CRITICAL JSON CONTRACT
+
+AgentGO parses your response directly. Return parseable JSON, not JavaScript object syntax.
+- Return exactly one JSON object and nothing else.
+- Do not wrap the JSON in markdown fences.
+- Use double quotes for all keys and string values.
+- Do not use comments, trailing commas, undefined, NaN, functions, or unquoted keys.
+- Escape all newline, quote, backslash, and control characters inside JSON strings.
+- File contents must be valid JSON strings. If a file has multiple lines, include escaped newlines or otherwise encode it as one valid JSON string.
+- If you are not changing files, return "files": [] instead of prose outside JSON.
+
+Canonical chat-only response:
 
 {
   "reply": "User-facing response or summary of actions here.",
   "files": []
 }
 
-If you create or overwrite files, include them in "files":
+Canonical response that creates a file:
 
 {
-  "reply": "User-facing response or summary of actions here.",
+  "reply": "Created subscription_calculator.js with the requested blur handler.",
   "files": [
     {
-      "path": "folder/filename.ext",
+      "path": "subscription_calculator.js",
       "action": "create",
-      "content": "Full, complete file content here."
+      "content": "document.addEventListener(\"blur\", function (event) {\n  // Full file content here.\n}, true);\n"
     }
   ]
 }
+
+Canonical response that overwrites a selected file:
+
+{
+  "reply": "Updated index.html with the revised calculator script.",
+  "files": [
+    {
+      "path": "index.html",
+      "action": "overwrite",
+      "content": "<!doctype html>\n<html>\n<head><title>Updated file</title></head>\n<body>Full replacement file content here.</body>\n</html>\n"
+    }
+  ]
+}
+
+If you create or overwrite files, include them in "files" using the same shape shown above.
 
 Allowed file actions are exactly:
 - "create"
@@ -4888,9 +4939,11 @@ CONTEXT LIMITS
 ` + fileMode + `
 
 OUTPUT FORMAT
-- Return one strict JSON object matching the schema.
+- Return one strict, parseable JSON object matching the schema.
 - Put the complete visible answer for the user in reply.
-- Do not include markdown fences around the JSON response.`)
+- Do not include markdown fences around the JSON response.
+- Do not use JavaScript object syntax, comments, trailing commas, unquoted keys, or text before/after the JSON.
+- Escape all file content so it remains valid JSON string data.`)
 	if includeRoleContext {
 		instructions += "\n\nROLE CONTEXT\n- AgentGO included this Builder's role/user context. Use it when relevant."
 	} else {
@@ -4932,7 +4985,9 @@ REVIEW LOOP CONTROL
 - Do not continue the loop for small wording preferences, redundant checks, or speculative improvements that risk introducing new mistakes.
 
 JSON CONTRACT
-- Return one strict JSON object only.
+- Return one strict, parseable JSON object only.
+- Do not use markdown fences, comments, trailing commas, unquoted keys, JavaScript object syntax, or text before/after the JSON.
+- Escape all file content so it remains valid JSON string data.
 - The files[] array is Worker-only. The Observer cannot create/update/delete files.
 - Use warnings[] only for non-fatal issues AgentGO should log.`)
 	if useMemory {
@@ -4969,7 +5024,7 @@ HAS_INPUT RULE
 - Do not mark has_input=true just to praise the Worker, repeat the user's request, or request tiny wording polish.
 
 OUTPUT FORMAT
-Return one strict JSON object only, with no markdown outside JSON:
+Return one strict, parseable JSON object only, with no markdown outside JSON. Do not use JavaScript object syntax, comments, trailing commas, unquoted keys, or text before/after the JSON:
 {
   "reply": "Concise review notes for the Worker.",
   "has_input": true,
@@ -10108,6 +10163,136 @@ func (a *App) handleKnowledgeNotesSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "defaultTab": knowledgeDefaultTab(req.Content), "savedAt": time.Now().Format(time.RFC3339)})
+}
+
+func defaultStickyNoteRecord(now string) stickyNoteRecord {
+	return stickyNoteRecord{
+		ID:              "sticky_default",
+		Body:            "",
+		X:               -1,
+		Y:               90,
+		Width:           230,
+		Height:          150,
+		BackgroundColor: "#cfeeff",
+		ForegroundColor: "#000000",
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+}
+
+func normalizeStickyColor(value, fallback string) string {
+	clean := strings.TrimSpace(value)
+	if clean == "" {
+		return fallback
+	}
+	if regexp.MustCompile(`^#[0-9a-fA-F]{6}$`).MatchString(clean) {
+		return strings.ToLower(clean)
+	}
+	return fallback
+}
+
+func normalizeStickyNoteRecord(note stickyNoteRecord, idx int, now string) stickyNoteRecord {
+	note.ID = strings.TrimSpace(note.ID)
+	if note.ID == "" {
+		note.ID = fmt.Sprintf("sticky_%d_%d", time.Now().UnixNano(), idx)
+	}
+	if note.Width < 160 {
+		note.Width = 230
+	}
+	if note.Width > 720 {
+		note.Width = 720
+	}
+	if note.Height < 110 {
+		note.Height = 150
+	}
+	if note.Height > 640 {
+		note.Height = 640
+	}
+	if note.Y < 0 {
+		note.Y = 90
+	}
+	note.BackgroundColor = normalizeStickyColor(note.BackgroundColor, "#cfeeff")
+	note.ForegroundColor = normalizeStickyColor(note.ForegroundColor, "#000000")
+	if strings.TrimSpace(note.CreatedAt) == "" {
+		note.CreatedAt = now
+	}
+	note.UpdatedAt = now
+	return note
+}
+
+func normalizeStickyNotes(notes []stickyNoteRecord) []stickyNoteRecord {
+	now := time.Now().UTC().Format(time.RFC3339)
+	out := make([]stickyNoteRecord, 0, len(notes))
+	seen := map[string]bool{}
+	for idx, note := range notes {
+		note = normalizeStickyNoteRecord(note, idx, now)
+		if seen[note.ID] {
+			note.ID = fmt.Sprintf("sticky_%d_%d", time.Now().UnixNano(), idx)
+		}
+		seen[note.ID] = true
+		out = append(out, note)
+	}
+	if len(out) == 0 {
+		out = append(out, defaultStickyNoteRecord(now))
+	}
+	return out
+}
+
+func readStickyNotesFile(path string) ([]stickyNoteRecord, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return normalizeStickyNotes(nil), nil
+		}
+		return nil, err
+	}
+	var response stickyNotesResponse
+	if err := json.Unmarshal(data, &response); err == nil && len(response.Notes) > 0 {
+		return normalizeStickyNotes(response.Notes), nil
+	}
+	var notes []stickyNoteRecord
+	if err := json.Unmarshal(data, &notes); err != nil {
+		return nil, fmt.Errorf("invalid stickies.json: %w", err)
+	}
+	return normalizeStickyNotes(notes), nil
+}
+
+func (a *App) handleStickyNotes(w http.ResponseWriter, r *http.Request) {
+	stickiesPath, err := appRootFilePath(knowledgeStickiesFilename)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		notes, err := readStickyNotesFile(stickiesPath)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, stickyNotesResponse{Notes: notes})
+	case http.MethodPost:
+		var req stickyNotesSaveRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid json", http.StatusBadRequest)
+			return
+		}
+		notes := normalizeStickyNotes(req.Notes)
+		payload := stickyNotesResponse{Notes: notes, SavedAt: time.Now().UTC().Format(time.RFC3339)}
+		data, err := json.MarshalIndent(payload, "", "  ")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		data = append(data, '\n')
+		if err := atomicWriteFile(stickiesPath, data, 0o644); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, payload)
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
 }
 
 func (e diagnosticsEntry) withStage(stage string) diagnosticsEntry {

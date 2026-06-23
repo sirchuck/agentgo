@@ -11,7 +11,12 @@
       "auth_type": "fal_key",
       "auth_header": "Authorization",
       "api_key_env": "FAL_KEY",
-      "capabilities": ["text_to_mesh", "image_to_mesh", "multi_view_image_to_mesh", "glb_preview"],
+      "capabilities": [
+        "text_to_mesh",
+        "image_to_mesh",
+        "multi_view_image_to_mesh",
+        "glb_preview"
+      ],
       "notes": "Current baseline Hunyuan route. AgentGO switches to image-to-3d when images are provided."
     },
     {
@@ -24,7 +29,11 @@
       "auth_type": "fal_key",
       "auth_header": "Authorization",
       "api_key_env": "FAL_KEY",
-      "capabilities": ["image_to_mesh", "download", "glb_preview_if_returned"],
+      "capabilities": [
+        "image_to_mesh",
+        "download",
+        "glb_preview_if_returned"
+      ],
       "notes": "Image-to-3D only. Output is parsed from model_mesh."
     },
     {
@@ -37,7 +46,12 @@
       "auth_type": "fal_key",
       "auth_header": "Authorization",
       "api_key_env": "FAL_KEY",
-      "capabilities": ["text_to_mesh", "image_to_mesh", "download", "glb_preview_if_returned"],
+      "capabilities": [
+        "text_to_mesh",
+        "image_to_mesh",
+        "download",
+        "glb_preview_if_returned"
+      ],
       "notes": "AgentGO switches to image-to-3d when a primary image is provided. Rapid may return OBJ for some text jobs; non-GLB results are download-only."
     },
     {
@@ -50,7 +64,12 @@
       "auth_type": "fal_key",
       "auth_header": "Authorization",
       "api_key_env": "FAL_KEY",
-      "capabilities": ["text_to_mesh", "image_to_mesh", "multi_view_image_to_mesh", "glb_preview"],
+      "capabilities": [
+        "text_to_mesh",
+        "image_to_mesh",
+        "multi_view_image_to_mesh",
+        "glb_preview"
+      ],
       "notes": "AgentGO supports primary/back/left/right image slots now. Extra top/bottom/diagonal views are intentionally deferred."
     },
     {
@@ -63,7 +82,11 @@
       "auth_type": "fal_key",
       "auth_header": "Authorization",
       "api_key_env": "FAL_KEY",
-      "capabilities": ["image_to_mesh", "multi_image_to_mesh", "download"],
+      "capabilities": [
+        "image_to_mesh",
+        "multi_image_to_mesh",
+        "download"
+      ],
       "notes": "Classic Trellis. AgentGO switches to fal-ai/trellis/multi for 2+ selected images."
     },
     {
@@ -76,8 +99,49 @@
       "auth_type": "fal_key",
       "auth_header": "Authorization",
       "api_key_env": "FAL_KEY",
-      "capabilities": ["image_to_mesh", "multi_image_to_mesh", "glb_preview"],
+      "capabilities": [
+        "image_to_mesh",
+        "multi_image_to_mesh",
+        "glb_preview"
+      ],
       "notes": "Same route for single and multi-image. AgentGO sends image_url for one image and image_urls for 2+ images."
+    },
+    {
+      "provider": "fal",
+      "adapter": "fal_mesh",
+      "label": "fal Trellis 2 Retexture",
+      "model_name": "fal-ai/trellis-2/retexture",
+      "base_url": "https://queue.fal.run",
+      "api_path": "/fal-ai/trellis-2/retexture",
+      "auth_type": "fal_key",
+      "auth_header": "Authorization",
+      "api_key_env": "FAL_KEY",
+      "capabilities": [
+        "mesh_to_mesh_retexture",
+        "style_image_required",
+        "download",
+        "glb_preview"
+      ],
+      "notes": "Requires a source 3D model and a required style image. Supports GLB, OBJ, PLY, and STL source meshes."
+    },
+    {
+      "provider": "fal",
+      "adapter": "fal_mesh",
+      "label": "fal Meshy 5 Retexture",
+      "model_name": "fal-ai/meshy/v5/retexture",
+      "base_url": "https://queue.fal.run",
+      "api_path": "/fal-ai/meshy/v5/retexture",
+      "auth_type": "fal_key",
+      "auth_header": "Authorization",
+      "api_key_env": "FAL_KEY",
+      "capabilities": [
+        "mesh_to_mesh_retexture",
+        "style_prompt",
+        "style_image",
+        "download",
+        "glb_preview"
+      ],
+      "notes": "Requires a source 3D model plus either a style prompt or a style image. Completed mesh jobs in AgentGO can be reused as the source."
     },
     {
       "provider": "tripo",
@@ -88,7 +152,12 @@
       "api_path": "/v2/openapi/task",
       "auth_type": "bearer",
       "auth_header": "Authorization",
-      "capabilities": ["text_to_mesh", "image_to_mesh", "download", "glb_preview_if_returned"],
+      "capabilities": [
+        "text_to_mesh",
+        "image_to_mesh",
+        "download",
+        "glb_preview_if_returned"
+      ],
       "notes": "Leave Model Name blank unless you want to force a Tripo model_version."
     }
   ]

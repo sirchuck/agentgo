@@ -46,6 +46,8 @@ type meshJobRecord struct {
 	OutputFormat           string               `json:"outputFormat,omitempty"`
 	MeshSettings           map[string]any       `json:"meshSettings,omitempty"`
 	InputImagePath         string               `json:"inputImagePath,omitempty"`
+	SourceModelPath        string               `json:"sourceModelPath,omitempty"`
+	SourceModelOriginPath  string               `json:"sourceModelOriginPath,omitempty"`
 	ReferenceImagePaths    []string             `json:"referenceImagePaths,omitempty"`
 	NamedImagePaths        map[string]string    `json:"namedImagePaths,omitempty"`
 	PrimaryModelPath       string               `json:"primaryModelPath,omitempty"`
@@ -132,7 +134,10 @@ func meshRequestHasAnyUserInput(r *http.Request, prompt string) bool {
 	if r == nil || r.MultipartForm == nil {
 		return false
 	}
-	for _, field := range []string{"inputImage", "backViewImage", "leftViewImage", "rightViewImage", "topViewImage", "bottomViewImage", "leftFrontViewImage", "rightFrontViewImage"} {
+	if strings.TrimSpace(r.FormValue("sourceModelPath")) != "" {
+		return true
+	}
+	for _, field := range []string{"inputImage", "sourceModel", "backViewImage", "leftViewImage", "rightViewImage", "topViewImage", "bottomViewImage", "leftFrontViewImage", "rightFrontViewImage"} {
 		for _, header := range r.MultipartForm.File[field] {
 			if header == nil {
 				continue
@@ -409,7 +414,7 @@ func (a *App) handleMeshJobRefine(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	go a.executeMeshJobAsync(projectName, model, jobID, record, nil, nil, nil, "mesh:"+jobID)
+	go a.executeMeshJobAsync(projectName, model, jobID, record, nil, nil, nil, nil, "mesh:"+jobID)
 	writeJSON(w, http.StatusOK, meshJobCreateResponse{OK: true, Job: record})
 }
 
@@ -445,7 +450,44 @@ func (a *App) handleCreateMeshJob(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "selected model is not configured for mesh generation", http.StatusBadRequest)
 		return
 	}
-	if !meshRequestHasAnyUserInput(r, prompt) {
+	if meshModelIsFalRetexture(model) {
+		hasStyleImage := false
+		for _, header := range r.MultipartForm.File["inputImage"] {
+			if header != nil && (strings.TrimSpace(header.Filename) != "" || header.Size > 0) {
+				hasStyleImage = true
+				break
+			}
+		}
+		hasSourceModel := strings.TrimSpace(r.FormValue("sourceModelPath")) != ""
+		for _, header := range r.MultipartForm.File["sourceModel"] {
+			if header != nil && (strings.TrimSpace(header.Filename) != "" || header.Size > 0) {
+				hasSourceModel = true
+				break
+			}
+		}
+		if !hasSourceModel {
+			http.Error(w, "Add a source 3D model file before creating a retexture job.", http.StatusBadRequest)
+			return
+		}
+		for _, header := range r.MultipartForm.File["sourceModel"] {
+			if header != nil && strings.TrimSpace(header.Filename) != "" && !meshModelSourceExtAllowed(model, header.Filename) {
+				http.Error(w, "The selected retexture model does not support that source model file type.", http.StatusBadRequest)
+				return
+			}
+		}
+		if sourcePath := strings.TrimSpace(r.FormValue("sourceModelPath")); sourcePath != "" && !meshModelSourceExtAllowed(model, sourcePath) {
+			http.Error(w, "The selected retexture model does not support that source model file type.", http.StatusBadRequest)
+			return
+		}
+		if meshModelIsFalTrellis2Retexture(model) && !hasStyleImage {
+			http.Error(w, "Add a style reference image for Trellis 2 retexture.", http.StatusBadRequest)
+			return
+		}
+		if meshModelIsFalMeshyRetexture(model) && strings.TrimSpace(prompt) == "" && !hasStyleImage {
+			http.Error(w, "Add either a style prompt or a style reference image for Meshy retexture.", http.StatusBadRequest)
+			return
+		}
+	} else if !meshRequestHasAnyUserInput(r, prompt) {
 		http.Error(w, "Add a prompt or at least one image before creating a 3D mesh job.", http.StatusBadRequest)
 		return
 	}
@@ -467,14 +509,23 @@ func parseMeshSettingsFormValue(raw string) (map[string]any, error) {
 		return nil, errors.New("meshSettings must be valid JSON")
 	}
 	allowed := map[string]bool{
-		"fal_textured_mesh":   true,
-		"fal_enable_pbr":      true,
-		"fal_enable_geometry": true,
-		"fal_generate_type":   true,
-		"fal_face_count":      true,
-		"fal_texture_size":    true,
-		"fal_resolution":      true,
-		"tripo_quality":       true,
+		"fal_textured_mesh":                    true,
+		"fal_enable_pbr":                       true,
+		"fal_enable_geometry":                  true,
+		"fal_generate_type":                    true,
+		"fal_face_count":                       true,
+		"fal_texture_size":                     true,
+		"fal_resolution":                       true,
+		"fal_enable_original_uv":               true,
+		"fal_enable_safety_checker":            true,
+		"fal_seed":                             true,
+		"fal_tex_slat_guidance_strength":       true,
+		"fal_tex_slat_guidance_rescale":        true,
+		"fal_tex_slat_guidance_interval_start": true,
+		"fal_tex_slat_guidance_interval_end":   true,
+		"fal_tex_slat_sampling_steps":          true,
+		"fal_tex_slat_rescale_t":               true,
+		"tripo_quality":                        true,
 	}
 	out := map[string]any{}
 	for key, value := range input {
@@ -581,6 +632,105 @@ func saveMultipartMeshInput(r *http.Request, field, jobRoot, projectName, jobID,
 	return rel, &stagedMeshInput{Path: rel, Name: filepath.Base(rel), MIMEType: contentType, Data: data}, nil
 }
 
+func meshSourceModelExt(filename string, contentType string) string {
+	ext := strings.ToLower(filepath.Ext(strings.TrimSpace(filename)))
+	if ext != "" {
+		return ext
+	}
+	contentType = strings.ToLower(strings.TrimSpace(contentType))
+	switch contentType {
+	case "model/gltf-binary":
+		return ".glb"
+	case "model/gltf+json", "application/json":
+		return ".gltf"
+	case "model/obj", "text/plain":
+		return ".obj"
+	case "model/stl", "application/sla", "application/vnd.ms-pki.stl":
+		return ".stl"
+	case "application/octet-stream":
+		return ".glb"
+	}
+	return ".glb"
+}
+
+func meshModelContentTypeAllowed(contentType, filename string) bool {
+	contentType = strings.ToLower(strings.TrimSpace(contentType))
+	ext := strings.ToLower(filepath.Ext(strings.TrimSpace(filename)))
+	if strings.HasPrefix(contentType, "model/") {
+		return true
+	}
+	switch ext {
+	case ".glb", ".gltf", ".obj", ".fbx", ".stl", ".ply":
+		return true
+	}
+	switch contentType {
+	case "application/octet-stream", "application/json", "model/gltf-binary", "model/gltf+json", "text/plain", "application/sla", "application/vnd.ms-pki.stl":
+		return true
+	}
+	return false
+}
+
+func saveMultipartMeshSourceModel(r *http.Request, field, jobRoot, projectName, jobID, prefix string, allowed bool) (string, *stagedMeshInput, error) {
+	file, header, err := r.FormFile(field)
+	if err != nil {
+		if errors.Is(err, http.ErrMissingFile) || strings.Contains(strings.ToLower(err.Error()), "no such file") {
+			return "", nil, nil
+		}
+		return "", nil, err
+	}
+	defer file.Close()
+	if !allowed {
+		return "", nil, fmt.Errorf("%s is not supported by this model", field)
+	}
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return "", nil, err
+	}
+	if len(data) == 0 {
+		return "", nil, nil
+	}
+	contentType := strings.TrimSpace(header.Header.Get("Content-Type"))
+	if contentType == "" {
+		contentType = http.DetectContentType(data)
+	}
+	if !meshModelContentTypeAllowed(contentType, header.Filename) {
+		return "", nil, fmt.Errorf("%s must be a supported 3D model file (.glb, .gltf, .obj, .fbx, .stl, .ply)", field)
+	}
+	ext := meshSourceModelExt(header.Filename, contentType)
+	rel := filepath.ToSlash(filepath.Join("projects", projectName, "mesh_jobs", jobID, "inputs", prefix+ext))
+	full := filepath.Join(jobRoot, "inputs", prefix+ext)
+	if err := os.WriteFile(full, data, 0o644); err != nil {
+		return "", nil, err
+	}
+	name := filepath.Base(rel)
+	if strings.TrimSpace(header.Filename) != "" {
+		name = sanitizeImportedFilename(header.Filename)
+	}
+	return rel, &stagedMeshInput{Path: rel, Name: name, MIMEType: contentType, Data: data}, nil
+}
+
+func stageExistingMeshSourceModel(workRoot, sourcePath, jobRoot, projectName, jobID, prefix string) (string, *stagedMeshInput, error) {
+	full, err := safeJoin(workRoot, sourcePath)
+	if err != nil {
+		return "", nil, err
+	}
+	data, err := os.ReadFile(full)
+	if err != nil {
+		return "", nil, err
+	}
+	contentType := http.DetectContentType(data)
+	if !meshModelContentTypeAllowed(contentType, full) {
+		contentType = "application/octet-stream"
+	}
+	ext := meshSourceModelExt(full, contentType)
+	rel := filepath.ToSlash(filepath.Join("projects", projectName, "mesh_jobs", jobID, "inputs", prefix+ext))
+	targetFull := filepath.Join(jobRoot, "inputs", prefix+ext)
+	if err := os.WriteFile(targetFull, data, 0o644); err != nil {
+		return "", nil, err
+	}
+	return rel, &stagedMeshInput{Path: rel, Name: filepath.Base(full), MIMEType: contentType, Data: data}, nil
+}
+
 func saveMultipartMeshReferenceInputs(r *http.Request, jobRoot, projectName, jobID string, allowed bool) ([]string, []stagedMeshInput, error) {
 	fields := []struct {
 		name   string
@@ -637,6 +787,47 @@ func saveMultipartMeshNamedInputs(r *http.Request, jobRoot, projectName, jobID s
 	return paths, inputs, nil
 }
 
+func meshModelRouteValue(model ModelConfig) string {
+	route := strings.ToLower(strings.TrimSpace(model.ModelName))
+	if route == "" {
+		route = strings.ToLower(strings.TrimSpace(model.APIPath))
+	}
+	return route
+}
+
+func meshModelIsFalMeshyRetexture(model ModelConfig) bool {
+	return strings.ToLower(strings.TrimSpace(model.Adapter)) == "fal_mesh" && strings.Contains(meshModelRouteValue(model), "meshy/v5/retexture")
+}
+
+func meshModelIsFalTrellis2Retexture(model ModelConfig) bool {
+	return strings.ToLower(strings.TrimSpace(model.Adapter)) == "fal_mesh" && strings.Contains(meshModelRouteValue(model), "trellis-2/retexture")
+}
+
+func meshModelIsFalRetexture(model ModelConfig) bool {
+	return meshModelIsFalMeshyRetexture(model) || meshModelIsFalTrellis2Retexture(model)
+}
+
+func meshModelSourceExtAllowed(model ModelConfig, filename string) bool {
+	ext := strings.ToLower(filepath.Ext(strings.TrimSpace(filename)))
+	if ext == "" {
+		return true
+	}
+	if meshModelIsFalTrellis2Retexture(model) {
+		switch ext {
+		case ".glb", ".obj", ".ply", ".stl":
+			return true
+		default:
+			return false
+		}
+	}
+	switch ext {
+	case ".glb", ".gltf", ".obj", ".fbx", ".stl", ".ply":
+		return true
+	default:
+		return false
+	}
+}
+
 func inferMeshMode(model ModelConfig, inputPath string, referencePaths []string) string {
 	switch normalizedMeshAdapterName(model.Adapter) {
 	case "meshy_mesh":
@@ -656,6 +847,9 @@ func inferMeshMode(model ModelConfig, inputPath string, referencePaths []string)
 		}
 		return "image"
 	case "fal_mesh":
+		if meshModelIsFalRetexture(model) {
+			return "retexture"
+		}
 		if strings.TrimSpace(inputPath) == "" {
 			return "text"
 		}
@@ -708,6 +902,20 @@ func (a *App) createManualMeshJob(projectName string, model ModelConfig, prompt,
 	if err != nil {
 		return meshJobRecord{}, err
 	}
+	sourceModelPath, sourceModelMeta, err := saveMultipartMeshSourceModel(r, "sourceModel", jobRoot, projectName, jobID, "source_model", meshModelIsFalRetexture(model))
+	if err != nil {
+		return meshJobRecord{}, err
+	}
+	if sourceModelMeta == nil {
+		existingSourcePath := strings.TrimSpace(r.FormValue("sourceModelPath"))
+		if existingSourcePath != "" {
+			sourceModelPath, sourceModelMeta, err = stageExistingMeshSourceModel(a.cfg.WorkRoot, existingSourcePath, jobRoot, projectName, jobID, "source_model")
+			if err != nil {
+				return meshJobRecord{}, err
+			}
+			record.SourceModelOriginPath = existingSourcePath
+		}
+	}
 	referencePaths, referenceInputs, err := saveMultipartMeshReferenceInputs(r, jobRoot, projectName, jobID, true)
 	if err != nil {
 		return meshJobRecord{}, err
@@ -717,6 +925,7 @@ func (a *App) createManualMeshJob(projectName string, model ModelConfig, prompt,
 		return meshJobRecord{}, err
 	}
 	record.InputImagePath = inputPath
+	record.SourceModelPath = sourceModelPath
 	record.ReferenceImagePaths = append([]string(nil), referencePaths...)
 	if len(namedPaths) > 0 {
 		record.NamedImagePaths = namedPaths
@@ -728,7 +937,7 @@ func (a *App) createManualMeshJob(projectName string, model ModelConfig, prompt,
 	if err := writeMeshJobRecord(meshJobMetaPath(jobRoot), record); err != nil {
 		return meshJobRecord{}, err
 	}
-	go a.executeMeshJobAsync(projectName, model, jobID, record, inputMeta, referenceInputs, namedInputs, "mesh:"+jobID)
+	go a.executeMeshJobAsync(projectName, model, jobID, record, inputMeta, sourceModelMeta, referenceInputs, namedInputs, "mesh:"+jobID)
 	return record, nil
 }
 
@@ -756,7 +965,7 @@ func namedImagePathValues(paths map[string]string) []string {
 	return out
 }
 
-func (a *App) executeMeshJobAsync(projectName string, model ModelConfig, jobID string, record meshJobRecord, inputMeta *stagedMeshInput, referenceInputs []stagedMeshInput, namedInputs map[string]stagedMeshInput, cancelKey string) {
+func (a *App) executeMeshJobAsync(projectName string, model ModelConfig, jobID string, record meshJobRecord, inputMeta *stagedMeshInput, sourceModelMeta *stagedMeshInput, referenceInputs []stagedMeshInput, namedInputs map[string]stagedMeshInput, cancelKey string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	a.mu.Lock()
 	a.setActiveCancelLocked(cancelKey, projectName, jobID, cancel)
@@ -784,6 +993,9 @@ func (a *App) executeMeshJobAsync(projectName string, model ModelConfig, jobID s
 	}
 	if inputMeta != nil {
 		meshReq.InputImage = &adapters.MeshBinary{Name: inputMeta.Name, MIMEType: inputMeta.MIMEType, Data: inputMeta.Data}
+	}
+	if sourceModelMeta != nil {
+		meshReq.SourceModel = &adapters.MeshBinary{Name: sourceModelMeta.Name, MIMEType: sourceModelMeta.MIMEType, Data: sourceModelMeta.Data}
 	}
 	for _, ref := range referenceInputs {
 		if len(ref.Data) > 0 {
