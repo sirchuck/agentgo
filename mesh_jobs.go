@@ -44,12 +44,8 @@ type meshJobRecord struct {
 	PromptSource           string               `json:"promptSource,omitempty"`
 	Quality                string               `json:"quality,omitempty"`
 	OutputFormat           string               `json:"outputFormat,omitempty"`
-	MeshSettings           map[string]any       `json:"meshSettings,omitempty"`
 	InputImagePath         string               `json:"inputImagePath,omitempty"`
-	SourceModelPath        string               `json:"sourceModelPath,omitempty"`
-	SourceModelOriginPath  string               `json:"sourceModelOriginPath,omitempty"`
 	ReferenceImagePaths    []string             `json:"referenceImagePaths,omitempty"`
-	NamedImagePaths        map[string]string    `json:"namedImagePaths,omitempty"`
 	PrimaryModelPath       string               `json:"primaryModelPath,omitempty"`
 	PrimaryProjectworkPath string               `json:"primaryProjectworkPath,omitempty"`
 	PreviewImagePath       string               `json:"previewImagePath,omitempty"`
@@ -86,8 +82,6 @@ func normalizedMeshAdapterName(value string) string {
 		return "tripo_mesh"
 	case "hyper3d_mesh":
 		return "hyper3d_mesh"
-	case "fal_mesh":
-		return "fal_mesh"
 	default:
 		return ""
 	}
@@ -112,7 +106,7 @@ func modelSupportsMeshImageInput(model ModelConfig) bool {
 		return model.MeshImageInput
 	}
 	switch normalizedMeshAdapterName(model.Adapter) {
-	case "meshy_mesh", "tripo_mesh", "hyper3d_mesh", "fal_mesh":
+	case "meshy_mesh", "tripo_mesh", "hyper3d_mesh":
 		return true
 	default:
 		return false
@@ -122,32 +116,9 @@ func modelSupportsMeshImageInput(model ModelConfig) bool {
 func modelSupportsMeshMultiImage(model ModelConfig) bool {
 	adapter := normalizedMeshAdapterName(model.Adapter)
 	if model.MeshGeneration {
-		return model.MeshMultiImage || adapter == "tripo_mesh" || adapter == "meshy_mesh" || adapter == "fal_mesh"
+		return model.MeshMultiImage || adapter == "tripo_mesh" || adapter == "meshy_mesh"
 	}
-	return adapter == "tripo_mesh" || adapter == "meshy_mesh" || adapter == "fal_mesh"
-}
-
-func meshRequestHasAnyUserInput(r *http.Request, prompt string) bool {
-	if strings.TrimSpace(prompt) != "" {
-		return true
-	}
-	if r == nil || r.MultipartForm == nil {
-		return false
-	}
-	if strings.TrimSpace(r.FormValue("sourceModelPath")) != "" {
-		return true
-	}
-	for _, field := range []string{"inputImage", "sourceModel", "backViewImage", "leftViewImage", "rightViewImage", "topViewImage", "bottomViewImage", "leftFrontViewImage", "rightFrontViewImage"} {
-		for _, header := range r.MultipartForm.File[field] {
-			if header == nil {
-				continue
-			}
-			if strings.TrimSpace(header.Filename) != "" || header.Size > 0 {
-				return true
-			}
-		}
-	}
-	return false
+	return adapter == "tripo_mesh" || adapter == "meshy_mesh"
 }
 
 func waveIncludesMeshGeneration(builders []ModelConfig) bool {
@@ -240,48 +211,6 @@ func (a *App) listMeshJobRecords(projectName, modelID string) ([]meshJobRecord, 
 	}
 	sort.Slice(out, func(i, j int) bool { return strings.TrimSpace(out[i].CreatedAt) > strings.TrimSpace(out[j].CreatedAt) })
 	return out, nil
-}
-
-func (a *App) handleMeshJobDownload(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	projectName, err := a.requireActiveProject()
-	if err != nil {
-		http.Error(w, "Select an active project first.", http.StatusBadRequest)
-		return
-	}
-	jobID := strings.TrimSpace(r.URL.Query().Get("jobId"))
-	if jobID == "" {
-		http.Error(w, "jobId is required", http.StatusBadRequest)
-		return
-	}
-	jobRoot, err := a.meshJobRoot(projectName, jobID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	record, err := readMeshJobRecord(meshJobMetaPath(jobRoot))
-	if err != nil {
-		http.Error(w, "mesh job not found", http.StatusNotFound)
-		return
-	}
-	if _, err := os.Stat(jobRoot); err != nil {
-		http.Error(w, "mesh job folder not found", http.StatusNotFound)
-		return
-	}
-	label := sanitizeImportedFilename(record.ModelLabel)
-	if label == "" {
-		label = "mesh_job"
-	}
-	filename := fmt.Sprintf("%s_%s.zip", label, jobID)
-	w.Header().Set("Content-Type", "application/zip")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
-	if err := buildProjectZip(jobRoot, w); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 }
 
 func (a *App) handleMeshJobs(w http.ResponseWriter, r *http.Request) {
@@ -414,7 +343,7 @@ func (a *App) handleMeshJobRefine(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	go a.executeMeshJobAsync(projectName, model, jobID, record, nil, nil, nil, nil, "mesh:"+jobID)
+	go a.executeMeshJobAsync(projectName, model, jobID, record, nil, nil, "mesh:"+jobID)
 	writeJSON(w, http.StatusOK, meshJobCreateResponse{OK: true, Job: record})
 }
 
@@ -432,11 +361,6 @@ func (a *App) handleCreateMeshJob(w http.ResponseWriter, r *http.Request) {
 	prompt := strings.TrimSpace(r.FormValue("prompt"))
 	quality := strings.TrimSpace(r.FormValue("quality"))
 	outputFormat := strings.TrimSpace(r.FormValue("outputFormat"))
-	meshSettings, err := parseMeshSettingsFormValue(r.FormValue("meshSettings"))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
 	if modelID == "" {
 		http.Error(w, "modelId is required", http.StatusBadRequest)
 		return
@@ -450,110 +374,16 @@ func (a *App) handleCreateMeshJob(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "selected model is not configured for mesh generation", http.StatusBadRequest)
 		return
 	}
-	if meshModelIsFalRetexture(model) {
-		hasStyleImage := false
-		for _, header := range r.MultipartForm.File["inputImage"] {
-			if header != nil && (strings.TrimSpace(header.Filename) != "" || header.Size > 0) {
-				hasStyleImage = true
-				break
-			}
-		}
-		hasSourceModel := strings.TrimSpace(r.FormValue("sourceModelPath")) != ""
-		for _, header := range r.MultipartForm.File["sourceModel"] {
-			if header != nil && (strings.TrimSpace(header.Filename) != "" || header.Size > 0) {
-				hasSourceModel = true
-				break
-			}
-		}
-		if !hasSourceModel {
-			http.Error(w, "Add a source 3D model file before creating a retexture job.", http.StatusBadRequest)
-			return
-		}
-		for _, header := range r.MultipartForm.File["sourceModel"] {
-			if header != nil && strings.TrimSpace(header.Filename) != "" && !meshModelSourceExtAllowed(model, header.Filename) {
-				http.Error(w, "The selected retexture model does not support that source model file type.", http.StatusBadRequest)
-				return
-			}
-		}
-		if sourcePath := strings.TrimSpace(r.FormValue("sourceModelPath")); sourcePath != "" && !meshModelSourceExtAllowed(model, sourcePath) {
-			http.Error(w, "The selected retexture model does not support that source model file type.", http.StatusBadRequest)
-			return
-		}
-		if meshModelIsFalTrellis2Retexture(model) && !hasStyleImage {
-			http.Error(w, "Add a style reference image for Trellis 2 retexture.", http.StatusBadRequest)
-			return
-		}
-		if meshModelIsFalMeshyRetexture(model) && strings.TrimSpace(prompt) == "" && !hasStyleImage {
-			http.Error(w, "Add either a style prompt or a style reference image for Meshy retexture.", http.StatusBadRequest)
-			return
-		}
-	} else if !meshRequestHasAnyUserInput(r, prompt) {
-		http.Error(w, "Add a prompt or at least one image before creating a 3D mesh job.", http.StatusBadRequest)
+	if prompt == "" && !modelSupportsMeshPromptOnly(model) {
+		http.Error(w, "this model requires a prompt", http.StatusBadRequest)
 		return
 	}
-	job, err := a.createManualMeshJob(projectName, model, prompt, quality, outputFormat, meshSettings, r)
+	job, err := a.createManualMeshJob(projectName, model, prompt, quality, outputFormat, r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	writeJSON(w, http.StatusOK, meshJobCreateResponse{OK: true, Job: job})
-}
-
-func parseMeshSettingsFormValue(raw string) (map[string]any, error) {
-	trimmed := strings.TrimSpace(raw)
-	if trimmed == "" {
-		return nil, nil
-	}
-	var input map[string]any
-	if err := json.Unmarshal([]byte(trimmed), &input); err != nil {
-		return nil, errors.New("meshSettings must be valid JSON")
-	}
-	allowed := map[string]bool{
-		"fal_textured_mesh":                    true,
-		"fal_enable_pbr":                       true,
-		"fal_enable_geometry":                  true,
-		"fal_generate_type":                    true,
-		"fal_face_count":                       true,
-		"fal_texture_size":                     true,
-		"fal_resolution":                       true,
-		"fal_enable_original_uv":               true,
-		"fal_enable_safety_checker":            true,
-		"fal_seed":                             true,
-		"fal_tex_slat_guidance_strength":       true,
-		"fal_tex_slat_guidance_rescale":        true,
-		"fal_tex_slat_guidance_interval_start": true,
-		"fal_tex_slat_guidance_interval_end":   true,
-		"fal_tex_slat_sampling_steps":          true,
-		"fal_tex_slat_rescale_t":               true,
-		"tripo_quality":                        true,
-	}
-	out := map[string]any{}
-	for key, value := range input {
-		key = strings.TrimSpace(key)
-		if !allowed[key] {
-			continue
-		}
-		switch typed := value.(type) {
-		case bool:
-			if typed {
-				out[key] = typed
-			}
-		case string:
-			if trimmedValue := strings.TrimSpace(typed); trimmedValue != "" {
-				out[key] = trimmedValue
-			}
-		case float64:
-			out[key] = typed
-		case int:
-			out[key] = typed
-		case json.Number:
-			out[key] = typed.String()
-		}
-	}
-	if len(out) == 0 {
-		return nil, nil
-	}
-	return out, nil
 }
 
 func (a *App) initMeshJobRecord(projectName string, model ModelConfig, jobID, prompt, promptSource, quality, outputFormat string) (meshJobRecord, string, error) {
@@ -632,105 +462,6 @@ func saveMultipartMeshInput(r *http.Request, field, jobRoot, projectName, jobID,
 	return rel, &stagedMeshInput{Path: rel, Name: filepath.Base(rel), MIMEType: contentType, Data: data}, nil
 }
 
-func meshSourceModelExt(filename string, contentType string) string {
-	ext := strings.ToLower(filepath.Ext(strings.TrimSpace(filename)))
-	if ext != "" {
-		return ext
-	}
-	contentType = strings.ToLower(strings.TrimSpace(contentType))
-	switch contentType {
-	case "model/gltf-binary":
-		return ".glb"
-	case "model/gltf+json", "application/json":
-		return ".gltf"
-	case "model/obj", "text/plain":
-		return ".obj"
-	case "model/stl", "application/sla", "application/vnd.ms-pki.stl":
-		return ".stl"
-	case "application/octet-stream":
-		return ".glb"
-	}
-	return ".glb"
-}
-
-func meshModelContentTypeAllowed(contentType, filename string) bool {
-	contentType = strings.ToLower(strings.TrimSpace(contentType))
-	ext := strings.ToLower(filepath.Ext(strings.TrimSpace(filename)))
-	if strings.HasPrefix(contentType, "model/") {
-		return true
-	}
-	switch ext {
-	case ".glb", ".gltf", ".obj", ".fbx", ".stl", ".ply":
-		return true
-	}
-	switch contentType {
-	case "application/octet-stream", "application/json", "model/gltf-binary", "model/gltf+json", "text/plain", "application/sla", "application/vnd.ms-pki.stl":
-		return true
-	}
-	return false
-}
-
-func saveMultipartMeshSourceModel(r *http.Request, field, jobRoot, projectName, jobID, prefix string, allowed bool) (string, *stagedMeshInput, error) {
-	file, header, err := r.FormFile(field)
-	if err != nil {
-		if errors.Is(err, http.ErrMissingFile) || strings.Contains(strings.ToLower(err.Error()), "no such file") {
-			return "", nil, nil
-		}
-		return "", nil, err
-	}
-	defer file.Close()
-	if !allowed {
-		return "", nil, fmt.Errorf("%s is not supported by this model", field)
-	}
-	data, err := io.ReadAll(file)
-	if err != nil {
-		return "", nil, err
-	}
-	if len(data) == 0 {
-		return "", nil, nil
-	}
-	contentType := strings.TrimSpace(header.Header.Get("Content-Type"))
-	if contentType == "" {
-		contentType = http.DetectContentType(data)
-	}
-	if !meshModelContentTypeAllowed(contentType, header.Filename) {
-		return "", nil, fmt.Errorf("%s must be a supported 3D model file (.glb, .gltf, .obj, .fbx, .stl, .ply)", field)
-	}
-	ext := meshSourceModelExt(header.Filename, contentType)
-	rel := filepath.ToSlash(filepath.Join("projects", projectName, "mesh_jobs", jobID, "inputs", prefix+ext))
-	full := filepath.Join(jobRoot, "inputs", prefix+ext)
-	if err := os.WriteFile(full, data, 0o644); err != nil {
-		return "", nil, err
-	}
-	name := filepath.Base(rel)
-	if strings.TrimSpace(header.Filename) != "" {
-		name = sanitizeImportedFilename(header.Filename)
-	}
-	return rel, &stagedMeshInput{Path: rel, Name: name, MIMEType: contentType, Data: data}, nil
-}
-
-func stageExistingMeshSourceModel(workRoot, sourcePath, jobRoot, projectName, jobID, prefix string) (string, *stagedMeshInput, error) {
-	full, err := safeJoin(workRoot, sourcePath)
-	if err != nil {
-		return "", nil, err
-	}
-	data, err := os.ReadFile(full)
-	if err != nil {
-		return "", nil, err
-	}
-	contentType := http.DetectContentType(data)
-	if !meshModelContentTypeAllowed(contentType, full) {
-		contentType = "application/octet-stream"
-	}
-	ext := meshSourceModelExt(full, contentType)
-	rel := filepath.ToSlash(filepath.Join("projects", projectName, "mesh_jobs", jobID, "inputs", prefix+ext))
-	targetFull := filepath.Join(jobRoot, "inputs", prefix+ext)
-	if err := os.WriteFile(targetFull, data, 0o644); err != nil {
-		return "", nil, err
-	}
-	return rel, &stagedMeshInput{Path: rel, Name: filepath.Base(full), MIMEType: contentType, Data: data}, nil
-}
-
 func saveMultipartMeshReferenceInputs(r *http.Request, jobRoot, projectName, jobID string, allowed bool) ([]string, []stagedMeshInput, error) {
 	fields := []struct {
 		name   string
@@ -755,79 +486,6 @@ func saveMultipartMeshReferenceInputs(r *http.Request, jobRoot, projectName, job
 	return paths, inputs, nil
 }
 
-func saveMultipartMeshNamedInputs(r *http.Request, jobRoot, projectName, jobID string, allowed bool) (map[string]string, map[string]stagedMeshInput, error) {
-	fields := []struct {
-		formName string
-		key      string
-		prefix   string
-	}{
-		{formName: "topViewImage", key: "top", prefix: "top_view"},
-		{formName: "bottomViewImage", key: "bottom", prefix: "bottom_view"},
-		{formName: "leftFrontViewImage", key: "left_front", prefix: "left_front_view"},
-		{formName: "rightFrontViewImage", key: "right_front", prefix: "right_front_view"},
-	}
-	paths := map[string]string{}
-	inputs := map[string]stagedMeshInput{}
-	for _, field := range fields {
-		path, input, err := saveMultipartMeshInput(r, field.formName, jobRoot, projectName, jobID, field.prefix, allowed)
-		if err != nil {
-			return nil, nil, err
-		}
-		if input != nil {
-			paths[field.key] = path
-			inputs[field.key] = *input
-		}
-	}
-	if len(paths) == 0 {
-		paths = nil
-	}
-	if len(inputs) == 0 {
-		inputs = nil
-	}
-	return paths, inputs, nil
-}
-
-func meshModelRouteValue(model ModelConfig) string {
-	route := strings.ToLower(strings.TrimSpace(model.ModelName))
-	if route == "" {
-		route = strings.ToLower(strings.TrimSpace(model.APIPath))
-	}
-	return route
-}
-
-func meshModelIsFalMeshyRetexture(model ModelConfig) bool {
-	return strings.ToLower(strings.TrimSpace(model.Adapter)) == "fal_mesh" && strings.Contains(meshModelRouteValue(model), "meshy/v5/retexture")
-}
-
-func meshModelIsFalTrellis2Retexture(model ModelConfig) bool {
-	return strings.ToLower(strings.TrimSpace(model.Adapter)) == "fal_mesh" && strings.Contains(meshModelRouteValue(model), "trellis-2/retexture")
-}
-
-func meshModelIsFalRetexture(model ModelConfig) bool {
-	return meshModelIsFalMeshyRetexture(model) || meshModelIsFalTrellis2Retexture(model)
-}
-
-func meshModelSourceExtAllowed(model ModelConfig, filename string) bool {
-	ext := strings.ToLower(filepath.Ext(strings.TrimSpace(filename)))
-	if ext == "" {
-		return true
-	}
-	if meshModelIsFalTrellis2Retexture(model) {
-		switch ext {
-		case ".glb", ".obj", ".ply", ".stl":
-			return true
-		default:
-			return false
-		}
-	}
-	switch ext {
-	case ".glb", ".gltf", ".obj", ".fbx", ".stl", ".ply":
-		return true
-	default:
-		return false
-	}
-}
-
 func inferMeshMode(model ModelConfig, inputPath string, referencePaths []string) string {
 	switch normalizedMeshAdapterName(model.Adapter) {
 	case "meshy_mesh":
@@ -844,17 +502,6 @@ func inferMeshMode(model ModelConfig, inputPath string, referencePaths []string)
 		}
 		if len(referencePaths) > 0 {
 			return "multiview_staged"
-		}
-		return "image"
-	case "fal_mesh":
-		if meshModelIsFalRetexture(model) {
-			return "retexture"
-		}
-		if strings.TrimSpace(inputPath) == "" {
-			return "text"
-		}
-		if len(referencePaths) > 0 {
-			return "multi_view"
 		}
 		return "image"
 	default:
@@ -892,80 +539,31 @@ func meshJobCanRefine(record meshJobRecord) bool {
 	return mode == "" || mode == "preview" || strings.Contains(taskType, "preview")
 }
 
-func (a *App) createManualMeshJob(projectName string, model ModelConfig, prompt, quality, outputFormat string, meshSettings map[string]any, r *http.Request) (meshJobRecord, error) {
+func (a *App) createManualMeshJob(projectName string, model ModelConfig, prompt, quality, outputFormat string, r *http.Request) (meshJobRecord, error) {
 	jobID := buildMeshJobID()
 	record, jobRoot, err := a.initMeshJobRecord(projectName, model, jobID, prompt, "manual", quality, outputFormat)
 	if err != nil {
 		return meshJobRecord{}, err
 	}
-	inputPath, inputMeta, err := saveMultipartMeshInput(r, "inputImage", jobRoot, projectName, jobID, "input", true)
+	inputPath, inputMeta, err := saveMultipartMeshInput(r, "inputImage", jobRoot, projectName, jobID, "input", modelSupportsMeshImageInput(model))
 	if err != nil {
 		return meshJobRecord{}, err
 	}
-	sourceModelPath, sourceModelMeta, err := saveMultipartMeshSourceModel(r, "sourceModel", jobRoot, projectName, jobID, "source_model", meshModelIsFalRetexture(model))
-	if err != nil {
-		return meshJobRecord{}, err
-	}
-	if sourceModelMeta == nil {
-		existingSourcePath := strings.TrimSpace(r.FormValue("sourceModelPath"))
-		if existingSourcePath != "" {
-			sourceModelPath, sourceModelMeta, err = stageExistingMeshSourceModel(a.cfg.WorkRoot, existingSourcePath, jobRoot, projectName, jobID, "source_model")
-			if err != nil {
-				return meshJobRecord{}, err
-			}
-			record.SourceModelOriginPath = existingSourcePath
-		}
-	}
-	referencePaths, referenceInputs, err := saveMultipartMeshReferenceInputs(r, jobRoot, projectName, jobID, true)
-	if err != nil {
-		return meshJobRecord{}, err
-	}
-	namedPaths, namedInputs, err := saveMultipartMeshNamedInputs(r, jobRoot, projectName, jobID, true)
+	referencePaths, referenceInputs, err := saveMultipartMeshReferenceInputs(r, jobRoot, projectName, jobID, modelSupportsMeshMultiImage(model))
 	if err != nil {
 		return meshJobRecord{}, err
 	}
 	record.InputImagePath = inputPath
-	record.SourceModelPath = sourceModelPath
 	record.ReferenceImagePaths = append([]string(nil), referencePaths...)
-	if len(namedPaths) > 0 {
-		record.NamedImagePaths = namedPaths
-	}
-	if len(meshSettings) > 0 {
-		record.MeshSettings = meshSettings
-	}
-	record.MeshMode = inferMeshMode(model, record.InputImagePath, append(record.ReferenceImagePaths, namedImagePathValues(record.NamedImagePaths)...))
+	record.MeshMode = inferMeshMode(model, record.InputImagePath, record.ReferenceImagePaths)
 	if err := writeMeshJobRecord(meshJobMetaPath(jobRoot), record); err != nil {
 		return meshJobRecord{}, err
 	}
-	go a.executeMeshJobAsync(projectName, model, jobID, record, inputMeta, sourceModelMeta, referenceInputs, namedInputs, "mesh:"+jobID)
+	go a.executeMeshJobAsync(projectName, model, jobID, record, inputMeta, referenceInputs, "mesh:"+jobID)
 	return record, nil
 }
 
-func cloneMeshSettingsMap(src map[string]any) map[string]any {
-	if len(src) == 0 {
-		return nil
-	}
-	out := make(map[string]any, len(src))
-	for key, value := range src {
-		out[key] = value
-	}
-	return out
-}
-
-func namedImagePathValues(paths map[string]string) []string {
-	if len(paths) == 0 {
-		return nil
-	}
-	out := make([]string, 0, len(paths))
-	for _, value := range paths {
-		if strings.TrimSpace(value) != "" {
-			out = append(out, value)
-		}
-	}
-	return out
-}
-
-func (a *App) executeMeshJobAsync(projectName string, model ModelConfig, jobID string, record meshJobRecord, inputMeta *stagedMeshInput, sourceModelMeta *stagedMeshInput, referenceInputs []stagedMeshInput, namedInputs map[string]stagedMeshInput, cancelKey string) {
+func (a *App) executeMeshJobAsync(projectName string, model ModelConfig, jobID string, record meshJobRecord, inputMeta *stagedMeshInput, referenceInputs []stagedMeshInput, cancelKey string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	a.mu.Lock()
 	a.setActiveCancelLocked(cancelKey, projectName, jobID, cancel)
@@ -985,7 +583,6 @@ func (a *App) executeMeshJobAsync(projectName string, model ModelConfig, jobID s
 	meshReq := adapters.MeshRequest{
 		JobID:               jobID,
 		Prompt:              record.Prompt,
-		Settings:            cloneMeshSettingsMap(record.MeshSettings),
 		Quality:             record.Quality,
 		OutputFormat:        record.OutputFormat,
 		MeshMode:            record.MeshMode,
@@ -994,20 +591,9 @@ func (a *App) executeMeshJobAsync(projectName string, model ModelConfig, jobID s
 	if inputMeta != nil {
 		meshReq.InputImage = &adapters.MeshBinary{Name: inputMeta.Name, MIMEType: inputMeta.MIMEType, Data: inputMeta.Data}
 	}
-	if sourceModelMeta != nil {
-		meshReq.SourceModel = &adapters.MeshBinary{Name: sourceModelMeta.Name, MIMEType: sourceModelMeta.MIMEType, Data: sourceModelMeta.Data}
-	}
 	for _, ref := range referenceInputs {
 		if len(ref.Data) > 0 {
 			meshReq.ReferenceImages = append(meshReq.ReferenceImages, adapters.MeshBinary{Name: ref.Name, MIMEType: ref.MIMEType, Data: ref.Data})
-		}
-	}
-	if len(namedInputs) > 0 {
-		meshReq.NamedImages = map[string]adapters.MeshBinary{}
-		for key, ref := range namedInputs {
-			if len(ref.Data) > 0 {
-				meshReq.NamedImages[key] = adapters.MeshBinary{Name: ref.Name, MIMEType: ref.MIMEType, Data: ref.Data}
-			}
 		}
 	}
 	result, err := adapters.ExecuteMesh(ctx, toAdapterModelConfig(model), meshReq)
@@ -1052,8 +638,7 @@ func (a *App) executeMeshJobAsync(projectName string, model ModelConfig, jobID s
 
 func (a *App) persistMeshArtifacts(projectName, jobID string, record *meshJobRecord, result adapters.MeshResult) error {
 	artifactsDir := filepath.ToSlash(filepath.Join("projects", projectName, "mesh_jobs", jobID, "artifacts"))
-	artifacts := normalizeLinkedMeshArtifactNames(result.Artifacts)
-	for idx, artifact := range artifacts {
+	for idx, artifact := range result.Artifacts {
 		name := sanitizeImportedFilename(artifact.Name)
 		if name == "" {
 			if artifact.Kind == "preview" {
@@ -1114,83 +699,6 @@ func (a *App) persistMeshArtifacts(projectName, jobID string, record *meshJobRec
 		record.Artifacts = append(record.Artifacts, meshArtifactRecord{Name: name, Path: rel, Kind: "preview", MIME: result.PreviewMIMEType, BlobURL: buildBlobURL(rel)})
 	}
 	return nil
-}
-
-func normalizeLinkedMeshArtifactNames(artifacts []adapters.MeshArtifact) []adapters.MeshArtifact {
-	out := append([]adapters.MeshArtifact(nil), artifacts...)
-	mtlRef := ""
-	textureRef := ""
-	for _, artifact := range out {
-		name := strings.ToLower(strings.TrimSpace(artifact.Name))
-		switch filepath.Ext(name) {
-		case ".obj":
-			if ref := firstOBJMaterialLibraryName(string(artifact.Data)); ref != "" {
-				mtlRef = ref
-			}
-		case ".mtl":
-			if ref := firstMTLTextureName(string(artifact.Data)); ref != "" {
-				textureRef = ref
-			}
-		}
-	}
-	if mtlRef != "" {
-		applyLinkedMeshArtifactName(out, "material", ".mtl", mtlRef)
-	}
-	if textureRef != "" {
-		applyLinkedMeshArtifactName(out, "texture", "", textureRef)
-	}
-	return out
-}
-
-func applyLinkedMeshArtifactName(artifacts []adapters.MeshArtifact, kind, ext, targetName string) {
-	cleanTarget := sanitizeImportedFilename(targetName)
-	if cleanTarget == "" {
-		return
-	}
-	matches := []int{}
-	for idx, artifact := range artifacts {
-		if kind != "" && strings.EqualFold(strings.TrimSpace(artifact.Kind), kind) {
-			matches = append(matches, idx)
-			continue
-		}
-		if ext != "" && strings.EqualFold(filepath.Ext(artifact.Name), ext) {
-			matches = append(matches, idx)
-		}
-	}
-	if len(matches) == 1 {
-		artifacts[matches[0]].Name = cleanTarget
-	}
-}
-
-func firstOBJMaterialLibraryName(body string) string {
-	for _, line := range strings.Split(body, "\n") {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(strings.ToLower(trimmed), "mtllib ") {
-			return meshLinkedFilenameFromDirective(strings.TrimSpace(trimmed[len("mtllib "):]))
-		}
-	}
-	return ""
-}
-
-func firstMTLTextureName(body string) string {
-	for _, line := range strings.Split(body, "\n") {
-		trimmed := strings.TrimSpace(line)
-		lower := strings.ToLower(trimmed)
-		if strings.HasPrefix(lower, "map_kd ") || strings.HasPrefix(lower, "map_ks ") || strings.HasPrefix(lower, "map_bump ") || strings.HasPrefix(lower, "bump ") {
-			return meshLinkedFilenameFromDirective(strings.TrimSpace(trimmed[strings.Index(trimmed, " ")+1:]))
-		}
-	}
-	return ""
-}
-
-func meshLinkedFilenameFromDirective(value string) string {
-	parts := strings.Fields(strings.TrimSpace(value))
-	if len(parts) == 0 {
-		return ""
-	}
-	// MTL map directives can include option flags before the filename. The
-	// filename is conventionally the final token.
-	return filepath.Base(parts[len(parts)-1])
 }
 
 func extForMIMEOrDefault(contentType, fallback string) string {

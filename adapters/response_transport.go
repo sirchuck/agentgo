@@ -235,14 +235,9 @@ func decodeResponseFileBase64(value, fallbackMIME string) ([]byte, string, error
 		}
 		clean = payload
 	}
-	compact := strings.Join(strings.Fields(clean), "")
-	decoded, err := base64.StdEncoding.DecodeString(compact)
+	decoded, err := base64.StdEncoding.DecodeString(clean)
 	if err != nil {
-		if fallback, fallbackErr := base64.RawStdEncoding.DecodeString(compact); fallbackErr == nil {
-			decoded = fallback
-		} else {
-			return nil, "", fmt.Errorf("response file base64 decode failed: %w", err)
-		}
+		return nil, "", fmt.Errorf("response file base64 decode failed: %w", err)
 	}
 	return decoded, resolvedMIME, nil
 }

@@ -2,9 +2,7 @@ package main
 
 import (
 	"agentgo/adapters"
-	"bytes"
 	"context"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,51 +17,45 @@ import (
 )
 
 type videoJobRecord struct {
-	JobID                 string            `json:"jobId"`
-	ProjectName           string            `json:"projectName"`
-	ModelID               string            `json:"modelId"`
-	ModelLabel            string            `json:"modelLabel"`
-	Provider              string            `json:"provider"`
-	Adapter               string            `json:"adapter"`
-	ModelName             string            `json:"modelName"`
-	Status                string            `json:"status"`
-	ProviderJobID         string            `json:"providerJobId,omitempty"`
-	ProviderOperationName string            `json:"providerOperationName,omitempty"`
-	RemoteStatus          string            `json:"remoteStatus,omitempty"`
-	PollCount             int               `json:"pollCount,omitempty"`
-	LastPollAt            string            `json:"lastPollAt,omitempty"`
-	ProviderDiagnostics   map[string]string `json:"providerDiagnostics,omitempty"`
-	Prompt                string            `json:"prompt"`
-	PromptSource          string            `json:"promptSource,omitempty"`
-	Duration              string            `json:"duration,omitempty"`
-	AspectRatio           string            `json:"aspectRatio,omitempty"`
-	Resolution            string            `json:"resolution,omitempty"`
-	OutputFormat          string            `json:"outputFormat,omitempty"`
-	FPS                   string            `json:"fps,omitempty"`
-	Quality               string            `json:"quality,omitempty"`
-	StartFramePath        string            `json:"startFramePath,omitempty"`
-	EndFramePath          string            `json:"endFramePath,omitempty"`
-	ReferenceImagePaths   []string          `json:"referenceImagePaths,omitempty"`
-	ArtifactVideoPath     string            `json:"artifactVideoPath,omitempty"`
-	ProjectworkVideoPath  string            `json:"projectworkVideoPath,omitempty"`
-	ThumbnailPath         string            `json:"thumbnailPath,omitempty"`
-	MetadataPath          string            `json:"metadataPath,omitempty"`
-	SourceContextFiles    []string          `json:"sourceContextFiles,omitempty"`
-	PromotionState        string            `json:"promotionState,omitempty"`
-	Error                 string            `json:"error,omitempty"`
-	CreatedAt             string            `json:"createdAt"`
-	UpdatedAt             string            `json:"updatedAt"`
-	CompletedAt           string            `json:"completedAt,omitempty"`
-	PromotedAt            string            `json:"promotedAt,omitempty"`
+	JobID                string   `json:"jobId"`
+	ProjectName          string   `json:"projectName"`
+	ModelID              string   `json:"modelId"`
+	ModelLabel           string   `json:"modelLabel"`
+	Provider             string   `json:"provider"`
+	Adapter              string   `json:"adapter"`
+	ModelName            string   `json:"modelName"`
+	Status               string   `json:"status"`
+	ProviderJobID        string   `json:"providerJobId,omitempty"`
+	RemoteStatus         string   `json:"remoteStatus,omitempty"`
+	Prompt               string   `json:"prompt"`
+	PromptSource         string   `json:"promptSource,omitempty"`
+	Duration             string   `json:"duration,omitempty"`
+	AspectRatio          string   `json:"aspectRatio,omitempty"`
+	Resolution           string   `json:"resolution,omitempty"`
+	OutputFormat         string   `json:"outputFormat,omitempty"`
+	FPS                  string   `json:"fps,omitempty"`
+	Quality              string   `json:"quality,omitempty"`
+	StartFramePath       string   `json:"startFramePath,omitempty"`
+	EndFramePath         string   `json:"endFramePath,omitempty"`
+	ArtifactVideoPath    string   `json:"artifactVideoPath,omitempty"`
+	ProjectworkVideoPath string   `json:"projectworkVideoPath,omitempty"`
+	ThumbnailPath        string   `json:"thumbnailPath,omitempty"`
+	MetadataPath         string   `json:"metadataPath,omitempty"`
+	SourceContextFiles   []string `json:"sourceContextFiles,omitempty"`
+	PromotionState       string   `json:"promotionState,omitempty"`
+	Error                string   `json:"error,omitempty"`
+	CreatedAt            string   `json:"createdAt"`
+	UpdatedAt            string   `json:"updatedAt"`
+	CompletedAt          string   `json:"completedAt,omitempty"`
+	PromotedAt           string   `json:"promotedAt,omitempty"`
 }
 
 type videoJobResponse struct {
 	videoJobRecord
-	ArtifactBlobURL        string   `json:"artifactBlobUrl,omitempty"`
-	ProjectworkBlobURL     string   `json:"projectworkBlobUrl,omitempty"`
-	StartFrameBlobURL      string   `json:"startFrameBlobUrl,omitempty"`
-	EndFrameBlobURL        string   `json:"endFrameBlobUrl,omitempty"`
-	ReferenceImageBlobURLs []string `json:"referenceImageBlobUrls,omitempty"`
+	ArtifactBlobURL    string `json:"artifactBlobUrl,omitempty"`
+	ProjectworkBlobURL string `json:"projectworkBlobUrl,omitempty"`
+	StartFrameBlobURL  string `json:"startFrameBlobUrl,omitempty"`
+	EndFrameBlobURL    string `json:"endFrameBlobUrl,omitempty"`
 }
 
 type videoJobCreateResponse struct {
@@ -78,208 +70,10 @@ type stagedVideoInput struct {
 	Data     []byte
 }
 
-const (
-	defaultVideoJobDuration       = "8"
-	defaultVideoJobAspect         = "16:9"
-	defaultVideoJobResolution     = "720p"
-	maxVideoStatusDiagnosticBytes = 2000
-)
-
-type videoOutputFileInfo struct {
-	OriginalFilename    string
-	OriginalExtension   string
-	OriginalMIME        string
-	DownloadContentType string
-	DetectedContainer   string
-	DetectedBrands      []string
-	FinalFilename       string
-	FinalExtension      string
-	MP4Compatible       bool
-	Decision            string
-}
-
-func resolvedVideoJobSettings(model ModelConfig, duration, aspectRatio, resolution string) (string, string, string) {
-	return firstNonEmpty(duration, model.VideoDuration, defaultVideoJobDuration),
-		firstNonEmpty(aspectRatio, model.VideoAspectRatio, defaultVideoJobAspect),
-		firstNonEmpty(resolution, model.VideoResolution, defaultVideoJobResolution)
-}
-
-func (a *App) persistVideoModelSettings(modelID, duration, aspectRatio, resolution string) (ModelConfig, error) {
-	cleanID := strings.TrimSpace(modelID)
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	for i := range a.cfg.Models {
-		if modelIDString(a.cfg.Models[i].ID) != cleanID {
-			continue
-		}
-		changed := false
-		if strings.TrimSpace(duration) != "" && strings.TrimSpace(a.cfg.Models[i].VideoDuration) != strings.TrimSpace(duration) {
-			a.cfg.Models[i].VideoDuration = strings.TrimSpace(duration)
-			changed = true
-		}
-		if strings.TrimSpace(aspectRatio) != "" && strings.TrimSpace(a.cfg.Models[i].VideoAspectRatio) != strings.TrimSpace(aspectRatio) {
-			a.cfg.Models[i].VideoAspectRatio = strings.TrimSpace(aspectRatio)
-			changed = true
-		}
-		if strings.TrimSpace(resolution) != "" && strings.TrimSpace(a.cfg.Models[i].VideoResolution) != strings.TrimSpace(resolution) {
-			a.cfg.Models[i].VideoResolution = strings.TrimSpace(resolution)
-			changed = true
-		}
-		if changed {
-			a.cfg.Models[i].UpdatedAt = time.Now().UTC().Format(time.RFC3339)
-			if err := a.persistModelsLocked(); err != nil {
-				return ModelConfig{}, err
-			}
-		}
-		return a.cfg.Models[i], nil
-	}
-	return ModelConfig{}, errors.New("unknown model")
-}
-
-func normalizeVideoMediaType(contentType string) string {
-	mediaType := strings.ToLower(strings.TrimSpace(contentType))
-	if parsed, _, err := mime.ParseMediaType(mediaType); err == nil && strings.TrimSpace(parsed) != "" {
-		mediaType = strings.ToLower(strings.TrimSpace(parsed))
-	}
-	return mediaType
-}
-
-func inspectMP4FamilyContainer(data []byte) (bool, string, []string) {
-	if len(data) < 12 {
-		return false, "", nil
-	}
-	limit := len(data)
-	if limit > 4096 {
-		limit = 4096
-	}
-	idx := bytes.Index(data[:limit], []byte("ftyp"))
-	if idx < 4 {
-		return false, "", nil
-	}
-	boxStart := idx - 4
-	boxSize := int(binary.BigEndian.Uint32(data[boxStart:idx]))
-	boxEnd := boxStart + boxSize
-	if boxSize < 16 || boxEnd > limit {
-		boxEnd = limit
-	}
-	brands := []string{}
-	appendBrand := func(raw []byte) {
-		if len(raw) != 4 {
-			return
-		}
-		brand := string(raw)
-		if strings.TrimSpace(brand) == "" {
-			return
-		}
-		for _, existing := range brands {
-			if existing == brand {
-				return
-			}
-		}
-		brands = append(brands, brand)
-	}
-	if idx+8 <= boxEnd {
-		appendBrand(data[idx+4 : idx+8])
-	}
-	for pos := idx + 12; pos+4 <= boxEnd; pos += 4 {
-		appendBrand(data[pos : pos+4])
-	}
-	return true, "ISO BMFF / ftyp", brands
-}
-
-func mp4CompatibleBrand(brands []string) bool {
-	known := map[string]bool{
-		"isom": true, "iso2": true, "iso3": true, "iso4": true, "iso5": true, "iso6": true,
-		"mp41": true, "mp42": true, "avc1": true, "avc3": true, "hvc1": true, "hev1": true,
-		"dash": true, "M4V ": true, "M4A ": true, "f4v ": true, "F4V ": true, "f4p ": true,
-	}
-	for _, brand := range brands {
-		if known[brand] {
-			return true
-		}
-	}
-	return false
-}
-
-func replaceVideoExtension(name, ext string) string {
-	clean := strings.TrimSpace(name)
-	if clean == "" {
-		clean = "video"
-	}
-	current := filepath.Ext(clean)
-	if current == "" {
-		return clean + ext
-	}
-	return strings.TrimSuffix(clean, current) + ext
-}
-
-func resolveVideoOutputFilename(result adapters.VideoResult, fallbackBase string) (string, videoOutputFileInfo) {
-	info := videoOutputFileInfo{
-		OriginalFilename:    sanitizeImportedFilename(result.VideoFilename),
-		OriginalMIME:        strings.TrimSpace(result.VideoMIMEType),
-		DownloadContentType: strings.TrimSpace(result.VideoDownloadContentType),
-	}
-	if info.OriginalFilename == "" || info.OriginalFilename == "downloaded_file" {
-		info.OriginalFilename = strings.TrimSpace(fallbackBase) + extForMIMEOrDefault(firstNonEmpty(info.OriginalMIME, info.DownloadContentType), ".mp4")
-	}
-	if info.OriginalFilename == "" || info.OriginalFilename == "downloaded_file" {
-		info.OriginalFilename = "video.mp4"
-	}
-	info.OriginalExtension = strings.ToLower(filepath.Ext(info.OriginalFilename))
-	mediaType := normalizeVideoMediaType(firstNonEmpty(info.OriginalMIME, info.DownloadContentType))
-	hasFTYP, container, brands := inspectMP4FamilyContainer(result.VideoData)
-	info.DetectedContainer = container
-	info.DetectedBrands = brands
-	switch {
-	case mediaType == "video/mp4" || mediaType == "application/mp4":
-		info.MP4Compatible = true
-		info.Decision = "content type is MP4"
-	case info.OriginalExtension == ".mp4":
-		info.MP4Compatible = true
-		info.Decision = "filename extension is MP4"
-	case info.OriginalExtension == ".f4v" && hasFTYP:
-		info.MP4Compatible = true
-		info.Decision = "F4V file uses MP4-family ftyp container"
-	case hasFTYP && mp4CompatibleBrand(brands):
-		info.MP4Compatible = true
-		info.Decision = "detected MP4-compatible ftyp brands"
-	default:
-		info.Decision = "preserved original extension"
-	}
-	info.FinalFilename = info.OriginalFilename
-	if info.MP4Compatible {
-		info.FinalFilename = replaceVideoExtension(info.OriginalFilename, ".mp4")
-	}
-	info.FinalFilename = sanitizeImportedFilename(info.FinalFilename)
-	if info.FinalFilename == "" {
-		info.FinalFilename = "video.mp4"
-	}
-	info.FinalExtension = strings.ToLower(filepath.Ext(info.FinalFilename))
-	return info.FinalFilename, info
-}
-
-func applyVideoFileDiagnostics(record *videoJobRecord, result adapters.VideoResult, info videoOutputFileInfo) {
-	if record == nil {
-		return
-	}
-	setVideoDiagnostic(record, "video_original_filename", info.OriginalFilename)
-	setVideoDiagnostic(record, "video_original_extension", info.OriginalExtension)
-	setVideoDiagnostic(record, "video_result_mime_type", info.OriginalMIME)
-	setVideoDiagnostic(record, "video_download_content_type", info.DownloadContentType)
-	setVideoDiagnostic(record, "video_source_uri", result.VideoSourceURI)
-	setVideoDiagnostic(record, "video_detected_container", info.DetectedContainer)
-	if len(info.DetectedBrands) > 0 {
-		setVideoDiagnostic(record, "video_detected_brands", strings.Join(info.DetectedBrands, ", "))
-	}
-	setVideoDiagnostic(record, "video_mp4_normalization", fmt.Sprintf("mp4_compatible=%t; decision=%s; final_filename=%s; final_extension=%s", info.MP4Compatible, info.Decision, info.FinalFilename, info.FinalExtension))
-}
-
 func normalizedVideoAdapterName(value string) string {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "veo_video":
 		return "veo_video"
-	case "vertex_veo_video":
-		return "vertex_veo_video"
 	case "kling_video":
 		return "kling_video"
 	case "sora_video":
@@ -310,7 +104,7 @@ func modelSupportsVideoStartFrame(model ModelConfig) bool {
 		return model.VideoStartFrame
 	}
 	switch normalizedVideoAdapterName(model.Adapter) {
-	case "veo_video", "vertex_veo_video", "kling_video", "sora_video", "comfyui_ltx_video":
+	case "veo_video", "kling_video", "sora_video", "comfyui_ltx_video":
 		return true
 	default:
 		return false
@@ -322,31 +116,11 @@ func modelSupportsVideoEndFrame(model ModelConfig) bool {
 		return model.VideoEndFrame
 	}
 	switch normalizedVideoAdapterName(model.Adapter) {
-	case "veo_video", "vertex_veo_video", "kling_video":
+	case "veo_video", "kling_video":
 		return true
 	default:
 		return false
 	}
-}
-
-func modelSupportsVideoIngredients(model ModelConfig) bool {
-	if model.VideoGeneration {
-		return model.VideoIngredients
-	}
-	switch normalizedVideoAdapterName(model.Adapter) {
-	case "veo_video", "vertex_veo_video":
-		return isKnownGoogleVeoIngredientsModel(model.ModelName)
-	default:
-		return false
-	}
-}
-
-func isKnownGoogleVeoIngredientsModel(modelName string) bool {
-	clean := strings.ToLower(strings.TrimSpace(modelName))
-	if clean == "" || strings.Contains(clean, "lite") {
-		return false
-	}
-	return strings.Contains(clean, "veo-3.1")
 }
 
 func waveIncludesVideoGeneration(builders []ModelConfig) bool {
@@ -408,113 +182,6 @@ func readVideoJobRecord(path string) (videoJobRecord, error) {
 	return record, nil
 }
 
-func videoDiagnosticText(raw string) string {
-	clean := strings.TrimSpace(raw)
-	if clean == "" {
-		return ""
-	}
-	const maxDiagnosticChars = 200000
-	if len(clean) > maxDiagnosticChars {
-		return clean[:maxDiagnosticChars] + "\n...[truncated by AgentGO]"
-	}
-	return clean
-}
-
-func setVideoDiagnostic(record *videoJobRecord, key, value string) {
-	if record == nil {
-		return
-	}
-	value = videoDiagnosticText(value)
-	if value == "" {
-		return
-	}
-	if record.ProviderDiagnostics == nil {
-		record.ProviderDiagnostics = map[string]string{}
-	}
-	record.ProviderDiagnostics[key] = value
-}
-
-func applyVideoProgressToRecord(record *videoJobRecord, progress adapters.VideoProgress) {
-	if record == nil {
-		return
-	}
-	if strings.TrimSpace(progress.Status) != "" {
-		record.Status = strings.TrimSpace(progress.Status)
-	}
-	if strings.TrimSpace(progress.ProviderJobID) != "" {
-		record.ProviderJobID = strings.TrimSpace(progress.ProviderJobID)
-		record.ProviderOperationName = strings.TrimSpace(progress.ProviderJobID)
-	}
-	if strings.TrimSpace(progress.RemoteStatus) != "" {
-		record.RemoteStatus = strings.TrimSpace(progress.RemoteStatus)
-	}
-	if progress.PollCount > 0 {
-		record.PollCount = progress.PollCount
-	}
-	if strings.TrimSpace(progress.LastPollAt) != "" {
-		record.LastPollAt = strings.TrimSpace(progress.LastPollAt)
-	}
-	setVideoDiagnostic(record, "submit_request_url", progress.SubmitRequestURL)
-	setVideoDiagnostic(record, "submit_request_body", progress.SubmitRequestBody)
-	setVideoDiagnostic(record, "submit_response", progress.SubmitRawBody)
-	setVideoDiagnostic(record, "poll_request_url", progress.PollRequestURL)
-	setVideoDiagnostic(record, "poll_request_body", progress.PollRequestBody)
-	setVideoDiagnostic(record, "last_poll_response", progress.LastPollRawBody)
-	setVideoDiagnostic(record, "provider_error", progress.Error)
-}
-
-func applyVideoResultToRecord(record *videoJobRecord, result adapters.VideoResult) {
-	if record == nil {
-		return
-	}
-	if strings.TrimSpace(result.ProviderJobID) != "" {
-		record.ProviderJobID = strings.TrimSpace(result.ProviderJobID)
-		record.ProviderOperationName = strings.TrimSpace(result.ProviderJobID)
-	}
-	if strings.TrimSpace(result.RemoteStatus) != "" {
-		record.RemoteStatus = strings.TrimSpace(result.RemoteStatus)
-	}
-	if result.PollCount > 0 {
-		record.PollCount = result.PollCount
-	}
-	if strings.TrimSpace(result.LastPollAt) != "" {
-		record.LastPollAt = strings.TrimSpace(result.LastPollAt)
-	}
-	setVideoDiagnostic(record, "submit_request_url", result.SubmitRequestURL)
-	setVideoDiagnostic(record, "submit_request_body", result.SubmitRequestBody)
-	setVideoDiagnostic(record, "submit_response", result.SubmitRawBody)
-	setVideoDiagnostic(record, "poll_request_url", result.PollRequestURL)
-	setVideoDiagnostic(record, "poll_request_body", result.PollRequestBody)
-	setVideoDiagnostic(record, "last_poll_response", result.LastPollRawBody)
-	setVideoDiagnostic(record, "raw_response", result.RawBody)
-	setVideoDiagnostic(record, "provider_error", result.Error)
-}
-
-func compactVideoProviderDiagnostics(values map[string]string) map[string]string {
-	if len(values) == 0 {
-		return nil
-	}
-	compact := map[string]string{}
-	for key, value := range values {
-		cleanKey := strings.TrimSpace(key)
-		if cleanKey == "" {
-			continue
-		}
-		cleanValue := strings.TrimSpace(value)
-		if cleanValue == "" {
-			continue
-		}
-		if len(cleanValue) > maxVideoStatusDiagnosticBytes {
-			cleanValue = cleanValue[:maxVideoStatusDiagnosticBytes] + "\n... [diagnostic truncated in status view]"
-		}
-		compact[cleanKey] = cleanValue
-	}
-	if len(compact) == 0 {
-		return nil
-	}
-	return compact
-}
-
 func (a *App) listVideoJobRecords(projectName, modelID string) ([]videoJobRecord, error) {
 	root, err := a.videoJobsRoot(projectName)
 	if err != nil {
@@ -547,7 +214,6 @@ func (a *App) listVideoJobRecords(projectName, modelID string) ([]videoJobRecord
 }
 
 func (a *App) videoJobResponseForRecord(record videoJobRecord) videoJobResponse {
-	record.ProviderDiagnostics = compactVideoProviderDiagnostics(record.ProviderDiagnostics)
 	resp := videoJobResponse{videoJobRecord: record}
 	if record.ArtifactVideoPath != "" {
 		resp.ArtifactBlobURL = buildBlobURL(record.ArtifactVideoPath)
@@ -561,23 +227,7 @@ func (a *App) videoJobResponseForRecord(record videoJobRecord) videoJobResponse 
 	if record.EndFramePath != "" {
 		resp.EndFrameBlobURL = buildBlobURL(record.EndFramePath)
 	}
-	for _, path := range record.ReferenceImagePaths {
-		if strings.TrimSpace(path) != "" {
-			resp.ReferenceImageBlobURLs = append(resp.ReferenceImageBlobURLs, buildBlobURL(path))
-		}
-	}
 	return resp
-}
-
-func writeJobProviderResponse(jobRoot, rawBody string) error {
-	if strings.TrimSpace(rawBody) == "" {
-		return nil
-	}
-	metaDir := filepath.Join(jobRoot, "meta")
-	if err := os.MkdirAll(metaDir, 0o755); err != nil {
-		return err
-	}
-	return os.WriteFile(filepath.Join(metaDir, "provider_response.json"), []byte(rawBody), 0o644)
 }
 
 func (a *App) handleVideoJobs(w http.ResponseWriter, r *http.Request) {
@@ -601,51 +251,9 @@ func (a *App) handleVideoJobs(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"jobs": resp})
 	case http.MethodPost:
 		a.handleCreateVideoJob(w, r)
-	case http.MethodDelete:
-		a.handleDeleteVideoJob(w, r)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
-}
-
-func (a *App) handleDeleteVideoJob(w http.ResponseWriter, r *http.Request) {
-	projectName, err := a.requireActiveProject()
-	if err != nil {
-		http.Error(w, "Select an active project first.", http.StatusBadRequest)
-		return
-	}
-	jobID := strings.TrimSpace(r.URL.Query().Get("jobId"))
-	if jobID == "" {
-		var req struct {
-			JobID string `json:"jobId"`
-		}
-		_ = json.NewDecoder(r.Body).Decode(&req)
-		jobID = strings.TrimSpace(req.JobID)
-	}
-	if jobID == "" {
-		http.Error(w, "jobId is required", http.StatusBadRequest)
-		return
-	}
-	jobRoot, err := a.videoJobRoot(projectName, jobID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	record, err := readVideoJobRecord(videoJobMetaPath(jobRoot))
-	if err != nil {
-		http.Error(w, "video job not found", http.StatusNotFound)
-		return
-	}
-	status := strings.ToLower(strings.TrimSpace(record.Status))
-	if status == "accepted" || status == "running" || status == "queued" || status == "submitted" || status == "processing" {
-		http.Error(w, "Stop or wait for this video job before deleting its local record.", http.StatusConflict)
-		return
-	}
-	if err := os.RemoveAll(jobRoot); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
 func (a *App) handleCreateVideoJob(w http.ResponseWriter, r *http.Request) {
@@ -683,12 +291,6 @@ func (a *App) handleCreateVideoJob(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "this model requires a prompt", http.StatusBadRequest)
 		return
 	}
-	duration, aspectRatio, resolution = resolvedVideoJobSettings(model, duration, aspectRatio, resolution)
-	model, err = a.persistVideoModelSettings(modelID, duration, aspectRatio, resolution)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 	job, err := a.createManualVideoJob(projectName, model, prompt, duration, aspectRatio, resolution, outputFormat, fps, quality, r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -711,37 +313,14 @@ func (a *App) createManualVideoJob(projectName string, model ModelConfig, prompt
 	if err != nil {
 		return videoJobRecord{}, err
 	}
-	referencePaths, referenceMetas, err := saveMultipartVideoReferenceInputs(r, jobRoot, projectName, jobID, modelSupportsVideoIngredients(model))
-	if err != nil {
-		return videoJobRecord{}, err
-	}
 	record.StartFramePath = startPath
 	record.EndFramePath = endPath
-	record.ReferenceImagePaths = referencePaths
 	record.MetadataPath = filepath.ToSlash(filepath.Join("projects", projectName, "video_jobs", jobID, "meta", "job.json"))
 	if err := writeVideoJobRecord(videoJobMetaPath(jobRoot), record); err != nil {
 		return videoJobRecord{}, err
 	}
-	go a.executeVideoJobAsync(projectName, model, jobID, record, startMeta, endMeta, referenceMetas, "video:"+jobID)
+	go a.executeVideoJobAsync(projectName, model, jobID, record, startMeta, endMeta, "video:"+jobID)
 	return record, nil
-}
-
-func saveMultipartVideoReferenceInputs(r *http.Request, jobRoot, projectName, jobID string, allowed bool) ([]string, []stagedVideoInput, error) {
-	paths := []string{}
-	metas := []stagedVideoInput{}
-	for i := 0; i < 3; i++ {
-		field := fmt.Sprintf("referenceImage%d", i)
-		path, meta, err := saveMultipartVideoInput(r, field, jobRoot, projectName, jobID, fmt.Sprintf("reference_%d", i+1), allowed)
-		if err != nil {
-			return nil, nil, err
-		}
-		if meta == nil {
-			continue
-		}
-		paths = append(paths, path)
-		metas = append(metas, *meta)
-	}
-	return paths, metas, nil
 }
 
 func saveMultipartVideoInput(r *http.Request, field, jobRoot, projectName, jobID, prefix string, allowed bool) (string, *stagedVideoInput, error) {
@@ -827,7 +406,7 @@ func (a *App) initVideoJobRecord(projectName string, model ModelConfig, jobID, p
 	return record, jobRoot, nil
 }
 
-func (a *App) executeVideoJobAsync(projectName string, model ModelConfig, jobID string, record videoJobRecord, startMeta, endMeta *stagedVideoInput, referenceMetas []stagedVideoInput, cancelKey string) {
+func (a *App) executeVideoJobAsync(projectName string, model ModelConfig, jobID string, record videoJobRecord, startMeta, endMeta *stagedVideoInput, cancelKey string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	a.mu.Lock()
 	a.setActiveCancelLocked(cancelKey, projectName, jobID, cancel)
@@ -851,17 +430,9 @@ func (a *App) executeVideoJobAsync(projectName string, model ModelConfig, jobID 
 	if endMeta != nil {
 		req.EndFrame = &adapters.VideoBinary{Name: endMeta.Name, MIMEType: endMeta.MIMEType, Data: endMeta.Data}
 	}
-	for _, meta := range referenceMetas {
-		if len(meta.Data) > 0 {
-			req.ReferenceImages = append(req.ReferenceImages, adapters.VideoBinary{Name: meta.Name, MIMEType: meta.MIMEType, Data: meta.Data})
-		}
-	}
-	req.PollUpdate = func(progress adapters.VideoProgress) {
-		applyVideoProgressToRecord(&record, progress)
-		_ = writeVideoJobRecord(videoJobMetaPath(jobRoot), record)
-	}
 	result, err := adapters.ExecuteVideo(ctx, toAdapterModelConfig(model), req)
-	applyVideoResultToRecord(&record, result)
+	record.ProviderJobID = result.ProviderJobID
+	record.RemoteStatus = result.RemoteStatus
 	if err != nil {
 		if ctx.Err() != nil {
 			record.Status = "stopped"
@@ -875,8 +446,10 @@ func (a *App) executeVideoJobAsync(projectName string, model ModelConfig, jobID 
 		a.logf(modelIDString(model.ID), "warn", "Video job %s ended with status=%s error=%s", jobID, record.Status, record.Error)
 		return
 	}
-	artifactName, fileInfo := resolveVideoOutputFilename(result, "video")
-	applyVideoFileDiagnostics(&record, result, fileInfo)
+	artifactName := sanitizeImportedFilename(result.VideoFilename)
+	if artifactName == "" || artifactName == "downloaded_file" {
+		artifactName = "video" + extForMIMEOrDefault(result.VideoMIMEType, ".mp4")
+	}
 	artifactPath := filepath.ToSlash(filepath.Join("projects", projectName, "video_jobs", jobID, "artifacts", artifactName))
 	artifactFull, err := safeJoin(a.cfg.WorkRoot, artifactPath)
 	if err != nil {
@@ -903,17 +476,15 @@ func (a *App) executeVideoJobAsync(projectName string, model ModelConfig, jobID 
 	record.Status = "completed"
 	record.ArtifactVideoPath = artifactPath
 	record.CompletedAt = time.Now().UTC().Format(time.RFC3339)
-	record.PromotionState = "job_saved"
-	record.PromotedAt = record.CompletedAt
 	record.Error = ""
-	if err := writeJobProviderResponse(jobRoot, result.RawBody); err != nil {
+	if err := a.stageVideoArtifactsToProjectwork(model, projectName, &record, result); err != nil {
 		record.Status = "failed"
 		record.Error = err.Error()
 		_ = writeVideoJobRecord(videoJobMetaPath(jobRoot), record)
 		return
 	}
 	_ = writeVideoJobRecord(videoJobMetaPath(jobRoot), record)
-	a.logf(modelIDString(model.ID), "info", "Completed video job %s for project %s and saved output to %s", jobID, projectName, record.ArtifactVideoPath)
+	a.logf(modelIDString(model.ID), "info", "Completed video job %s for project %s and saved output to %s", jobID, projectName, record.ProjectworkVideoPath)
 }
 
 func (a *App) buildWaveVideoInputs(projectName string, contextFiles []string, mediaInputRoles map[string]string) (*stagedVideoInput, *stagedVideoInput, []string, error) {
@@ -1021,8 +592,7 @@ func (a *App) runVideoModelRequest(model ModelConfig, projectName, executionID, 
 		return result
 	}
 	jobID := buildVideoJobID()
-	duration, aspectRatio, resolution := resolvedVideoJobSettings(model, model.VideoDuration, model.VideoAspectRatio, model.VideoResolution)
-	record, jobRoot, err := a.initVideoJobRecord(projectName, model, jobID, prompt, "wave", duration, aspectRatio, resolution, model.VideoOutputFormat, model.VideoFPS, model.VideoQuality)
+	record, jobRoot, err := a.initVideoJobRecord(projectName, model, jobID, prompt, "wave", model.VideoDuration, model.VideoAspectRatio, model.VideoResolution, model.VideoOutputFormat, model.VideoFPS, model.VideoQuality)
 	if err != nil {
 		result.Err = err
 		return result
@@ -1052,12 +622,9 @@ func (a *App) runVideoModelRequest(model ModelConfig, projectName, executionID, 
 	if endFrame != nil {
 		videoReq.EndFrame = &adapters.VideoBinary{Name: endFrame.Name, MIMEType: endFrame.MIMEType, Data: endFrame.Data}
 	}
-	videoReq.PollUpdate = func(progress adapters.VideoProgress) {
-		applyVideoProgressToRecord(&record, progress)
-		_ = writeVideoJobRecord(videoJobMetaPath(jobRoot), record)
-	}
 	videoResult, err := adapters.ExecuteVideo(ctx, toAdapterModelConfig(model), videoReq)
-	applyVideoResultToRecord(&record, videoResult)
+	record.ProviderJobID = videoResult.ProviderJobID
+	record.RemoteStatus = videoResult.RemoteStatus
 	if err != nil {
 		if ctx.Err() != nil {
 			record.Status = "stopped"
@@ -1071,8 +638,10 @@ func (a *App) runVideoModelRequest(model ModelConfig, projectName, executionID, 
 		result.Err = errors.New(record.Error)
 		return result
 	}
-	artifactName, fileInfo := resolveVideoOutputFilename(videoResult, "video")
-	applyVideoFileDiagnostics(&record, videoResult, fileInfo)
+	artifactName := sanitizeImportedFilename(videoResult.VideoFilename)
+	if artifactName == "" || artifactName == "downloaded_file" {
+		artifactName = "video" + extForMIMEOrDefault(videoResult.VideoMIMEType, ".mp4")
+	}
 	artifactPath := filepath.ToSlash(filepath.Join("projects", projectName, "video_jobs", jobID, "artifacts", artifactName))
 	artifactFull, err := safeJoin(a.cfg.WorkRoot, artifactPath)
 	if err != nil {
@@ -1102,10 +671,8 @@ func (a *App) runVideoModelRequest(model ModelConfig, projectName, executionID, 
 	record.Status = "completed"
 	record.ArtifactVideoPath = artifactPath
 	record.CompletedAt = time.Now().UTC().Format(time.RFC3339)
-	record.PromotionState = "job_saved"
-	record.PromotedAt = record.CompletedAt
 	record.Error = ""
-	if err := writeJobProviderResponse(jobRoot, videoResult.RawBody); err != nil {
+	if err := a.stageVideoArtifactsToProjectwork(model, projectName, &record, videoResult); err != nil {
 		record.Status = "failed"
 		record.Error = err.Error()
 		_ = writeVideoJobRecord(videoJobMetaPath(jobRoot), record)
@@ -1117,15 +684,13 @@ func (a *App) runVideoModelRequest(model ModelConfig, projectName, executionID, 
 	return result
 }
 
-func (a *App) stageVideoArtifactsToProjectwork(model ModelConfig, projectName string, record *videoJobRecord, result adapters.VideoResult, preferredName string) error {
+func (a *App) stageVideoArtifactsToProjectwork(model ModelConfig, projectName string, record *videoJobRecord, result adapters.VideoResult) error {
 	if record == nil {
 		return errors.New("missing video job record")
 	}
-	name := sanitizeImportedFilename(preferredName)
-	if name == "" {
-		var info videoOutputFileInfo
-		name, info = resolveVideoOutputFilename(result, "video")
-		applyVideoFileDiagnostics(record, result, info)
+	name := sanitizeImportedFilename(result.VideoFilename)
+	if name == "" || name == "downloaded_file" {
+		name = "video" + extForMIMEOrDefault(result.VideoMIMEType, ".mp4")
 	}
 	data := result.VideoData
 	if len(data) == 0 && strings.TrimSpace(record.ArtifactVideoPath) != "" {
@@ -1204,11 +769,31 @@ func (a *App) handleVideoJobPromote(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if _, err := os.Stat(src); err != nil {
+	data, err := os.ReadFile(src)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	record.PromotionState = "job_saved"
+	ext := strings.ToLower(filepath.Ext(src))
+	if ext == "" {
+		ext = ".mp4"
+	}
+	targetRel := filepath.ToSlash(filepath.Join("projects", projectName, "projectwork", "video_output", "agentgo_video_winner"+ext))
+	targetFull, err := safeJoin(a.cfg.WorkRoot, targetRel)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := os.MkdirAll(filepath.Dir(targetFull), 0o755); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := os.WriteFile(targetFull, data, 0o644); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	record.ProjectworkVideoPath = targetRel
+	record.PromotionState = "promoted"
 	record.PromotedAt = time.Now().UTC().Format(time.RFC3339)
 	if err := writeVideoJobRecord(videoJobMetaPath(jobRoot), record); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1217,5 +802,5 @@ func (a *App) handleVideoJobPromote(w http.ResponseWriter, r *http.Request) {
 	if record.ModelID != "" {
 		a.setPendingMergeCount(projectName, record.ModelID, 0)
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "job": a.videoJobResponseForRecord(record), "artifactPath": record.ArtifactVideoPath, "projectworkPath": record.ProjectworkVideoPath})
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "job": a.videoJobResponseForRecord(record), "projectworkPath": record.ProjectworkVideoPath})
 }

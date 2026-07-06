@@ -25,8 +25,6 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-	"runtime"
-	"runtime/pprof"
 	"sort"
 	"strconv"
 	"strings"
@@ -289,19 +287,7 @@ type App struct {
 	modelTopID                  int
 	tmpl                        *template.Template
 	release                     ReleaseInfo
-	startedAt                   time.Time
 	mu                          sync.RWMutex
-	httpMu                      sync.Mutex
-	httpActiveRequests          int
-	httpActiveByRoute           map[string]int
-	httpTotalRequests           uint64
-	httpSlowRequests            uint64
-	httpRejectedPolls           uint64
-	httpAbortedRequests         uint64
-	httpConns                   map[net.Conn]http.ConnState
-	activeDiagnosticsStreams    int
-	deadDropStatusMu            sync.Mutex
-	deadDropStatusCache         map[string]deadDropStatusCacheEntry
 	activeProjectName           string
 	logs                        []LogEntry
 	logSeq                      uint64
@@ -328,7 +314,6 @@ type App struct {
 	diagSubscribers             map[int]chan diagnosticsEntry
 	diagSubscriberTopID         int
 	activeOutfitRunsByProject   map[string]activeOutfitRun
-	workModeSessionsByProject   map[string]workModeSessionState
 	sessionTokenEstimate        tokenUsageEstimate
 	currentLoopTokenEstimate    *tokenUsageBreakdown
 	currentWaveTokenEstimate    *tokenUsageBreakdown
@@ -347,203 +332,11 @@ type LogEntry struct {
 	Risk    bool   `json:"risk,omitempty"`
 }
 
-type statusRecordingResponseWriter struct {
-	http.ResponseWriter
-	status int
-	bytes  int
-}
-
-func (w *statusRecordingResponseWriter) WriteHeader(status int) {
-	if w.status == 0 {
-		w.status = status
-	}
-	w.ResponseWriter.WriteHeader(status)
-}
-
-func (w *statusRecordingResponseWriter) Write(data []byte) (int, error) {
-	if w.status == 0 {
-		w.status = http.StatusOK
-	}
-	n, err := w.ResponseWriter.Write(data)
-	w.bytes += n
-	return n, err
-}
-
-func (w *statusRecordingResponseWriter) Flush() {
-	if flusher, ok := w.ResponseWriter.(http.Flusher); ok {
-		flusher.Flush()
-	}
-}
-
 const (
 	defaultLogResponseLimit  = 150
 	maxLogResponseLimit      = 500
 	maxDeadDropStatusMatches = 10
 )
-
-const (
-	pollRequestBusyRetrySeconds  = 3
-	slowHTTPRequestWarningAfter  = 2 * time.Second
-	deadDropStatusCacheTTL       = 15 * time.Second
-	defaultHTTPReadHeaderTimeout = 10 * time.Second
-	defaultHTTPIdleTimeout       = 90 * time.Second
-	defaultHTTPMaxHeaderBytes    = 1 << 20
-)
-
-func pollRouteLimit(path string, method string) (int, bool) {
-	if method != http.MethodGet {
-		return 0, false
-	}
-	switch path {
-	case "/api/logs", "/api/risk", "/api/wave-state", "/api/deaddrop/status":
-		return 1, true
-	default:
-		return 0, false
-	}
-}
-
-func (a *App) wrapHTTPHandler(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		path := r.URL.Path
-		if limit, limited := pollRouteLimit(path, r.Method); limited {
-			a.httpMu.Lock()
-			active := a.httpActiveByRoute[path]
-			if active >= limit {
-				a.httpTotalRequests++
-				a.httpRejectedPolls++
-				a.httpMu.Unlock()
-				w.Header().Set("Retry-After", strconv.Itoa(pollRequestBusyRetrySeconds))
-				w.Header().Set("X-AgentGO-Poll-Skip", "busy")
-				w.WriteHeader(http.StatusNoContent)
-				return
-			}
-			a.httpMu.Unlock()
-		}
-
-		start := time.Now()
-		a.httpMu.Lock()
-		a.httpTotalRequests++
-		a.httpActiveRequests++
-		a.httpActiveByRoute[path]++
-		a.httpMu.Unlock()
-
-		rec := &statusRecordingResponseWriter{ResponseWriter: w}
-		defer func() {
-			duration := time.Since(start)
-			status := rec.status
-			if status == 0 {
-				status = http.StatusOK
-			}
-			aborted := r.Context().Err() != nil
-			a.httpMu.Lock()
-			a.httpActiveRequests--
-			if a.httpActiveRequests < 0 {
-				a.httpActiveRequests = 0
-			}
-			if a.httpActiveByRoute[path] > 1 {
-				a.httpActiveByRoute[path]--
-			} else {
-				delete(a.httpActiveByRoute, path)
-			}
-			if duration >= slowHTTPRequestWarningAfter {
-				a.httpSlowRequests++
-			}
-			if aborted {
-				a.httpAbortedRequests++
-			}
-			a.httpMu.Unlock()
-			if duration >= slowHTTPRequestWarningAfter {
-				a.logf("http", "warn", "Slow request %s %s took %s status=%d bytes=%d remote=%s aborted=%t", r.Method, path, duration.Round(time.Millisecond), status, rec.bytes, r.RemoteAddr, aborted)
-			}
-		}()
-
-		next.ServeHTTP(rec, r)
-	})
-}
-
-func (a *App) httpConnStateHook(conn net.Conn, state http.ConnState) {
-	a.httpMu.Lock()
-	defer a.httpMu.Unlock()
-	if state == http.StateClosed || state == http.StateHijacked {
-		delete(a.httpConns, conn)
-		return
-	}
-	a.httpConns[conn] = state
-}
-
-func (a *App) httpStateSnapshot() map[string]any {
-	a.httpMu.Lock()
-	defer a.httpMu.Unlock()
-	activeByRoute := map[string]int{}
-	for route, count := range a.httpActiveByRoute {
-		activeByRoute[route] = count
-	}
-	connStates := map[string]int{}
-	for _, state := range a.httpConns {
-		connStates[state.String()]++
-	}
-	return map[string]any{
-		"ok":                       true,
-		"uptimeSeconds":            int64(time.Since(a.startedAt).Seconds()),
-		"pid":                      os.Getpid(),
-		"goroutines":               runtime.NumGoroutine(),
-		"activeRequests":           a.httpActiveRequests,
-		"activeRequestsByRoute":    activeByRoute,
-		"totalRequests":            a.httpTotalRequests,
-		"slowRequests":             a.httpSlowRequests,
-		"abortedRequests":          a.httpAbortedRequests,
-		"pollBusyRejections":       a.httpRejectedPolls,
-		"activeDiagnosticsStreams": a.activeDiagnosticsStreams,
-		"connectionStates":         connStates,
-	}
-}
-
-func (a *App) handleHealthz(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"ok":            true,
-		"uptimeSeconds": int64(time.Since(a.startedAt).Seconds()),
-		"pid":           os.Getpid(),
-		"goroutines":    runtime.NumGoroutine(),
-		"version":       a.release.Version,
-		"revision":      a.release.Revision,
-	})
-}
-
-func (a *App) handleDebugHTTPState(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	writeJSON(w, http.StatusOK, a.httpStateSnapshot())
-}
-
-func (a *App) handleDebugGoroutines(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	if profile := pprof.Lookup("goroutine"); profile != nil {
-		_ = profile.WriteTo(w, 2)
-		return
-	}
-	_, _ = fmt.Fprintln(w, "goroutine profile unavailable")
-}
-
-func (a *App) invalidateDeadDropStatusCache(projectName string) {
-	a.deadDropStatusMu.Lock()
-	defer a.deadDropStatusMu.Unlock()
-	projectName = strings.TrimSpace(projectName)
-	if projectName == "" {
-		a.deadDropStatusCache = map[string]deadDropStatusCacheEntry{}
-		return
-	}
-	delete(a.deadDropStatusCache, projectName)
-}
 
 type homeData struct {
 	Models                []ModelConfig
@@ -595,18 +388,6 @@ type fileCreateRequest struct {
 	ItemType   string `json:"itemType"`
 }
 
-type workModeTmpWorkMergeRequest struct {
-	Path string `json:"path"`
-}
-
-type workModeTmpWorkMergeResponse struct {
-	OK          bool     `json:"ok"`
-	MergedFiles []string `json:"mergedFiles,omitempty"`
-	SourcePath  string   `json:"sourcePath,omitempty"`
-	TargetPath  string   `json:"targetPath,omitempty"`
-	Message     string   `json:"message,omitempty"`
-}
-
 type workModeSearchResult struct {
 	Path  string `json:"path"`
 	Count int    `json:"count"`
@@ -634,11 +415,6 @@ type deadDropStatusResponse struct {
 	RevisionCount      int                    `json:"revisionCount"`
 	NextRevision       int                    `json:"nextRevision"`
 	Revisions          []deadDropRevisionInfo `json:"revisions,omitempty"`
-}
-
-type deadDropStatusCacheEntry struct {
-	Response deadDropStatusResponse
-	CachedAt time.Time
 }
 
 type deadDropSetRequest struct {
@@ -694,28 +470,6 @@ type knowledgeResponse struct {
 
 type notesSaveRequest struct {
 	Content string `json:"content"`
-}
-
-type stickyNoteRecord struct {
-	ID              string `json:"id"`
-	Body            string `json:"body"`
-	X               int    `json:"x"`
-	Y               int    `json:"y"`
-	Width           int    `json:"width"`
-	Height          int    `json:"height"`
-	BackgroundColor string `json:"backgroundColor"`
-	ForegroundColor string `json:"foregroundColor"`
-	CreatedAt       string `json:"createdAt"`
-	UpdatedAt       string `json:"updatedAt"`
-}
-
-type stickyNotesResponse struct {
-	Notes   []stickyNoteRecord `json:"notes"`
-	SavedAt string             `json:"savedAt,omitempty"`
-}
-
-type stickyNotesSaveRequest struct {
-	Notes []stickyNoteRecord `json:"notes"`
 }
 
 type projectInfo struct {
@@ -841,42 +595,18 @@ type workModeRequest struct {
 	UseMemory            bool                       `json:"useMemory,omitempty"`
 	AllowCreate          bool                       `json:"allowCreate,omitempty"`
 	AllowUpdate          bool                       `json:"allowUpdate,omitempty"`
-	ObserverReview       bool                       `json:"observerReview,omitempty"`
-	ObserverModelID      string                     `json:"observerModelId,omitempty"`
-	MaxPasses            int                        `json:"maxPasses,omitempty"`
-}
-
-type workModeMemoryRequest struct {
-	ModelID string `json:"modelId"`
-	Name    string `json:"name,omitempty"`
-}
-
-type workModeMemoryFile struct {
-	Name       string `json:"name"`
-	FileName   string `json:"fileName"`
-	SizeBytes  int64  `json:"sizeBytes,omitempty"`
-	ModifiedAt string `json:"modifiedAt,omitempty"`
-}
-
-type workModeMemoryResponse struct {
-	ActiveExists bool                 `json:"activeExists"`
-	ActiveBytes  int64                `json:"activeBytes,omitempty"`
-	Saved        []workModeMemoryFile `json:"saved"`
-	Message      string               `json:"message,omitempty"`
 }
 
 type workModeResponse struct {
-	Reply          string                      `json:"reply"`
-	ChangedFiles   []string                    `json:"changedFiles,omitempty"`
-	SkippedFiles   []string                    `json:"skippedFiles,omitempty"`
-	BlockedFiles   []workModeBlockedFileOutput `json:"blockedFiles,omitempty"`
-	InlineFiles    []workModeInlineFileOutput  `json:"inlineFiles,omitempty"`
-	DiffFiles      []workModeDiffFile          `json:"diffFiles,omitempty"`
-	AgentMessage   string                      `json:"agentMessage,omitempty"`
-	MemoryUpdated  bool                        `json:"memoryUpdated,omitempty"`
-	MemoryWarning  string                      `json:"memoryWarning,omitempty"`
-	State          *workModeSessionState       `json:"state,omitempty"`
-	ReviewMessages []workModeReviewMessage     `json:"reviewMessages,omitempty"`
+	Reply         string                      `json:"reply"`
+	ChangedFiles  []string                    `json:"changedFiles,omitempty"`
+	SkippedFiles  []string                    `json:"skippedFiles,omitempty"`
+	BlockedFiles  []workModeBlockedFileOutput `json:"blockedFiles,omitempty"`
+	InlineFiles   []workModeInlineFileOutput  `json:"inlineFiles,omitempty"`
+	DiffFiles     []workModeDiffFile          `json:"diffFiles,omitempty"`
+	AgentMessage  string                      `json:"agentMessage,omitempty"`
+	MemoryUpdated bool                        `json:"memoryUpdated,omitempty"`
+	MemoryWarning string                      `json:"memoryWarning,omitempty"`
 }
 
 type workModeDiffFile struct {
@@ -904,91 +634,11 @@ type workModeBlockedFileOutput struct {
 }
 
 type workModeAIResponse struct {
-	Reply          string            `json:"reply"`
-	Files          []builderFileOp   `json:"files"`
-	Artifacts      []builderArtifact `json:"artifacts,omitempty"`
-	Memory         string            `json:"memory,omitempty"`
-	Warnings       []string          `json:"warnings,omitempty"`
-	ReviewComplete bool              `json:"review_complete,omitempty"`
-}
-
-type workModeObserverResponse struct {
-	Reply           string   `json:"reply"`
-	HasInput        bool     `json:"has_input"`
-	Recommendations []string `json:"recommendations,omitempty"`
-	Warnings        []string `json:"warnings,omitempty"`
-}
-
-type workModeReviewMessage struct {
-	Owner           string                      `json:"owner"`
-	Pass            int                         `json:"pass,omitempty"`
-	Reply           string                      `json:"reply"`
-	HasInput        *bool                       `json:"hasInput,omitempty"`
-	Recommendations []string                    `json:"recommendations,omitempty"`
-	ChangedFiles    []string                    `json:"changedFiles,omitempty"`
-	SkippedFiles    []string                    `json:"skippedFiles,omitempty"`
-	BlockedFiles    []workModeBlockedFileOutput `json:"blockedFiles,omitempty"`
-	InlineFiles     []workModeInlineFileOutput  `json:"inlineFiles,omitempty"`
-}
-
-const (
-	workModeTmpWorkDirName = "tmp-work"
-
-	workModeModeNormal         = "normal_work_mode"
-	workModeModeObserverReview = "observer_review_mode"
-
-	workModeStatusRunning            = "running"
-	workModeStatusPausedAfterCurrent = "paused_after_current_call"
-	workModeStatusFinalizing         = "finalizing"
-	workModeStatusFinalized          = "finalized"
-	workModeStatusEmergencyStopped   = "emergency_stopped"
-
-	workModeCallOwnerNone     = "none"
-	workModeCallOwnerWorker   = "worker"
-	workModeCallOwnerObserver = "observer"
-)
-
-type workModeSessionState struct {
-	ProjectName           string                  `json:"projectName,omitempty"`
-	Mode                  string                  `json:"mode"`
-	Status                string                  `json:"status"`
-	WorkerID              string                  `json:"workerId,omitempty"`
-	WorkerLabel           string                  `json:"workerLabel,omitempty"`
-	ObserverID            string                  `json:"observerId,omitempty"`
-	ObserverLabel         string                  `json:"observerLabel,omitempty"`
-	ObserverReview        bool                    `json:"observerReview"`
-	CurrentPass           int                     `json:"currentPass"`
-	MaxPasses             int                     `json:"maxPasses"`
-	LatestWorkerMessage   string                  `json:"latestWorkerMessage,omitempty"`
-	LatestWorkerFileState []string                `json:"latestWorkerFileState,omitempty"`
-	LatestObserverMessage string                  `json:"latestObserverMessage,omitempty"`
-	ObserverHasInput      *bool                   `json:"observerHasInput,omitempty"`
-	ReviewMessages        []workModeReviewMessage `json:"reviewMessages,omitempty"`
-	ActiveCallOwner       string                  `json:"activeCallOwner"`
-	ExecutionID           string                  `json:"executionId,omitempty"`
-	InitialPrompt         string                  `json:"initialPrompt,omitempty"`
-	UpdatedAt             string                  `json:"updatedAt,omitempty"`
-}
-
-type workModeSessionRequest struct {
-	Action          string `json:"action"`
-	WorkerModelID   string `json:"workerModelId,omitempty"`
-	ObserverModelID string `json:"observerModelId,omitempty"`
-	ObserverReview  bool   `json:"observerReview,omitempty"`
-	MaxPasses       int    `json:"maxPasses,omitempty"`
-	Prompt          string `json:"prompt,omitempty"`
-}
-
-type workModeSessionResponse struct {
-	OK      bool                 `json:"ok"`
-	State   workModeSessionState `json:"state"`
-	Message string               `json:"message,omitempty"`
-}
-
-type workModeRoleSelection struct {
-	Worker      ModelConfig
-	Observer    ModelConfig
-	HasObserver bool
+	Reply     string            `json:"reply"`
+	Files     []builderFileOp   `json:"files"`
+	Artifacts []builderArtifact `json:"artifacts,omitempty"`
+	Memory    string            `json:"memory,omitempty"`
+	Warnings  []string          `json:"warnings,omitempty"`
 }
 
 type workModeJSONErrorResponse struct {
@@ -2479,7 +2129,6 @@ type ollamaGenerateResponse struct {
 func main() {
 	configPath := "config.json"
 	modelsPath := "models.json"
-	modelNamesPath := "model_names.json"
 	releasePath := "version.json"
 	cfg := loadConfig(configPath)
 	applyConfigDefaults(&cfg)
@@ -2499,11 +2148,7 @@ func main() {
 		modelTopID:                  registry.TopID,
 		tmpl:                        template.Must(template.ParseFiles("templates/index.html")),
 		release:                     release,
-		startedAt:                   time.Now(),
 		toggles:                     map[string]bool{},
-		httpActiveByRoute:           map[string]int{},
-		httpConns:                   map[net.Conn]http.ConnState{},
-		deadDropStatusCache:         map[string]deadDropStatusCacheEntry{},
 		activeCancels:               map[string]activeCancelEntry{},
 		lastMergedFilesByProject:    map[string][]string{},
 		lastMergedDeletesByProject:  map[string][]string{},
@@ -2513,7 +2158,6 @@ func main() {
 		waveStatusByProject:         map[string]waveStatusState{},
 		diagSubscribers:             map[int]chan diagnosticsEntry{},
 		activeOutfitRunsByProject:   map[string]activeOutfitRun{},
-		workModeSessionsByProject:   map[string]workModeSessionState{},
 	}
 	for _, m := range cfg.Models {
 		app.toggles[modelIDString(m.ID)] = false
@@ -2528,12 +2172,8 @@ func main() {
 	mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
 	mux.HandleFunc("/favicon.ico", handleFavicon)
 	mux.HandleFunc("/", app.handleHome)
-	mux.HandleFunc("/api/healthz", app.handleHealthz)
-	mux.HandleFunc("/api/debug/goroutines", app.handleDebugGoroutines)
-	mux.HandleFunc("/api/debug/http-state", app.handleDebugHTTPState)
 	mux.HandleFunc("/api/models", app.handleModels)
 	mux.HandleFunc("/api/models/definitions", app.handleModelDefinitions)
-	mux.HandleFunc("/api/model-names", func(w http.ResponseWriter, r *http.Request) { handleKnownModelNames(w, r, modelNamesPath) })
 	mux.HandleFunc("/api/models/create", app.handleCreateModel)
 	mux.HandleFunc("/api/models/update", app.handleUpdateModel)
 	mux.HandleFunc("/api/models/delete", app.handleDeleteModel)
@@ -2548,20 +2188,11 @@ func main() {
 	mux.HandleFunc("/api/video/jobs", app.handleVideoJobs)
 	mux.HandleFunc("/api/video/jobs/promote", app.handleVideoJobPromote)
 	mux.HandleFunc("/api/mesh/jobs", app.handleMeshJobs)
-	mux.HandleFunc("/api/mesh/jobs/download", app.handleMeshJobDownload)
 	mux.HandleFunc("/api/mesh/jobs/refine", app.handleMeshJobRefine)
 	mux.HandleFunc("/api/mesh/jobs/promote", app.handleMeshJobPromote)
 	mux.HandleFunc("/api/chat", app.handleChat)
 	mux.HandleFunc("/api/work-mode/send", app.handleWorkModeSend)
-	mux.HandleFunc("/api/work-mode/session", app.handleWorkModeSession)
-	mux.HandleFunc("/api/work-mode/memory", app.handleWorkModeMemory)
-	mux.HandleFunc("/api/work-mode/memory/new", app.handleWorkModeMemoryNew)
-	mux.HandleFunc("/api/work-mode/memory/load", app.handleWorkModeMemoryLoad)
-	mux.HandleFunc("/api/work-mode/memory/save", app.handleWorkModeMemorySave)
-	mux.HandleFunc("/api/work-mode/memory/delete", app.handleWorkModeMemoryDelete)
 	mux.HandleFunc("/api/work-mode/search", app.handleWorkModeSearch)
-	mux.HandleFunc("/api/work-mode/tmp-work/merge", app.handleWorkModeTmpWorkMerge)
-	mux.HandleFunc("/api/work-mode/tmp-work/merge-all", app.handleWorkModeTmpWorkMergeAll)
 	mux.HandleFunc("/api/chat/prompt-helper", app.handlePromptHelper)
 	mux.HandleFunc("/api/chat/role-ideas", app.handleRoleIdeas)
 	mux.HandleFunc("/api/builder-output", app.handleBuilderOutput)
@@ -2635,7 +2266,6 @@ func main() {
 	mux.HandleFunc("/api/session/usage", app.handleSessionUsage)
 	mux.HandleFunc("/api/knowledge", app.handleKnowledge)
 	mux.HandleFunc("/api/knowledge/notes", app.handleKnowledgeNotesSave)
-	mux.HandleFunc("/api/stickies", app.handleStickyNotes)
 
 	httpEnabled := cfg.HTTPPort > 0
 	httpsRequested := cfg.HTTPSPort > 0
@@ -2660,21 +2290,12 @@ func main() {
 	httpAddr := listenAddress(cfg.BindHost, cfg.HTTPPort)
 	httpsAddr := listenAddress(cfg.BindHost, cfg.HTTPSPort)
 	printStartupBanner(app.release, cfg, httpEnabled, httpsEnabled, tlsReason)
-	handler := app.wrapHTTPHandler(mux)
 
 	serverErrs := make(chan error, 2)
 	if httpEnabled {
 		go func() {
 			app.logf("system", "info", "Starting HTTP server on %s", httpAddr)
-			server := &http.Server{
-				Addr:              httpAddr,
-				Handler:           handler,
-				ReadHeaderTimeout: defaultHTTPReadHeaderTimeout,
-				IdleTimeout:       defaultHTTPIdleTimeout,
-				MaxHeaderBytes:    defaultHTTPMaxHeaderBytes,
-				ConnState:         app.httpConnStateHook,
-			}
-			serverErrs <- fmt.Errorf("HTTP server stopped: %w", server.ListenAndServe())
+			serverErrs <- fmt.Errorf("HTTP server stopped: %w", http.ListenAndServe(httpAddr, mux))
 		}()
 	} else {
 		app.logf("system", "info", "HTTP listener disabled by http_port=0")
@@ -2682,15 +2303,7 @@ func main() {
 	if httpsEnabled {
 		go func() {
 			app.logf("system", "info", "Starting HTTPS server on %s", httpsAddr)
-			server := &http.Server{
-				Addr:              httpsAddr,
-				Handler:           handler,
-				ReadHeaderTimeout: defaultHTTPReadHeaderTimeout,
-				IdleTimeout:       defaultHTTPIdleTimeout,
-				MaxHeaderBytes:    defaultHTTPMaxHeaderBytes,
-				ConnState:         app.httpConnStateHook,
-			}
-			serverErrs <- fmt.Errorf("HTTPS server stopped: %w", server.ListenAndServeTLS(cfg.TLSCertFile, cfg.TLSKeyFile))
+			serverErrs <- fmt.Errorf("HTTPS server stopped: %w", http.ListenAndServeTLS(httpsAddr, cfg.TLSCertFile, cfg.TLSKeyFile, mux))
 		}()
 	} else if httpsRequested {
 		app.logf("system", "info", "HTTPS listener disabled: %s", tlsReason)
@@ -3006,7 +2619,6 @@ const (
 	defaultProjectMaxPayloadKB  = 512
 	knowledgeReadmeFilename     = "README.md"
 	knowledgeNotesFilename      = "agentgo_notes.md"
-	knowledgeStickiesFilename   = "stickies.json"
 )
 
 func defaultProjectLimits() ProjectLimits {
@@ -3469,30 +3081,6 @@ func (a *App) handleModels(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, views)
 }
 
-func handleKnownModelNames(w http.ResponseWriter, r *http.Request, filename string) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	data, err := os.ReadFile(filename)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			writeJSON(w, http.StatusOK, map[string]any{"schema_version": 1, "models": []any{}})
-			return
-		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	var payload any
-	if err := json.Unmarshal(data, &payload); err != nil {
-		http.Error(w, "model_names.json is not valid JSON", http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(data)
-}
-
 func (a *App) handleWaveState(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -3521,307 +3109,6 @@ func clearChatMemoryFile(metaRoot string) error {
 		return err
 	}
 	return os.WriteFile(filepath.Join(metaRoot, chatMemoryFileName), []byte(""), 0o644)
-}
-
-func normalizeWorkModeMemoryFileName(raw string) (string, string, error) {
-	name := strings.TrimSpace(raw)
-	if strings.HasSuffix(strings.ToLower(name), ".md") {
-		name = strings.TrimSpace(name[:len(name)-3])
-	}
-	if name == "" {
-		return "", "", errors.New("memory name is required")
-	}
-	if utf8.RuneCountInString(name) > 80 {
-		return "", "", errors.New("memory name must be 80 characters or fewer")
-	}
-	if name == "." || name == ".." || strings.Contains(name, "/") || strings.Contains(name, "\\") || filepath.IsAbs(name) || filepath.VolumeName(name) != "" {
-		return "", "", errors.New("memory name must not include path separators or traversal")
-	}
-	if strings.HasPrefix(name, ".") {
-		return "", "", errors.New("hidden memory files are not supported")
-	}
-	for _, r := range name {
-		if r == 0 || unicode.IsControl(r) {
-			return "", "", errors.New("memory name contains an unsupported character")
-		}
-		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == ' ' || r == '-' || r == '_' {
-			continue
-		}
-		return "", "", errors.New("memory name may use letters, numbers, spaces, dash, and underscore")
-	}
-	return name, name + ".md", nil
-}
-
-func workModeMemoryActiveInfo(metaRoot string) (bool, int64) {
-	data, err := os.ReadFile(filepath.Join(metaRoot, chatMemoryFileName))
-	if err != nil {
-		return false, 0
-	}
-	return strings.TrimSpace(string(data)) != "", int64(len(data))
-}
-
-func workModeMemoriesRoot(metaRoot string) (string, error) {
-	return safeJoin(metaRoot, "memories")
-}
-
-func listWorkModeMemoryFiles(metaRoot string) ([]workModeMemoryFile, error) {
-	memoriesRoot, err := workModeMemoriesRoot(metaRoot)
-	if err != nil {
-		return nil, err
-	}
-	if err := os.MkdirAll(memoriesRoot, 0o755); err != nil {
-		return nil, err
-	}
-	entries, err := os.ReadDir(memoriesRoot)
-	if err != nil {
-		return nil, err
-	}
-	files := []workModeMemoryFile{}
-	for _, entry := range entries {
-		if entry == nil || entry.IsDir() {
-			continue
-		}
-		fileName := strings.TrimSpace(entry.Name())
-		if !strings.HasSuffix(strings.ToLower(fileName), ".md") {
-			continue
-		}
-		displayName, normalizedFileName, err := normalizeWorkModeMemoryFileName(fileName)
-		if err != nil || normalizedFileName != fileName {
-			continue
-		}
-		info, _ := entry.Info()
-		item := workModeMemoryFile{Name: displayName, FileName: fileName}
-		if info != nil {
-			item.SizeBytes = info.Size()
-			item.ModifiedAt = info.ModTime().Format(time.RFC3339)
-		}
-		files = append(files, item)
-	}
-	sort.Slice(files, func(i, j int) bool {
-		return strings.ToLower(files[i].Name) < strings.ToLower(files[j].Name)
-	})
-	return files, nil
-}
-
-func (a *App) workModeMemoryMetaRoot(modelID, projectName string) (ModelConfig, string, error) {
-	roles, _, err := a.resolveWorkModeRoles(strings.TrimSpace(modelID), "", false)
-	if err != nil {
-		return ModelConfig{}, "", err
-	}
-	_, metaRoot, err := a.projectPaths(roles.Worker, projectName)
-	if err != nil {
-		return ModelConfig{}, "", err
-	}
-	if err := os.MkdirAll(metaRoot, 0o755); err != nil {
-		return ModelConfig{}, "", err
-	}
-	if err := ensureFile(filepath.Join(metaRoot, chatMemoryFileName), ""); err != nil {
-		return ModelConfig{}, "", err
-	}
-	return roles.Worker, metaRoot, nil
-}
-
-func (a *App) workModeMemoryResponse(metaRoot, message string) (workModeMemoryResponse, error) {
-	activeExists, activeBytes := workModeMemoryActiveInfo(metaRoot)
-	saved, err := listWorkModeMemoryFiles(metaRoot)
-	if err != nil {
-		return workModeMemoryResponse{}, err
-	}
-	return workModeMemoryResponse{ActiveExists: activeExists, ActiveBytes: activeBytes, Saved: saved, Message: message}, nil
-}
-
-func (a *App) handleWorkModeMemory(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	projectName, err := a.requireActiveProject()
-	if err != nil {
-		http.Error(w, "Select an active project first.", http.StatusBadRequest)
-		return
-	}
-	modelID := strings.TrimSpace(r.URL.Query().Get("modelId"))
-	_, metaRoot, err := a.workModeMemoryMetaRoot(modelID, projectName)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	resp, err := a.workModeMemoryResponse(metaRoot, "")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	writeJSON(w, http.StatusOK, resp)
-}
-
-func (a *App) decodeWorkModeMemoryRequest(w http.ResponseWriter, r *http.Request) (workModeMemoryRequest, string, string, error) {
-	var req workModeMemoryRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
-		return req, "", "", err
-	}
-	projectName, err := a.requireActiveProject()
-	if err != nil {
-		http.Error(w, "Select an active project first.", http.StatusBadRequest)
-		return req, "", "", err
-	}
-	_, metaRoot, err := a.workModeMemoryMetaRoot(req.ModelID, projectName)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return req, "", "", err
-	}
-	return req, projectName, metaRoot, nil
-}
-
-func (a *App) handleWorkModeMemoryNew(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	_, _, metaRoot, err := a.decodeWorkModeMemoryRequest(w, r)
-	if err != nil {
-		return
-	}
-	if err := clearChatMemoryFile(metaRoot); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	resp, err := a.workModeMemoryResponse(metaRoot, "New Work Mode memory started.")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	writeJSON(w, http.StatusOK, resp)
-}
-
-func (a *App) handleWorkModeMemoryLoad(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	req, _, metaRoot, err := a.decodeWorkModeMemoryRequest(w, r)
-	if err != nil {
-		return
-	}
-	displayName, fileName, err := normalizeWorkModeMemoryFileName(req.Name)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	memoriesRoot, err := workModeMemoriesRoot(metaRoot)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	full, err := safeJoin(memoriesRoot, fileName)
-	if err != nil {
-		http.Error(w, "invalid memory file", http.StatusBadRequest)
-		return
-	}
-	data, err := os.ReadFile(full)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			http.Error(w, "saved memory file was not found", http.StatusNotFound)
-			return
-		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if err := os.WriteFile(filepath.Join(metaRoot, chatMemoryFileName), data, 0o644); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	resp, err := a.workModeMemoryResponse(metaRoot, "Loaded memory: "+displayName)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	writeJSON(w, http.StatusOK, resp)
-}
-
-func (a *App) handleWorkModeMemorySave(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	req, _, metaRoot, err := a.decodeWorkModeMemoryRequest(w, r)
-	if err != nil {
-		return
-	}
-	displayName, fileName, err := normalizeWorkModeMemoryFileName(req.Name)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	data, err := os.ReadFile(filepath.Join(metaRoot, chatMemoryFileName))
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if strings.TrimSpace(string(data)) == "" {
-		http.Error(w, "current memory is empty", http.StatusBadRequest)
-		return
-	}
-	memoriesRoot, err := workModeMemoriesRoot(metaRoot)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if err := os.MkdirAll(memoriesRoot, 0o755); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	full, err := safeJoin(memoriesRoot, fileName)
-	if err != nil {
-		http.Error(w, "invalid memory file", http.StatusBadRequest)
-		return
-	}
-	if err := os.WriteFile(full, data, 0o644); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	resp, err := a.workModeMemoryResponse(metaRoot, "Saved memory: "+displayName)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	writeJSON(w, http.StatusOK, resp)
-}
-
-func (a *App) handleWorkModeMemoryDelete(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	req, _, metaRoot, err := a.decodeWorkModeMemoryRequest(w, r)
-	if err != nil {
-		return
-	}
-	displayName, fileName, err := normalizeWorkModeMemoryFileName(req.Name)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	memoriesRoot, err := workModeMemoriesRoot(metaRoot)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	full, err := safeJoin(memoriesRoot, fileName)
-	if err != nil {
-		http.Error(w, "invalid memory file", http.StatusBadRequest)
-		return
-	}
-	if err := os.Remove(full); err != nil && !errors.Is(err, os.ErrNotExist) {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	resp, err := a.workModeMemoryResponse(metaRoot, "Deleted memory: "+displayName)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	writeJSON(w, http.StatusOK, resp)
 }
 
 func sanitizeChatMemoryVisibleReply(reply string) string {
@@ -4444,46 +3731,6 @@ func workModeJSONSchema() map[string]any {
 	}
 }
 
-func workModeObserverWorkerJSONSchema() map[string]any {
-	schema := cloneAnyMap(workModeJSONSchema())
-	props, _ := schema["properties"].(map[string]any)
-	if props == nil {
-		props = map[string]any{}
-		schema["properties"] = props
-	}
-	props["reply"] = map[string]any{"type": "string", "description": "The latest user-facing Worker answer. In Observer Review Mode this may describe draft files in tmp-work, but it must not claim those drafts were merged into the project."}
-	props["files"] = map[string]any{"type": "array", "description": "Worker-only file operations for intended projectwork-relative paths. AgentGO routes these operations into tmp-work during Observer Review Mode.", "items": map[string]any{
-		"type": "object",
-		"properties": map[string]any{
-			"path":         map[string]any{"type": "string", "description": "Intended projectwork-relative path such as index.html or src/game.js. Never include tmp-work/ and never use absolute or traversal paths."},
-			"action":       map[string]any{"type": "string", "enum": []string{"create", "overwrite", "delete"}},
-			"content":      map[string]any{"type": "string", "description": "Full file content for create/overwrite text files."},
-			"artifact_ref": map[string]any{"type": "string", "description": "Artifact id for binary/file outputs when applicable."},
-		},
-		"required":             []string{"path", "action"},
-		"additionalProperties": false,
-	}}
-	props["memory"] = map[string]any{"type": "string", "description": "Worker-owned compact memory.md update only when memory is enabled. Leave empty when memory is disabled."}
-	props["warnings"] = map[string]any{"type": "array", "description": "Non-fatal Worker warnings for AgentGO logs.", "items": map[string]any{"type": "string"}}
-	props["review_complete"] = map[string]any{"type": "boolean", "description": "true when the latest Worker reply and tmp-work draft files are ready for user review; false when another Observer review could materially improve the result."}
-	schema["required"] = []string{"reply", "files", "review_complete"}
-	return schema
-}
-
-func workModeObserverJSONSchema() map[string]any {
-	return map[string]any{
-		"type": "object",
-		"properties": map[string]any{
-			"reply":           map[string]any{"type": "string", "description": "Concise advisory review notes for the Worker. Do not include file operations or memory updates."},
-			"has_input":       map[string]any{"type": "boolean", "description": "true only for material corrections or improvements the Worker should consider; false when there is nothing important enough to justify another Worker pass."},
-			"recommendations": map[string]any{"type": "array", "description": "Optional concise, actionable recommendations. Each item should be material and specific.", "items": map[string]any{"type": "string"}},
-			"warnings":        map[string]any{"type": "array", "description": "Non-fatal Observer warnings for AgentGO logs.", "items": map[string]any{"type": "string"}},
-		},
-		"required":             []string{"reply", "has_input"},
-		"additionalProperties": false,
-	}
-}
-
 func stripSingleFullMarkdownJSONFence(raw string) (string, bool) {
 	trimmed := strings.TrimSpace(raw)
 	if !strings.HasPrefix(trimmed, "```") {
@@ -4555,61 +3802,6 @@ func parseWorkModeAIResponse(raw string) (workModeAIResponse, error) {
 		resp.Files = []builderFileOp{}
 	}
 	resp.Reply = strings.TrimSpace(resp.Reply)
-	return resp, nil
-}
-
-func requireWorkModeJSONBoolFieldInCandidate(jsonText, field string) error {
-	field = strings.TrimSpace(field)
-	if field == "" {
-		return errors.New("missing required boolean field name")
-	}
-	var obj map[string]json.RawMessage
-	if err := json.Unmarshal([]byte(jsonText), &obj); err != nil {
-		return err
-	}
-	rawValue, ok := obj[field]
-	if !ok {
-		return fmt.Errorf("missing required boolean field %q", field)
-	}
-	var value bool
-	if err := json.Unmarshal(rawValue, &value); err != nil {
-		return fmt.Errorf("field %q must be a boolean", field)
-	}
-	return nil
-}
-
-func requireWorkModeJSONBoolField(raw, field string) error {
-	jsonText, err := workModeJSONCandidate(raw)
-	if err != nil {
-		return err
-	}
-	return requireWorkModeJSONBoolFieldInCandidate(jsonText, field)
-}
-
-func parseWorkModeObserverResponse(raw string) (workModeObserverResponse, error) {
-	var resp workModeObserverResponse
-	jsonText, err := workModeJSONCandidate(raw)
-	if err != nil {
-		return resp, err
-	}
-	if err := requireWorkModeJSONBoolFieldInCandidate(jsonText, "has_input"); err != nil {
-		return resp, err
-	}
-	if err := json.Unmarshal([]byte(jsonText), &resp); err != nil {
-		return resp, err
-	}
-	resp.Reply = strings.TrimSpace(resp.Reply)
-	if resp.Recommendations == nil {
-		resp.Recommendations = []string{}
-	}
-	trimmedRecommendations := []string{}
-	for _, recommendation := range resp.Recommendations {
-		recommendation = strings.TrimSpace(recommendation)
-		if recommendation != "" {
-			trimmedRecommendations = append(trimmedRecommendations, recommendation)
-		}
-	}
-	resp.Recommendations = trimmedRecommendations
 	return resp, nil
 }
 
@@ -4760,12 +3952,11 @@ func uniqueWorkModeOutputPath(projectworkRoot, rel string) (string, error) {
 
 func isHiddenWorkModePath(rel string) bool {
 	for _, part := range strings.Split(filepath.ToSlash(rel), "/") {
-		part = strings.ToLower(strings.TrimSpace(part))
+		part = strings.TrimSpace(part)
 		if part == "" {
 			continue
 		}
-		switch part {
-		case ".git", ".hg", ".svn":
+		if strings.HasPrefix(part, ".") {
 			return true
 		}
 	}
@@ -4821,51 +4012,25 @@ Use the "reply" field for normal chat responses, explanations, summaries, brains
 
 You must output valid JSON only, with no markdown outside the JSON.
 
-CRITICAL JSON CONTRACT
-
-AgentGO parses your response directly. Return parseable JSON, not JavaScript object syntax.
-- Return exactly one JSON object and nothing else.
-- Do not wrap the JSON in markdown fences.
-- Use double quotes for all keys and string values.
-- Do not use comments, trailing commas, undefined, NaN, functions, or unquoted keys.
-- Escape all newline, quote, backslash, and control characters inside JSON strings.
-- File contents must be valid JSON strings. If a file has multiple lines, include escaped newlines or otherwise encode it as one valid JSON string.
-- If you are not changing files, return "files": [] instead of prose outside JSON.
-
-Canonical chat-only response:
+Use this exact response shape:
 
 {
   "reply": "User-facing response or summary of actions here.",
   "files": []
 }
 
-Canonical response that creates a file:
+If you create or overwrite files, include them in "files":
 
 {
-  "reply": "Created subscription_calculator.js with the requested blur handler.",
+  "reply": "User-facing response or summary of actions here.",
   "files": [
     {
-      "path": "subscription_calculator.js",
+      "path": "folder/filename.ext",
       "action": "create",
-      "content": "document.addEventListener(\"blur\", function (event) {\n  // Full file content here.\n}, true);\n"
+      "content": "Full, complete file content here."
     }
   ]
 }
-
-Canonical response that overwrites a selected file:
-
-{
-  "reply": "Updated index.html with the revised calculator script.",
-  "files": [
-    {
-      "path": "index.html",
-      "action": "overwrite",
-      "content": "<!doctype html>\n<html>\n<head><title>Updated file</title></head>\n<body>Full replacement file content here.</body>\n</html>\n"
-    }
-  ]
-}
-
-If you create or overwrite files, include them in "files" using the same shape shown above.
 
 Allowed file actions are exactly:
 - "create"
@@ -4939,320 +4104,23 @@ CONTEXT LIMITS
 ` + fileMode + `
 
 OUTPUT FORMAT
-- Return one strict, parseable JSON object matching the schema.
+- Return one strict JSON object matching the schema.
 - Put the complete visible answer for the user in reply.
-- Do not include markdown fences around the JSON response.
-- Do not use JavaScript object syntax, comments, trailing commas, unquoted keys, or text before/after the JSON.
-- Escape all file content so it remains valid JSON string data.`)
+- Do not include markdown fences around the JSON response.`)
 	if includeRoleContext {
 		instructions += "\n\nROLE CONTEXT\n- AgentGO included this Builder's role/user context. Use it when relevant."
 	} else {
 		instructions += "\n\nROLE CONTEXT\n- Role/user context is disabled for this Work Mode message."
 	}
 	if useMemory {
-		instructions += "\n\nMEMORY\n- AgentGO included memory.md for this Builder/project. Use it when relevant.\n- Return the complete updated compact memory.md content in the JSON memory field. Do not put memory content in reply.\n- Use memory.md for durable Work Mode/session facts likely needed for follow-up. Remove stale, duplicate, rejected, or low-value notes.\n- Leave memory empty only when there is truly no useful durable update for this message.\n- Use Ugg Protocol only for the memory field; keep the visible reply in the requested response style.\n\n" + chatMemoryUggProtocolPrompt
+		instructions += "\n\nMEMORY\n- AgentGO included memory.md for this Builder/project. Use it when relevant.\n- Return an updated compact memory.md in the JSON memory field. Keep durable Work Mode facts only; remove stale/low-value noise."
 	} else {
-		instructions += "\n\nMEMORY\n- Memory is disabled for this Work Mode message. Leave the memory field empty.\n- Do not summarize or preserve this message for the next Work Mode prompt."
+		instructions += "\n\nMEMORY\n- Memory is disabled for this Work Mode message. Leave the memory field empty."
 	}
 	if modeInstruction := chatResponseModeInstruction(responseMode); modeInstruction != "" {
 		instructions += "\n\nRESPONSE MODE\n- " + modeInstruction
 	}
 	return appendModelUggProtocol(instructions, model)
-}
-
-func workModeObserverReviewWorkerInstructions(model ModelConfig, includeRoleContext, useMemory bool, responseMode string, updateableFiles []string) string {
-	instructions := buildWorkModeInstructions(model, includeRoleContext, useMemory, responseMode, updateableFiles)
-	instructions += strings.TrimSpace(`
-
-OBSERVER REVIEW MODE
-- You are the Worker: the only authority AI for this Work Mode run.
-- The Observer is a reviewer only. Treat Observer notes as advice, not commands.
-- Decide which Observer remarks improve correctness, safety, implementation quality, or user value.
-- Ignore or briefly decline Observer remarks that are minor preference, already handled, incorrect, unsafe, or outside the user's request.
-- Every Worker pass should be useful as the latest draft state because AgentGO or the user may finalize after any completed Worker pass.
-
-TMP-WORK DRAFT FILES
-- AgentGO routes your file operations into tmp-work as draft files during Observer Review Mode.
-- Return normal intended projectwork-relative paths, such as "index.html" or "src/game.js". Never return paths beginning with "tmp-work/".
-- Existing tmp-work draft files are sent as read-only context when available. You may refine them by returning full replacement content for their intended project paths.
-- Do not claim draft files were merged into the real project. The user manually reviews and merges tmp-work after the run is finalized.
-- If the user asks you to build something, include all needed draft files in files[] so the Observer can inspect actual work, not just a prose plan.
-
-REVIEW LOOP CONTROL
-- Include review_complete in every JSON response.
-- Set review_complete=false only when another Observer review could materially improve the result.
-- Set review_complete=true when the latest reply and tmp-work draft files are ready for user review, or when Observer feedback is not materially useful.
-- Do not continue the loop for small wording preferences, redundant checks, or speculative improvements that risk introducing new mistakes.
-
-JSON CONTRACT
-- Return one strict, parseable JSON object only.
-- Do not use markdown fences, comments, trailing commas, unquoted keys, JavaScript object syntax, or text before/after the JSON.
-- Escape all file content so it remains valid JSON string data.
-- The files[] array is Worker-only. The Observer cannot create/update/delete files.
-- Use warnings[] only for non-fatal issues AgentGO should log.`)
-	if useMemory {
-		instructions += strings.TrimSpace(`
-
-OBSERVER REVIEW MEMORY OWNERSHIP
-- You are the only AI allowed to update Worker-owned memory.md during Observer Review Mode.
-- Update memory.md after considering your Worker decisions and only the Observer remarks you accepted as useful.
-- Do not store rejected Observer advice, full debate transcripts, temporary drafts, or low-value loop chatter.
-- Keep durable user/project decisions, final chosen direction, important file/path facts, and next-step context likely needed for follow-up.
-- Return the complete updated compact memory.md content in the JSON memory field on every Worker pass while memory is enabled.`)
-	}
-	return instructions
-}
-
-func workModeObserverInstructions(model ModelConfig) string {
-	instructions := strings.TrimSpace(`You are the Observer for AgentGO Work Mode.
-
-ROLE
-- You are advisory only. The Worker is the sole authority and final decision maker.
-- Review the Worker's latest response, the current tmp-work draft files, selected project context, temporary attachments, and transcript.
-- Find material errors, missing requirements, unsafe assumptions, weak implementation details, broken files, incomplete files, or important improvements.
-- Be concise, specific, and actionable. Prefer numbered or short bullet-style notes inside reply.
-
-STRICT LIMITS
-- You cannot create, overwrite, delete, rename, move, merge, save, or apply files.
-- You cannot update memory. Any memory.md content AgentGO sends you is read-only Worker-owned context.
-- You cannot finalize the answer.
-- AgentGO will ignore any file, memory, or finalization operation you attempt to return.
-
-HAS_INPUT RULE
-- Set has_input=true only when your feedback is material enough to justify another Worker pass.
-- Set has_input=false when the Worker output and tmp-work files look acceptable, when your remaining feedback is minor style/preference, or when another pass would likely add cost/risk without meaningful benefit.
-- Do not mark has_input=true just to praise the Worker, repeat the user's request, or request tiny wording polish.
-
-OUTPUT FORMAT
-Return one strict, parseable JSON object only, with no markdown outside JSON. Do not use JavaScript object syntax, comments, trailing commas, unquoted keys, or text before/after the JSON:
-{
-  "reply": "Concise review notes for the Worker.",
-  "has_input": true,
-  "recommendations": ["Optional material recommendation 1"]
-}`)
-	return appendModelUggProtocol(instructions, model)
-}
-
-func workModeUniqueRelPaths(pathsIn ...[]string) []string {
-	seen := map[string]bool{}
-	out := []string{}
-	for _, group := range pathsIn {
-		for _, rel := range group {
-			rel = cleanSlashPath(rel)
-			if rel == "" || seen[rel] || strings.HasPrefix(rel, workModeTmpWorkDirName+"/") || rel == workModeTmpWorkDirName {
-				continue
-			}
-			seen[rel] = true
-			out = append(out, rel)
-		}
-	}
-	sort.Strings(out)
-	return out
-}
-
-func workModeListRelFilesUnderRoot(root string) ([]string, error) {
-	root = strings.TrimSpace(root)
-	if root == "" {
-		return nil, errors.New("missing file root")
-	}
-	if err := rejectSymlinkPath(root, root); err != nil {
-		return nil, err
-	}
-	if _, err := os.Stat(root); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return []string{}, nil
-		}
-		return nil, err
-	}
-	out := []string{}
-	err := filepath.WalkDir(root, func(fullPath string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil || fullPath == root || entry == nil {
-			return walkErr
-		}
-		if isSymlinkDirEntry(entry) {
-			if entry.IsDir() {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if entry.IsDir() {
-			return nil
-		}
-		rel, err := filepath.Rel(root, fullPath)
-		if err != nil {
-			return nil
-		}
-		rel = cleanSlashPath(rel)
-		if rel == "" || isHiddenWorkModePath(rel) || strings.EqualFold(path.Base(rel), "project.json") {
-			return nil
-		}
-		out = append(out, rel)
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	sort.Strings(out)
-	return out, nil
-}
-
-func workModePrefixedTmpWorkState(tmpRels []string) []string {
-	out := make([]string, 0, len(tmpRels))
-	seen := map[string]bool{}
-	for _, rel := range tmpRels {
-		rel = cleanSlashPath(rel)
-		if rel == "" || seen[rel] {
-			continue
-		}
-		seen[rel] = true
-		out = append(out, path.Join(workModeTmpWorkDirName, rel))
-	}
-	sort.Strings(out)
-	return out
-}
-
-func workModeObserverWorkerTask(pass int, userPrompt string) string {
-	if pass <= 1 {
-		return strings.TrimSpace("FINAL USER REQUEST:\n" + strings.TrimSpace(userPrompt) + `
-
-WORKER PASS 1 TASK:
-Create the first Worker draft response and any draft files requested by the user. Return file operations for intended projectwork-relative paths so AgentGO can place them in tmp-work. Set review_complete=true only if the task is already ready for user inspection without Observer review; otherwise set review_complete=false.`)
-	}
-	return strings.TrimSpace(fmt.Sprintf(`WORKER PASS %d TASK:
-Consider the Observer feedback and the current tmp-work draft files. Accept only feedback that materially improves correctness, safety, implementation quality, or user value. Revise tmp-work files if useful by returning full updated file content for intended project paths. Set review_complete=true if the latest answer and tmp-work draft files are ready for user review; otherwise set review_complete=false to request another Observer review.`, pass))
-}
-
-func workModeObserverTask(pass int) string {
-	return strings.TrimSpace(fmt.Sprintf(`OBSERVER PASS %d TASK:
-Review the latest Worker response and current tmp-work draft files. Return has_input=true only for material corrections or improvements. Return has_input=false if nothing important needs to be changed or another Worker pass is not worth the added cost/risk. Use recommendations[] for concise actionable items when helpful.`, pass))
-}
-
-func workModeReviewTranscript(projectName, userPrompt string, messages []workModeReviewMessage) string {
-	lines := []string{
-		"WORK MODE OBSERVER REVIEW TRANSCRIPT",
-		"PROJECT: " + strings.TrimSpace(projectName),
-		"",
-		"[User / Final Request]",
-		strings.TrimSpace(userPrompt),
-	}
-	for _, msg := range messages {
-		owner := strings.TrimSpace(msg.Owner)
-		if owner == "" {
-			owner = "AgentGO"
-		}
-		label := owner
-		if msg.Pass > 0 {
-			label = fmt.Sprintf("%s pass %d", owner, msg.Pass)
-		}
-		if msg.HasInput != nil {
-			label += fmt.Sprintf(" · has_input=%v", *msg.HasInput)
-		}
-		lines = append(lines, "", "["+label+"]", strings.TrimSpace(msg.Reply))
-		if len(msg.Recommendations) > 0 {
-			lines = append(lines, "RECOMMENDATIONS:")
-			for _, recommendation := range msg.Recommendations {
-				recommendation = strings.TrimSpace(recommendation)
-				if recommendation != "" {
-					lines = append(lines, "- "+recommendation)
-				}
-			}
-		}
-	}
-	return strings.Join(lines, "\n")
-}
-
-func workModeMaybeJSONBoolPtr(value bool) *bool {
-	v := value
-	return &v
-}
-
-func (a *App) workModeSessionStateForExecution(projectName, executionID string) (workModeSessionState, bool) {
-	projectName = strings.TrimSpace(projectName)
-	executionID = strings.TrimSpace(executionID)
-	if projectName == "" || executionID == "" {
-		return workModeSessionState{}, false
-	}
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-	state, ok := a.workModeSessionsByProject[projectName]
-	if !ok || strings.TrimSpace(state.ExecutionID) != executionID {
-		return workModeSessionState{}, false
-	}
-	return state.clone(), true
-}
-
-func (a *App) waitForWorkModeObserverLoopClearance(ctx context.Context, projectName, executionID string) (workModeSessionState, string, error) {
-	for {
-		state, ok := a.workModeSessionStateForExecution(projectName, executionID)
-		if !ok {
-			return workModeSessionState{}, "stale", errors.New("Work Mode session changed while Observer Review was running")
-		}
-		switch strings.TrimSpace(state.Status) {
-		case workModeStatusEmergencyStopped:
-			return state, "emergency", context.Canceled
-		case workModeStatusFinalized:
-			return state, "finalized", nil
-		case workModeStatusPausedAfterCurrent:
-			select {
-			case <-ctx.Done():
-				return state, "canceled", ctx.Err()
-			case <-time.After(300 * time.Millisecond):
-				continue
-			}
-		default:
-			return state, "running", nil
-		}
-	}
-}
-
-func (a *App) setWorkModeObserverActiveCall(projectName, executionID, modelID, owner string, cancel context.CancelFunc) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.setActiveCancelLocked(modelID, projectName, executionID, cancel)
-	state := a.workModeSessionsByProject[projectName]
-	if strings.TrimSpace(state.ExecutionID) == executionID {
-		state.ActiveCallOwner = owner
-		state.Status = workModeStatusRunning
-		state.UpdatedAt = time.Now().Format(time.RFC3339)
-		a.workModeSessionsByProject[projectName] = state.clone()
-	}
-}
-
-func (a *App) clearWorkModeObserverActiveCall(projectName, executionID, modelID string) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.clearActiveCancelLocked(modelID, executionID)
-	state := a.workModeSessionsByProject[projectName]
-	if strings.TrimSpace(state.ExecutionID) == executionID {
-		state.ActiveCallOwner = workModeCallOwnerNone
-		state.UpdatedAt = time.Now().Format(time.RFC3339)
-		a.workModeSessionsByProject[projectName] = state.clone()
-	}
-}
-
-func workModeReviewStatusAfterCompletedCall(currentStatus string) string {
-	switch strings.TrimSpace(currentStatus) {
-	case workModeStatusPausedAfterCurrent, workModeStatusFinalized, workModeStatusEmergencyStopped:
-		return strings.TrimSpace(currentStatus)
-	default:
-		return workModeStatusRunning
-	}
-}
-
-func (a *App) updateWorkModeObserverReviewProgressLocked(projectName, executionID string, mutate func(*workModeSessionState)) workModeSessionState {
-	projectName = strings.TrimSpace(projectName)
-	state := a.workModeSessionsByProject[projectName]
-	if strings.TrimSpace(state.ExecutionID) != strings.TrimSpace(executionID) {
-		return state.clone()
-	}
-	state.Status = workModeReviewStatusAfterCompletedCall(state.Status)
-	state.ActiveCallOwner = workModeCallOwnerNone
-	if mutate != nil {
-		mutate(&state)
-	}
-	state.UpdatedAt = time.Now().Format(time.RFC3339)
-	a.workModeSessionsByProject[projectName] = state.clone()
-	return state.clone()
 }
 
 func workModeBlockedOutputFromOp(rel string, op builderFileOp, artifactBytes map[string][]byte, reason string) workModeBlockedFileOutput {
@@ -5480,724 +4348,6 @@ func workModeOutputLimitWarning(model ModelConfig, resp adapters.Response) strin
 	return "It looks like you may be brushing up against your default max token output. You can tell AgentGO to ask the AI to increase this limit in your model setup area."
 }
 
-func normalizeWorkModeMaxPasses(value int) int {
-	if value <= 0 {
-		return 3
-	}
-	if value > 100 {
-		return 100
-	}
-	return value
-}
-
-func cloneWorkModeReviewMessages(in []workModeReviewMessage) []workModeReviewMessage {
-	if len(in) == 0 {
-		return nil
-	}
-	out := make([]workModeReviewMessage, len(in))
-	for i, msg := range in {
-		out[i] = msg
-		if msg.HasInput != nil {
-			v := *msg.HasInput
-			out[i].HasInput = &v
-		}
-		if len(msg.Recommendations) > 0 {
-			out[i].Recommendations = append([]string{}, msg.Recommendations...)
-		}
-		if len(msg.ChangedFiles) > 0 {
-			out[i].ChangedFiles = append([]string{}, msg.ChangedFiles...)
-		}
-		if len(msg.SkippedFiles) > 0 {
-			out[i].SkippedFiles = append([]string{}, msg.SkippedFiles...)
-		}
-		if len(msg.BlockedFiles) > 0 {
-			out[i].BlockedFiles = append([]workModeBlockedFileOutput{}, msg.BlockedFiles...)
-		}
-		if len(msg.InlineFiles) > 0 {
-			out[i].InlineFiles = append([]workModeInlineFileOutput{}, msg.InlineFiles...)
-		}
-	}
-	return out
-}
-
-func (s workModeSessionState) clone() workModeSessionState {
-	if len(s.LatestWorkerFileState) > 0 {
-		s.LatestWorkerFileState = append([]string{}, s.LatestWorkerFileState...)
-	}
-	if s.ObserverHasInput != nil {
-		v := *s.ObserverHasInput
-		s.ObserverHasInput = &v
-	}
-	s.ReviewMessages = cloneWorkModeReviewMessages(s.ReviewMessages)
-	return s
-}
-
-func newWorkModeSessionState(projectName string, roles workModeRoleSelection, observerReview bool, maxPasses int, prompt string) workModeSessionState {
-	mode := workModeModeNormal
-	if observerReview {
-		mode = workModeModeObserverReview
-	}
-	state := workModeSessionState{
-		ProjectName:     strings.TrimSpace(projectName),
-		Mode:            mode,
-		Status:          workModeStatusRunning,
-		WorkerID:        modelIDString(roles.Worker.ID),
-		WorkerLabel:     strings.TrimSpace(roles.Worker.Label),
-		ObserverReview:  observerReview,
-		CurrentPass:     0,
-		MaxPasses:       normalizeWorkModeMaxPasses(maxPasses),
-		ActiveCallOwner: workModeCallOwnerNone,
-		InitialPrompt:   strings.TrimSpace(prompt),
-		UpdatedAt:       time.Now().Format(time.RFC3339),
-	}
-	if roles.HasObserver {
-		state.ObserverID = modelIDString(roles.Observer.ID)
-		state.ObserverLabel = strings.TrimSpace(roles.Observer.Label)
-	}
-	return state
-}
-
-func (a *App) resolveWorkModeRoles(workerModelID, observerModelID string, requireObserver bool) (workModeRoleSelection, int, error) {
-	workerModelID = strings.TrimSpace(workerModelID)
-	observerModelID = strings.TrimSpace(observerModelID)
-	builders := a.activeBuilderModelsSorted()
-	if len(builders) != 1 {
-		return workModeRoleSelection{}, http.StatusBadRequest, errors.New("Work Mode requires exactly one active Builder AI.")
-	}
-	worker := builders[0]
-	workerID := modelIDString(worker.ID)
-	if workerModelID != "" && workerModelID != workerID {
-		return workModeRoleSelection{}, http.StatusBadRequest, errors.New("The active Work Mode Builder changed. Reopen Work Mode and try again.")
-	}
-	roles := workModeRoleSelection{Worker: worker}
-	reviewerID := strings.TrimSpace(a.getReviewerID())
-	if reviewerID == "" {
-		if requireObserver {
-			return workModeRoleSelection{}, http.StatusBadRequest, errors.New("Observer Review Mode requires exactly one Observer.")
-		}
-		return roles, http.StatusOK, nil
-	}
-	reviewer, ok := a.findModel(reviewerID)
-	if !ok {
-		if requireObserver {
-			return workModeRoleSelection{}, http.StatusBadRequest, errors.New("The selected Observer could not be found. Reopen Work Mode and try again.")
-		}
-		return roles, http.StatusOK, nil
-	}
-	if observerModelID != "" && observerModelID != reviewerID {
-		return workModeRoleSelection{}, http.StatusBadRequest, errors.New("The active Work Mode Observer changed. Reopen Work Mode and try again.")
-	}
-	roles.Observer = reviewer
-	roles.HasObserver = true
-	return roles, http.StatusOK, nil
-}
-
-func (a *App) setWorkModeSessionStateLocked(projectName string, state workModeSessionState) workModeSessionState {
-	projectName = strings.TrimSpace(projectName)
-	if projectName == "" {
-		projectName = strings.TrimSpace(state.ProjectName)
-	}
-	if projectName == "" {
-		return state.clone()
-	}
-	if a.workModeSessionsByProject == nil {
-		a.workModeSessionsByProject = map[string]workModeSessionState{}
-	}
-	state.ProjectName = projectName
-	state.UpdatedAt = time.Now().Format(time.RFC3339)
-	a.workModeSessionsByProject[projectName] = state.clone()
-	return state.clone()
-}
-
-func (a *App) updateWorkModeSessionStatusLocked(projectName, status, activeCallOwner string) workModeSessionState {
-	projectName = strings.TrimSpace(projectName)
-	if a.workModeSessionsByProject == nil {
-		a.workModeSessionsByProject = map[string]workModeSessionState{}
-	}
-	state := a.workModeSessionsByProject[projectName]
-	if strings.TrimSpace(state.ProjectName) == "" {
-		state.ProjectName = projectName
-		state.Mode = workModeModeNormal
-		state.MaxPasses = 3
-	}
-	if strings.TrimSpace(status) != "" {
-		state.Status = strings.TrimSpace(status)
-	}
-	if strings.TrimSpace(activeCallOwner) != "" {
-		state.ActiveCallOwner = strings.TrimSpace(activeCallOwner)
-	}
-	if strings.TrimSpace(state.ActiveCallOwner) == "" {
-		state.ActiveCallOwner = workModeCallOwnerNone
-	}
-	state.UpdatedAt = time.Now().Format(time.RFC3339)
-	a.workModeSessionsByProject[projectName] = state.clone()
-	return state.clone()
-}
-
-func (a *App) getWorkModeSessionState(projectName string) (workModeSessionState, bool) {
-	projectName = strings.TrimSpace(projectName)
-	if projectName == "" {
-		return workModeSessionState{}, false
-	}
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-	state, ok := a.workModeSessionsByProject[projectName]
-	if !ok {
-		return workModeSessionState{}, false
-	}
-	return state.clone(), true
-}
-
-func (a *App) markWorkModeSessionsEmergencyStoppedLocked(projectName string) {
-	if a.workModeSessionsByProject == nil {
-		return
-	}
-	projectName = strings.TrimSpace(projectName)
-	for key, state := range a.workModeSessionsByProject {
-		if projectName != "" && strings.TrimSpace(key) != projectName {
-			continue
-		}
-		state.Status = workModeStatusEmergencyStopped
-		state.ActiveCallOwner = workModeCallOwnerNone
-		state.UpdatedAt = time.Now().Format(time.RFC3339)
-		a.workModeSessionsByProject[key] = state.clone()
-	}
-}
-
-func (a *App) handleWorkModeSession(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		projectName, err := a.requireActiveProject()
-		if err != nil {
-			http.Error(w, "Select an active project first.", http.StatusBadRequest)
-			return
-		}
-		state, ok := a.getWorkModeSessionState(projectName)
-		if !ok {
-			roles, _, roleErr := a.resolveWorkModeRoles("", "", false)
-			if roleErr == nil {
-				state = newWorkModeSessionState(projectName, roles, false, 3, "")
-				state.Status = workModeStatusFinalized
-				state.ActiveCallOwner = workModeCallOwnerNone
-			} else {
-				state = workModeSessionState{ProjectName: projectName, Mode: workModeModeNormal, Status: workModeStatusFinalized, MaxPasses: 3, ActiveCallOwner: workModeCallOwnerNone, UpdatedAt: time.Now().Format(time.RFC3339)}
-			}
-		}
-		writeJSON(w, http.StatusOK, workModeSessionResponse{OK: true, State: state, Message: "Work Mode session state loaded."})
-	case http.MethodPost:
-		var req workModeSessionRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "invalid json", http.StatusBadRequest)
-			return
-		}
-		projectName, err := a.requireActiveProject()
-		if err != nil {
-			http.Error(w, "Select an active project first.", http.StatusBadRequest)
-			return
-		}
-		action := strings.ToLower(strings.TrimSpace(req.Action))
-		if action == "" {
-			action = "start"
-		}
-		requireObserver := req.ObserverReview || action == "start_observer"
-		roles, status, err := a.resolveWorkModeRoles(req.WorkerModelID, req.ObserverModelID, requireObserver)
-		if err != nil {
-			http.Error(w, err.Error(), status)
-			return
-		}
-		observerReview := req.ObserverReview && roles.HasObserver
-		var state workModeSessionState
-		message := "Work Mode session state updated."
-		switch action {
-		case "start", "start_observer":
-			state = newWorkModeSessionState(projectName, roles, observerReview, req.MaxPasses, req.Prompt)
-			if observerReview {
-				state.Mode = workModeModeObserverReview
-				projectworkRoot, rootErr := a.projectWorkRoot(projectName)
-				if rootErr != nil {
-					http.Error(w, rootErr.Error(), http.StatusBadRequest)
-					return
-				}
-				tmpWorkRoot, rootErr := workModeTmpWorkProjectRoot(projectworkRoot)
-				if rootErr != nil {
-					http.Error(w, rootErr.Error(), http.StatusBadRequest)
-					return
-				}
-				if rootErr := os.MkdirAll(tmpWorkRoot, 0o755); rootErr != nil {
-					http.Error(w, rootErr.Error(), http.StatusInternalServerError)
-					return
-				}
-				message = "Observer Review state initialized. tmp-work is ready for Worker/Observer orchestration."
-			} else {
-				state.Mode = workModeModeNormal
-				message = "Normal Work Mode state initialized."
-			}
-		case "pause":
-			a.mu.Lock()
-			state = a.updateWorkModeSessionStatusLocked(projectName, workModeStatusPausedAfterCurrent, "")
-			a.mu.Unlock()
-			message = "Pause requested. AgentGO will wait before the next Worker/Observer send."
-			writeJSON(w, http.StatusOK, workModeSessionResponse{OK: true, State: state, Message: message})
-			return
-		case "resume", "unpause":
-			a.mu.Lock()
-			state = a.updateWorkModeSessionStatusLocked(projectName, workModeStatusRunning, workModeCallOwnerNone)
-			a.mu.Unlock()
-			message = "Observer Review session resumed."
-			writeJSON(w, http.StatusOK, workModeSessionResponse{OK: true, State: state, Message: message})
-			return
-		case "finalize":
-			a.mu.Lock()
-			current := a.workModeSessionsByProject[projectName]
-			a.cancelActiveCallsForProjectLocked(projectName, current.ExecutionID)
-			state = a.updateWorkModeSessionStatusLocked(projectName, workModeStatusFinalized, workModeCallOwnerNone)
-			a.mu.Unlock()
-			if strings.TrimSpace(current.LatestWorkerMessage) == "" && current.CurrentPass <= 0 {
-				message = "Observer Review finalized before the first Worker pass completed. No new Worker output was accepted."
-			} else {
-				message = "Observer Review session finalized. Review tmp-work, then merge selected draft files or use Merge all."
-			}
-			writeJSON(w, http.StatusOK, workModeSessionResponse{OK: true, State: state, Message: message})
-			return
-		case "emergency_stop":
-			a.mu.Lock()
-			state = a.updateWorkModeSessionStatusLocked(projectName, workModeStatusEmergencyStopped, workModeCallOwnerNone)
-			a.mu.Unlock()
-			message = "Work Mode session marked as emergency stopped."
-			writeJSON(w, http.StatusOK, workModeSessionResponse{OK: true, State: state, Message: message})
-			return
-		case "clear":
-			a.mu.Lock()
-			if a.workModeSessionsByProject != nil {
-				delete(a.workModeSessionsByProject, projectName)
-			}
-			a.mu.Unlock()
-			state = workModeSessionState{ProjectName: projectName, Mode: workModeModeNormal, Status: workModeStatusFinalized, MaxPasses: 3, ActiveCallOwner: workModeCallOwnerNone, UpdatedAt: time.Now().Format(time.RFC3339)}
-			message = "Work Mode session state cleared."
-			writeJSON(w, http.StatusOK, workModeSessionResponse{OK: true, State: state, Message: message})
-			return
-		default:
-			http.Error(w, "unknown Work Mode session action", http.StatusBadRequest)
-			return
-		}
-		a.mu.Lock()
-		state = a.setWorkModeSessionStateLocked(projectName, state)
-		a.mu.Unlock()
-		writeJSON(w, http.StatusOK, workModeSessionResponse{OK: true, State: state, Message: message})
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
-}
-
-func (a *App) handleWorkModeObserverReviewSend(w http.ResponseWriter, req workModeRequest, projectName string) {
-	roles, status, roleErr := a.resolveWorkModeRoles(req.ModelID, req.ObserverModelID, true)
-	if roleErr != nil {
-		http.Error(w, roleErr.Error(), status)
-		return
-	}
-	worker := roles.Worker
-	observer := roles.Observer
-	projectworkRoot, err := a.projectWorkRoot(projectName)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	tmpWorkRoot, err := workModeTmpWorkProjectRoot(projectworkRoot)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if err := os.MkdirAll(tmpWorkRoot, 0o755); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	selectedFiles, _, err := normalizeWorkModeSelectedFiles(req.SelectedFiles, projectName)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	_, workerMetaRoot, err := a.projectPaths(worker, projectName)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	_, observerMetaRoot, err := a.projectPaths(observer, projectName)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	includeRoleContext := true
-	if req.IncludeRoleContext != nil {
-		includeRoleContext = *req.IncludeRoleContext
-	}
-	workerUserContext := []byte("{}")
-	observerUserContext := []byte("{}")
-	if includeRoleContext {
-		workerUserContext, _ = os.ReadFile(filepath.Join(workerMetaRoot, "user_context.json"))
-		observerUserContext, _ = os.ReadFile(filepath.Join(observerMetaRoot, "user_context.json"))
-	}
-	memoryPath := filepath.Join(workerMetaRoot, chatMemoryFileName)
-	chatMemory := []byte("")
-	if req.UseMemory {
-		chatMemory, _ = os.ReadFile(memoryPath)
-	}
-	limits, err := a.loadProjectLimits(projectName)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	workerTransport := adapters.ResolveTransportProfile(toAdapterModelConfig(worker))
-	observerTransport := adapters.ResolveTransportProfile(toAdapterModelConfig(observer))
-	maxPasses := normalizeWorkModeMaxPasses(req.MaxPasses)
-	executionID := "workmode-observer-" + strconv.FormatInt(time.Now().UnixNano(), 10)
-	preStartState, hasPreStartState := a.getWorkModeSessionState(projectName)
-	if hasPreStartState && preStartState.Mode == workModeModeObserverReview && preStartState.Status == workModeStatusFinalized && strings.TrimSpace(preStartState.LatestWorkerMessage) == "" && strings.TrimSpace(preStartState.InitialPrompt) == strings.TrimSpace(req.Prompt) {
-		state := preStartState.clone()
-		reply := "Observer Review ended before any Worker output was completed. No tmp-work changes were applied."
-		writeJSON(w, http.StatusOK, workModeResponse{Reply: reply, AgentMessage: "Observer Review was finalized before the first Worker pass completed. No new Worker output was accepted.", State: &state})
-		return
-	}
-	initialState := newWorkModeSessionState(projectName, roles, true, maxPasses, req.Prompt)
-	initialState.ExecutionID = executionID
-	initialState.ActiveCallOwner = workModeCallOwnerNone
-	if hasPreStartState && preStartState.Mode == workModeModeObserverReview && strings.TrimSpace(preStartState.InitialPrompt) == strings.TrimSpace(req.Prompt) {
-		if preStartState.Status == workModeStatusPausedAfterCurrent {
-			initialState.Status = workModeStatusPausedAfterCurrent
-		}
-	}
-	a.mu.Lock()
-	a.setWorkModeSessionStateLocked(projectName, initialState)
-	a.mu.Unlock()
-
-	reviewMessages := []workModeReviewMessage{}
-	allChanged := []string{}
-	allSkipped := []string{}
-	allBlocked := []workModeBlockedFileOutput{}
-	allDiffs := []workModeDiffFile{}
-	allInline := []workModeInlineFileOutput{}
-	seenChanged := map[string]bool{}
-	latestWorkerReply := ""
-	latestWorkerFiles := []string{}
-	memoryUpdated := false
-	memoryWarning := ""
-	agentMessages := []string{}
-
-	appendChanged := func(paths []string) {
-		for _, rel := range paths {
-			rel = cleanSlashPath(rel)
-			if rel == "" || seenChanged[rel] {
-				continue
-			}
-			seenChanged[rel] = true
-			allChanged = append(allChanged, rel)
-		}
-	}
-	currentTmpState := func() []string {
-		rels, err := workModeListRelFilesUnderRoot(tmpWorkRoot)
-		if err != nil {
-			a.logf(modelIDString(worker.ID), "warn", "Could not list tmp-work state: %v", err)
-			return []string{}
-		}
-		return workModePrefixedTmpWorkState(rels)
-	}
-	writeFinal := func(reply, agentMessage string) {
-		if strings.TrimSpace(reply) == "" {
-			reply = latestWorkerReply
-		}
-		if strings.TrimSpace(reply) == "" {
-			reply = "Observer Review ended before any Worker output was completed. No tmp-work changes were applied."
-		}
-		if strings.TrimSpace(agentMessage) != "" {
-			agentMessages = append(agentMessages, strings.TrimSpace(agentMessage))
-		}
-		if req.UseMemory && !memoryUpdated && memoryWarning == "" && strings.TrimSpace(latestWorkerReply) != "" {
-			memoryWarning = "Memory was on, but the Worker did not return a memory update."
-		}
-		latestTmpState := currentTmpState()
-		a.mu.Lock()
-		state := a.updateWorkModeSessionStatusLocked(projectName, workModeStatusFinalized, workModeCallOwnerNone)
-		state.LatestWorkerMessage = strings.TrimSpace(latestWorkerReply)
-		state.LatestWorkerFileState = latestTmpState
-		state.ReviewMessages = cloneWorkModeReviewMessages(reviewMessages)
-		state.ExecutionID = executionID
-		state = a.setWorkModeSessionStateLocked(projectName, state)
-		a.mu.Unlock()
-		msg := strings.TrimSpace(strings.Join(agentMessages, "\n"))
-		writeJSON(w, http.StatusOK, workModeResponse{Reply: reply, ChangedFiles: allChanged, SkippedFiles: allSkipped, BlockedFiles: allBlocked, InlineFiles: allInline, DiffFiles: allDiffs, AgentMessage: msg, MemoryUpdated: memoryUpdated, MemoryWarning: memoryWarning, State: &state, ReviewMessages: reviewMessages})
-	}
-	finalFromCancel := func() bool {
-		state, ok := a.workModeSessionStateForExecution(projectName, executionID)
-		if !ok {
-			return false
-		}
-		if state.Status == workModeStatusFinalized {
-			if strings.TrimSpace(latestWorkerReply) == "" {
-				writeFinal(latestWorkerReply, "Observer Review was finalized before the first Worker pass completed. No new Worker output was accepted.")
-			} else {
-				writeFinal(latestWorkerReply, "Observer Review was finalized by the user. Review tmp-work, then merge selected draft files or use Merge all.")
-			}
-			return true
-		}
-		return false
-	}
-	buildSessionMessage := func(owner string, model ModelConfig, userContext []byte) adapters.Message {
-		memoryText := strings.TrimSpace(string(chatMemory))
-		if req.UseMemory && memoryText == "" {
-			memoryText = "(empty)"
-		}
-		parts := []string{
-			"AGENTGO WORK MODE OBSERVER REVIEW SESSION",
-			"PROJECT: " + projectName,
-			"WORKER: " + worker.Label,
-			"OBSERVER: " + observer.Label,
-			"CURRENT RECIPIENT: " + owner,
-			"MODEL: " + model.Label,
-		}
-		if includeRoleContext {
-			parts = append(parts, "", "MODEL USER CONTEXT (meta/user_context.json):", strings.TrimSpace(string(userContext)))
-		} else {
-			parts = append(parts, "", "MODEL USER CONTEXT:", "(disabled for this message)")
-		}
-		if req.UseMemory {
-			memoryLabel := "WORK MODE MEMORY (Worker-owned meta/memory.md):"
-			if strings.EqualFold(owner, "Observer") {
-				memoryLabel = "WORK MODE MEMORY (read-only Worker-owned meta/memory.md; Observer cannot update it):"
-			}
-			parts = append(parts, "", memoryLabel, memoryText)
-		} else {
-			parts = append(parts, "", "WORK MODE MEMORY:", "(disabled for this message)")
-		}
-		return adapters.Message{Role: "user", Text: strings.Join(parts, "\n")}
-	}
-	buildContextMessages := func(profile adapters.TransportProfile, includeTmpWork bool) ([]adapters.Message, error) {
-		messages := []adapters.Message{}
-		if len(selectedFiles) > 0 {
-			contextMessage, _, err := buildMultimodalContextMessage(projectworkRoot, selectedFiles, "SELECTED WORK MODE PROJECTWORK FILES:", profile, true, builderContextMaxTextBytes)
-			if err != nil {
-				return nil, err
-			}
-			messages = appendMessageIfPresent(messages, contextMessage)
-		}
-		if includeTmpWork {
-			tmpRels, err := workModeListRelFilesUnderRoot(tmpWorkRoot)
-			if err != nil {
-				return nil, err
-			}
-			tmpMessage, _, err := buildMultimodalContextMessage(tmpWorkRoot, tmpRels, "CURRENT TMP-WORK DRAFT FILES (read-only context; Worker file ops target the intended project paths and AgentGO routes them to tmp-work):", profile, false, builderContextMaxTextBytes)
-			if err != nil {
-				return nil, err
-			}
-			messages = appendMessageIfPresent(messages, tmpMessage)
-		}
-		tempMessage, err := buildTemporaryAttachmentMessage(req.TemporaryAttachments, profile)
-		if err != nil {
-			return nil, err
-		}
-		messages = appendMessageIfPresent(messages, tempMessage)
-		return messages, nil
-	}
-
-	for pass := 1; pass <= maxPasses; pass++ {
-		state, clearance, err := a.waitForWorkModeObserverLoopClearance(context.Background(), projectName, executionID)
-		if err != nil {
-			if clearance == "emergency" || state.Status == workModeStatusEmergencyStopped {
-				http.Error(w, "Work Mode request canceled", http.StatusGatewayTimeout)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusConflict)
-			return
-		}
-		if clearance == "finalized" {
-			writeFinal(latestWorkerReply, "Observer Review was finalized by the user. Review tmp-work, then merge selected draft files or use Merge all.")
-			return
-		}
-		tmpRelsBefore, err := workModeListRelFilesUnderRoot(tmpWorkRoot)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		updateableFiles := workModeUniqueRelPaths(selectedFiles, tmpRelsBefore)
-		workerInstructions := workModeObserverReviewWorkerInstructions(worker, includeRoleContext, req.UseMemory, req.ResponseMode, updateableFiles)
-		workerMessages := []adapters.Message{buildSessionMessage("Worker", worker, workerUserContext)}
-		contextMessages, err := buildContextMessages(workerTransport, true)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		workerMessages = append(workerMessages, contextMessages...)
-		if len(reviewMessages) > 0 {
-			workerMessages = appendMessageIfPresent(workerMessages, adapters.Message{Role: "user", Text: workModeReviewTranscript(projectName, req.Prompt, reviewMessages)})
-		}
-		workerTask := workModeObserverWorkerTask(pass, req.Prompt)
-		workerMessages = appendMessageIfPresent(workerMessages, adapters.Message{Role: "user", Text: workerTask})
-		workerPayload := adapterRequestPayload{Instructions: strings.TrimSpace(workerInstructions), Messages: workerMessages, ExpectJSON: true, JSONSchema: workModeObserverWorkerJSONSchema()}
-		ctx, cancel := context.WithCancel(context.Background())
-		workerModelID := modelIDString(worker.ID)
-		a.setWorkModeObserverActiveCall(projectName, executionID, workerModelID, workModeCallOwnerWorker, cancel)
-		adapterResp, err := a.executeAdapterResponse(ctx, worker, workerPayload)
-		a.clearWorkModeObserverActiveCall(projectName, executionID, workerModelID)
-		cancel()
-		if err != nil {
-			if errors.Is(err, context.Canceled) && finalFromCancel() {
-				return
-			}
-			if errors.Is(err, context.Canceled) {
-				http.Error(w, "Work Mode request canceled", http.StatusGatewayTimeout)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusBadGateway)
-			return
-		}
-		if finalFromCancel() {
-			return
-		}
-		if err := requireWorkModeJSONBoolField(adapterResp.Text, "review_complete"); err != nil {
-			a.logf(workerModelID, "warn", "Observer Review Worker response missing required review_complete boolean: %v", err)
-			writeWorkModeJSONError(w, err, adapterResp.Text)
-			return
-		}
-		parsed, err := parseWorkModeAdapterResponse(adapterResp, projectworkRoot, projectName)
-		if err != nil {
-			a.logf(workerModelID, "warn", "Observer Review Worker response parse failed: %v", err)
-			writeWorkModeJSONError(w, err, adapterResp.Text)
-			return
-		}
-		if finalFromCancel() {
-			return
-		}
-		changed, skipped, blocked, diffFiles, err := workModeApplyFileOpsToTmpWork(projectworkRoot, projectName, parsed.Files, parsed.Artifacts, limits)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		inlineFiles := workModeInlineFilesForChanged(projectworkRoot, projectName, changed)
-		appendChanged(changed)
-		allSkipped = append(allSkipped, skipped...)
-		allBlocked = append(allBlocked, blocked...)
-		allDiffs = append(allDiffs, diffFiles...)
-		allInline = append(allInline, inlineFiles...)
-		latestWorkerReply = strings.TrimSpace(parsed.Reply)
-		latestWorkerFiles = currentTmpState()
-		if req.UseMemory {
-			memoryText := strings.TrimSpace(parsed.Memory)
-			if memoryText != "" {
-				if err := os.WriteFile(memoryPath, []byte(memoryText), 0o644); err != nil {
-					memoryWarning = "Could not save memory.md."
-					a.logf(workerModelID, "warn", "Could not save Observer Review memory.md: %v", err)
-				} else {
-					chatMemory = []byte(memoryText)
-					memoryUpdated = true
-				}
-			} else if memoryWarning == "" {
-				memoryWarning = "Memory is on, but the Worker did not return a memory update for this pass. Previous memory was preserved."
-			}
-		}
-		if warning := workModeOutputLimitWarning(worker, adapterResp); warning != "" {
-			agentMessages = append(agentMessages, warning)
-		}
-		for _, warning := range parsed.Warnings {
-			warning = strings.TrimSpace(warning)
-			if warning != "" {
-				a.logf(workerModelID, "warn", "Observer Review Worker warning: %s", warning)
-			}
-		}
-		reviewMessages = append(reviewMessages, workModeReviewMessage{Owner: workModeCallOwnerWorker, Pass: pass, Reply: latestWorkerReply, ChangedFiles: changed, SkippedFiles: skipped, BlockedFiles: blocked, InlineFiles: inlineFiles})
-		a.mu.Lock()
-		state = a.updateWorkModeObserverReviewProgressLocked(projectName, executionID, func(s *workModeSessionState) {
-			s.CurrentPass = pass
-			s.LatestWorkerMessage = latestWorkerReply
-			s.LatestWorkerFileState = latestWorkerFiles
-			s.ReviewMessages = cloneWorkModeReviewMessages(reviewMessages)
-		})
-		a.mu.Unlock()
-		if parsed.ReviewComplete {
-			writeFinal(latestWorkerReply, "Worker marked the Observer Review run complete. Review tmp-work, then merge selected draft files or use Merge all.")
-			return
-		}
-		if pass >= maxPasses {
-			writeFinal(latestWorkerReply, fmt.Sprintf("Observer Review reached the hard limit of %d Worker pass(es). AgentGO stopped before calling the Observer again. Review tmp-work, then merge selected draft files or use Merge all.", maxPasses))
-			return
-		}
-
-		state, clearance, err = a.waitForWorkModeObserverLoopClearance(context.Background(), projectName, executionID)
-		if err != nil {
-			if clearance == "emergency" || state.Status == workModeStatusEmergencyStopped {
-				http.Error(w, "Work Mode request canceled", http.StatusGatewayTimeout)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusConflict)
-			return
-		}
-		if clearance == "finalized" {
-			writeFinal(latestWorkerReply, "Observer Review was finalized by the user. Review tmp-work, then merge selected draft files or use Merge all.")
-			return
-		}
-		observerInstructions := workModeObserverInstructions(observer)
-		observerMessages := []adapters.Message{buildSessionMessage("Observer", observer, observerUserContext)}
-		observerContextMessages, err := buildContextMessages(observerTransport, true)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		observerMessages = append(observerMessages, observerContextMessages...)
-		observerMessages = appendMessageIfPresent(observerMessages, adapters.Message{Role: "user", Text: workModeReviewTranscript(projectName, req.Prompt, reviewMessages)})
-		observerMessages = appendMessageIfPresent(observerMessages, adapters.Message{Role: "user", Text: workModeObserverTask(pass)})
-		observerPayload := adapterRequestPayload{Instructions: strings.TrimSpace(observerInstructions), Messages: observerMessages, ExpectJSON: true, JSONSchema: workModeObserverJSONSchema()}
-		obsCtx, obsCancel := context.WithCancel(context.Background())
-		observerModelID := modelIDString(observer.ID)
-		a.setWorkModeObserverActiveCall(projectName, executionID, observerModelID, workModeCallOwnerObserver, obsCancel)
-		observerResp, err := a.executeAdapterResponse(obsCtx, observer, observerPayload)
-		a.clearWorkModeObserverActiveCall(projectName, executionID, observerModelID)
-		obsCancel()
-		if err != nil {
-			if errors.Is(err, context.Canceled) && finalFromCancel() {
-				return
-			}
-			if errors.Is(err, context.Canceled) {
-				http.Error(w, "Work Mode request canceled", http.StatusGatewayTimeout)
-				return
-			}
-			note := "Observer failed, so AgentGO finalized the latest completed Worker pass. Review tmp-work, then merge selected draft files or use Merge all."
-			reviewMessages = append(reviewMessages, workModeReviewMessage{Owner: workModeCallOwnerObserver, Pass: pass, Reply: "Observer failed: " + err.Error(), HasInput: workModeMaybeJSONBoolPtr(false)})
-			writeFinal(latestWorkerReply, note)
-			return
-		}
-		if finalFromCancel() {
-			return
-		}
-		observerParsed, err := parseWorkModeObserverResponse(observerResp.Text)
-		if err != nil {
-			note := "Observer returned invalid review JSON, so AgentGO finalized the latest completed Worker pass. Review tmp-work, then merge selected draft files or use Merge all."
-			a.logf(observerModelID, "warn", "Observer Review Observer response parse failed: %v", err)
-			reviewMessages = append(reviewMessages, workModeReviewMessage{Owner: workModeCallOwnerObserver, Pass: pass, Reply: "Observer JSON parse failed: " + err.Error(), HasInput: workModeMaybeJSONBoolPtr(false)})
-			writeFinal(latestWorkerReply, note)
-			return
-		}
-		for _, warning := range observerParsed.Warnings {
-			warning = strings.TrimSpace(warning)
-			if warning != "" {
-				a.logf(observerModelID, "warn", "Observer Review Observer warning: %s", warning)
-			}
-		}
-		if warning := workModeOutputLimitWarning(observer, observerResp); warning != "" {
-			agentMessages = append(agentMessages, warning)
-		}
-		reviewMessages = append(reviewMessages, workModeReviewMessage{Owner: workModeCallOwnerObserver, Pass: pass, Reply: strings.TrimSpace(observerParsed.Reply), HasInput: workModeMaybeJSONBoolPtr(observerParsed.HasInput), Recommendations: observerParsed.Recommendations})
-		a.mu.Lock()
-		state = a.updateWorkModeObserverReviewProgressLocked(projectName, executionID, func(s *workModeSessionState) {
-			s.LatestObserverMessage = strings.TrimSpace(observerParsed.Reply)
-			s.ObserverHasInput = workModeMaybeJSONBoolPtr(observerParsed.HasInput)
-			s.ReviewMessages = cloneWorkModeReviewMessages(reviewMessages)
-		})
-		a.mu.Unlock()
-		if !observerParsed.HasInput {
-			writeFinal(latestWorkerReply, "Observer marked has_input=false. AgentGO finalized the latest Worker pass. Review tmp-work, then merge selected draft files or use Merge all.")
-			return
-		}
-	}
-	writeFinal(latestWorkerReply, "Observer Review ended. Review tmp-work, then merge selected draft files or use Merge all.")
-}
-
 func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -6220,16 +4370,23 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Select an active project first.", http.StatusBadRequest)
 		return
 	}
-	if req.ObserverReview {
-		a.handleWorkModeObserverReviewSend(w, req, projectName)
+	a.mu.RLock()
+	reviewerID := strings.TrimSpace(a.reviewerID)
+	a.mu.RUnlock()
+	if reviewerID != "" {
+		http.Error(w, "Work Mode does not support Observer Mode. Turn off Observer Mode first.", http.StatusBadRequest)
 		return
 	}
-	roles, status, roleErr := a.resolveWorkModeRoles(req.ModelID, "", false)
-	if roleErr != nil {
-		http.Error(w, roleErr.Error(), status)
+	builders := a.activeBuilderModelsSorted()
+	if len(builders) != 1 {
+		http.Error(w, "Work Mode requires exactly one active Builder AI.", http.StatusBadRequest)
 		return
 	}
-	model := roles.Worker
+	model := builders[0]
+	if req.ModelID != "" && req.ModelID != modelIDString(model.ID) {
+		http.Error(w, "The active Work Mode Builder changed. Reopen Work Mode and try again.", http.StatusBadRequest)
+		return
+	}
 	projectworkRoot, err := a.projectWorkRoot(projectName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -6257,6 +4414,10 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 	chatMemory := []byte("")
 	if req.UseMemory {
 		chatMemory, _ = os.ReadFile(memoryPath)
+	} else {
+		if err := clearChatMemoryFile(metaRoot); err != nil {
+			a.logf(modelIDString(model.ID), "warn", "Could not clear memory.md while Work Mode memory was off: %v", err)
+		}
 	}
 	transportProfile := adapters.ResolveTransportProfile(toAdapterModelConfig(model))
 	extraMessages := []adapters.Message{}
@@ -6311,10 +4472,6 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 	executionID := "workmode-" + strconv.FormatInt(time.Now().UnixNano(), 10)
 	a.mu.Lock()
 	a.setActiveCancelLocked(modelIDString(model.ID), projectName, executionID, cancel)
-	normalState := newWorkModeSessionState(projectName, roles, false, 3, req.Prompt)
-	normalState.ExecutionID = executionID
-	normalState.ActiveCallOwner = workModeCallOwnerWorker
-	a.setWorkModeSessionStateLocked(projectName, normalState)
 	a.mu.Unlock()
 	defer func() {
 		a.mu.Lock()
@@ -6325,9 +4482,6 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 	adapterResp, err := a.executeAdapterResponse(ctx, model, requestPayload)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
-			a.mu.Lock()
-			a.updateWorkModeSessionStatusLocked(projectName, workModeStatusEmergencyStopped, workModeCallOwnerNone)
-			a.mu.Unlock()
 			http.Error(w, "Work Mode request canceled", http.StatusGatewayTimeout)
 			return
 		}
@@ -6380,16 +4534,8 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 	}
 	inlineFiles := workModeInlineFilesForChanged(projectworkRoot, projectName, changed)
 	agentMessage := workModeOutputLimitWarning(model, adapterResp)
-	a.mu.Lock()
-	completedState := a.updateWorkModeSessionStatusLocked(projectName, workModeStatusFinalized, workModeCallOwnerNone)
-	completedState.LatestWorkerMessage = strings.TrimSpace(parsed.Reply)
-	completedState.LatestWorkerFileState = append([]string{}, changed...)
-	completedState.CurrentPass = 1
-	completedState.ExecutionID = executionID
-	completedState = a.setWorkModeSessionStateLocked(projectName, completedState)
-	a.mu.Unlock()
 	a.logf(modelIDString(model.ID), "info", "Work Mode prompt completed for project %s; changed=%d skipped=%d", projectName, len(changed), len(skipped))
-	writeJSON(w, http.StatusOK, workModeResponse{Reply: parsed.Reply, ChangedFiles: changed, SkippedFiles: skipped, BlockedFiles: blocked, InlineFiles: inlineFiles, DiffFiles: diffFiles, AgentMessage: agentMessage, MemoryUpdated: memoryUpdated, MemoryWarning: memoryWarning, State: &completedState})
+	writeJSON(w, http.StatusOK, workModeResponse{Reply: parsed.Reply, ChangedFiles: changed, SkippedFiles: skipped, BlockedFiles: blocked, InlineFiles: inlineFiles, DiffFiles: diffFiles, AgentMessage: agentMessage, MemoryUpdated: memoryUpdated, MemoryWarning: memoryWarning})
 }
 
 func writeWorkModeJSONError(w http.ResponseWriter, parseErr error, rawResponse string) {
@@ -8436,26 +6582,6 @@ func (a *App) clearActiveCancelLocked(modelID, executionID string) {
 	delete(a.activeCancels, modelID)
 }
 
-func (a *App) cancelActiveCallsForProjectLocked(projectName, executionID string) int {
-	projectName = strings.TrimSpace(projectName)
-	executionID = strings.TrimSpace(executionID)
-	count := 0
-	for modelID, entry := range a.activeCancels {
-		if projectName != "" && strings.TrimSpace(entry.ProjectName) != projectName {
-			continue
-		}
-		if executionID != "" && strings.TrimSpace(entry.ExecutionID) != "" && strings.TrimSpace(entry.ExecutionID) != executionID {
-			continue
-		}
-		if entry.Cancel != nil {
-			entry.Cancel()
-			count++
-		}
-		delete(a.activeCancels, modelID)
-	}
-	return count
-}
-
 func (a *App) isWaveExecutionCurrent(projectName, executionID string) bool {
 	projectName = strings.TrimSpace(projectName)
 	executionID = strings.TrimSpace(executionID)
@@ -10086,7 +8212,6 @@ func (a *App) handleStop(w http.ResponseWriter, r *http.Request) {
 	a.reviewerID = ""
 	a.clearAllWaveExecutionsLocked()
 	a.resetTokenUsageHierarchyLocked()
-	a.markWorkModeSessionsEmergencyStoppedLocked(activeProject)
 	if activeProject != "" {
 		a.setWaveStatusLocked(activeProject, waveStatusState{ProjectName: activeProject, Visible: false, State: "", Detail: ""})
 	}
@@ -10163,136 +8288,6 @@ func (a *App) handleKnowledgeNotesSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "defaultTab": knowledgeDefaultTab(req.Content), "savedAt": time.Now().Format(time.RFC3339)})
-}
-
-func defaultStickyNoteRecord(now string) stickyNoteRecord {
-	return stickyNoteRecord{
-		ID:              "sticky_default",
-		Body:            "",
-		X:               -1,
-		Y:               90,
-		Width:           230,
-		Height:          150,
-		BackgroundColor: "#cfeeff",
-		ForegroundColor: "#000000",
-		CreatedAt:       now,
-		UpdatedAt:       now,
-	}
-}
-
-func normalizeStickyColor(value, fallback string) string {
-	clean := strings.TrimSpace(value)
-	if clean == "" {
-		return fallback
-	}
-	if regexp.MustCompile(`^#[0-9a-fA-F]{6}$`).MatchString(clean) {
-		return strings.ToLower(clean)
-	}
-	return fallback
-}
-
-func normalizeStickyNoteRecord(note stickyNoteRecord, idx int, now string) stickyNoteRecord {
-	note.ID = strings.TrimSpace(note.ID)
-	if note.ID == "" {
-		note.ID = fmt.Sprintf("sticky_%d_%d", time.Now().UnixNano(), idx)
-	}
-	if note.Width < 160 {
-		note.Width = 230
-	}
-	if note.Width > 720 {
-		note.Width = 720
-	}
-	if note.Height < 110 {
-		note.Height = 150
-	}
-	if note.Height > 640 {
-		note.Height = 640
-	}
-	if note.Y < 0 {
-		note.Y = 90
-	}
-	note.BackgroundColor = normalizeStickyColor(note.BackgroundColor, "#cfeeff")
-	note.ForegroundColor = normalizeStickyColor(note.ForegroundColor, "#000000")
-	if strings.TrimSpace(note.CreatedAt) == "" {
-		note.CreatedAt = now
-	}
-	note.UpdatedAt = now
-	return note
-}
-
-func normalizeStickyNotes(notes []stickyNoteRecord) []stickyNoteRecord {
-	now := time.Now().UTC().Format(time.RFC3339)
-	out := make([]stickyNoteRecord, 0, len(notes))
-	seen := map[string]bool{}
-	for idx, note := range notes {
-		note = normalizeStickyNoteRecord(note, idx, now)
-		if seen[note.ID] {
-			note.ID = fmt.Sprintf("sticky_%d_%d", time.Now().UnixNano(), idx)
-		}
-		seen[note.ID] = true
-		out = append(out, note)
-	}
-	if len(out) == 0 {
-		out = append(out, defaultStickyNoteRecord(now))
-	}
-	return out
-}
-
-func readStickyNotesFile(path string) ([]stickyNoteRecord, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return normalizeStickyNotes(nil), nil
-		}
-		return nil, err
-	}
-	var response stickyNotesResponse
-	if err := json.Unmarshal(data, &response); err == nil && len(response.Notes) > 0 {
-		return normalizeStickyNotes(response.Notes), nil
-	}
-	var notes []stickyNoteRecord
-	if err := json.Unmarshal(data, &notes); err != nil {
-		return nil, fmt.Errorf("invalid stickies.json: %w", err)
-	}
-	return normalizeStickyNotes(notes), nil
-}
-
-func (a *App) handleStickyNotes(w http.ResponseWriter, r *http.Request) {
-	stickiesPath, err := appRootFilePath(knowledgeStickiesFilename)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	switch r.Method {
-	case http.MethodGet:
-		notes, err := readStickyNotesFile(stickiesPath)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		writeJSON(w, http.StatusOK, stickyNotesResponse{Notes: notes})
-	case http.MethodPost:
-		var req stickyNotesSaveRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "invalid json", http.StatusBadRequest)
-			return
-		}
-		notes := normalizeStickyNotes(req.Notes)
-		payload := stickyNotesResponse{Notes: notes, SavedAt: time.Now().UTC().Format(time.RFC3339)}
-		data, err := json.MarshalIndent(payload, "", "  ")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		data = append(data, '\n')
-		if err := atomicWriteFile(stickiesPath, data, 0o644); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		writeJSON(w, http.StatusOK, payload)
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
 }
 
 func (e diagnosticsEntry) withStage(stage string) diagnosticsEntry {
@@ -10441,23 +8436,13 @@ func (a *App) handleDiagnosticsStream(w http.ResponseWriter, r *http.Request) {
 	subscriberID := a.diagSubscriberTopID
 	a.diagSubscribers[subscriberID] = ch
 	a.mu.Unlock()
-	a.httpMu.Lock()
-	a.activeDiagnosticsStreams++
-	a.httpMu.Unlock()
 	defer func() {
 		a.mu.Lock()
 		delete(a.diagSubscribers, subscriberID)
 		a.mu.Unlock()
-		a.httpMu.Lock()
-		if a.activeDiagnosticsStreams > 0 {
-			a.activeDiagnosticsStreams--
-		}
-		a.httpMu.Unlock()
 	}()
 
-	if _, err := fmt.Fprint(w, ": diagnostics\n\n"); err != nil {
-		return
-	}
+	_, _ = fmt.Fprint(w, ": diagnostics\n\n")
 	flusher.Flush()
 	ticker := time.NewTicker(25 * time.Second)
 	defer ticker.Stop()
@@ -10470,14 +8455,10 @@ func (a *App) handleDiagnosticsStream(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				continue
 			}
-			if _, err := fmt.Fprintf(w, "data: %s\n\n", payload); err != nil {
-				return
-			}
+			_, _ = fmt.Fprintf(w, "data: %s\n\n", payload)
 			flusher.Flush()
 		case <-ticker.C:
-			if _, err := fmt.Fprint(w, ": keepalive\n\n"); err != nil {
-				return
-			}
+			_, _ = fmt.Fprint(w, ": keepalive\n\n")
 			flusher.Flush()
 		}
 	}
@@ -10629,15 +8610,6 @@ func (a *App) handleListFiles(w http.ResponseWriter, r *http.Request) {
 	}
 	entries, err := os.ReadDir(full)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			cleanRel := strings.Trim(filepath.ToSlash(rel), "/")
-			if cleanRel == "" || strings.HasSuffix(cleanRel, "/tmp-work") || filepath.Base(cleanRel) == "tmp-work" {
-				writeJSON(w, http.StatusOK, listDirResponse{CurrentPath: filepath.ToSlash(rel), Entries: []fileEntry{}})
-				return
-			}
-			http.Error(w, "directory not found", http.StatusNotFound)
-			return
-		}
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -10833,10 +8805,6 @@ func (a *App) handleSaveFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rel := strings.TrimSpace(req.Path)
-	if err := a.rejectLockedTmpWorkMutation(rel); err != nil {
-		http.Error(w, err.Error(), http.StatusConflict)
-		return
-	}
 	full, err := safeJoin(a.cfg.WorkRoot, rel)
 	if err != nil {
 		http.Error(w, "invalid path", http.StatusBadRequest)
@@ -10846,7 +8814,6 @@ func (a *App) handleSaveFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	a.invalidateDeadDropStatusCache("")
 	a.logf("system", "info", "File saved: %s", filepath.ToSlash(rel))
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
@@ -10900,10 +8867,6 @@ func (a *App) handleCreateFileItem(w http.ResponseWriter, r *http.Request) {
 	projectName, projectworkRoot, err := a.activeProjectWorkRoot()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if err := a.rejectLockedTmpWorkMutation(req.ParentPath); err != nil {
-		http.Error(w, err.Error(), http.StatusConflict)
 		return
 	}
 	parentRel, err := projectworkRelFromWorkRelAllowRoot(req.ParentPath, projectName)
@@ -10977,7 +8940,6 @@ func (a *App) handleCreateFileItem(w http.ResponseWriter, r *http.Request) {
 	}
 	projectRel := path.Join(parentRel, name)
 	workRel := filepath.ToSlash(filepath.Join("projects", projectName, "projectwork", filepath.FromSlash(projectRel)))
-	a.invalidateDeadDropStatusCache(projectName)
 	a.logf("system", "info", "Work Mode %s created: %s", itemType, workRel)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "path": workRel, "itemType": itemType})
 }
@@ -11040,10 +9002,6 @@ func (a *App) handleRenameFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	oldWorkRel := strings.TrimSpace(req.Path)
-	if err := a.rejectLockedTmpWorkMutation(oldWorkRel); err != nil {
-		http.Error(w, err.Error(), http.StatusConflict)
-		return
-	}
 	oldProjectRel, err := projectworkRelFromWorkRel(oldWorkRel, projectName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -11052,11 +9010,6 @@ func (a *App) handleRenameFile(w http.ResponseWriter, r *http.Request) {
 	newProjectRel, err := normalizeProjectworkRenamePath(req.NewPath)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	newWorkRelCandidate := filepath.ToSlash(filepath.Join("projects", projectName, "projectwork", filepath.FromSlash(newProjectRel)))
-	if err := a.rejectLockedTmpWorkMutation(newWorkRelCandidate); err != nil {
-		http.Error(w, err.Error(), http.StatusConflict)
 		return
 	}
 	oldFull, err := safeJoin(projectworkRoot, oldProjectRel)
@@ -11095,7 +9048,6 @@ func (a *App) handleRenameFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if oldFull == newFull {
-		a.invalidateDeadDropStatusCache(projectName)
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "path": filepath.ToSlash(oldWorkRel), "projectworkPath": oldProjectRel})
 		return
 	}
@@ -11123,7 +9075,6 @@ func (a *App) handleRenameFile(w http.ResponseWriter, r *http.Request) {
 	if info.IsDir() {
 		itemLabel = "Folder"
 	}
-	a.invalidateDeadDropStatusCache(projectName)
 	a.logf("system", "info", "%s renamed: %s -> %s", itemLabel, filepath.ToSlash(oldWorkRel), newWorkRel)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "path": newWorkRel, "projectworkPath": newProjectRel})
 }
@@ -11139,10 +9090,6 @@ func (a *App) handleDeleteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rel := strings.TrimSpace(req.Path)
-	if err := a.rejectLockedTmpWorkMutation(rel); err != nil {
-		http.Error(w, err.Error(), http.StatusConflict)
-		return
-	}
 	full, err := safeJoin(a.cfg.WorkRoot, rel)
 	if err != nil {
 		http.Error(w, "invalid path", http.StatusBadRequest)
@@ -11179,7 +9126,6 @@ func (a *App) handleDeleteFile(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		a.invalidateDeadDropStatusCache("")
 		a.logf("system", "warn", "Folder deleted: %s", filepath.ToSlash(rel))
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "deletedType": "folder"})
 		return
@@ -11192,7 +9138,6 @@ func (a *App) handleDeleteFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	a.invalidateDeadDropStatusCache("")
 	a.logf("system", "warn", "File deleted: %s", filepath.ToSlash(rel))
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "deletedType": "file"})
 }
@@ -11412,14 +9357,6 @@ func (a *App) handleDeadDropStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Select an active project first.", http.StatusBadRequest)
 		return
 	}
-	a.deadDropStatusMu.Lock()
-	if cached, ok := a.deadDropStatusCache[projectName]; ok && time.Since(cached.CachedAt) < deadDropStatusCacheTTL {
-		resp := cached.Response
-		a.deadDropStatusMu.Unlock()
-		writeJSON(w, http.StatusOK, resp)
-		return
-	}
-	a.deadDropStatusMu.Unlock()
 	sourcePath, sourceKind, err := a.currentDeadDropSource(projectName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -11439,7 +9376,7 @@ func (a *App) handleDeadDropStatus(w http.ResponseWriter, r *http.Request) {
 	if len(revisions) > 0 {
 		nextRevision = revisions[len(revisions)-1].Revision + 1
 	}
-	resp := deadDropStatusResponse{
+	writeJSON(w, http.StatusOK, deadDropStatusResponse{
 		Project:            projectName,
 		HasSource:          strings.TrimSpace(sourcePath) != "",
 		SourcePath:         sourcePath,
@@ -11447,11 +9384,7 @@ func (a *App) handleDeadDropStatus(w http.ResponseWriter, r *http.Request) {
 		ProjectworkMatches: matches,
 		RevisionCount:      len(revisions),
 		NextRevision:       nextRevision,
-	}
-	a.deadDropStatusMu.Lock()
-	a.deadDropStatusCache[projectName] = deadDropStatusCacheEntry{Response: resp, CachedAt: time.Now()}
-	a.deadDropStatusMu.Unlock()
-	writeJSON(w, http.StatusOK, resp)
+	})
 }
 
 func (a *App) setDeadDropSourceFromData(projectName, baseName string, data []byte) (string, string, string, error) {
@@ -11554,7 +9487,6 @@ func (a *App) handleSetDeadDrop(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	a.invalidateDeadDropStatusCache(projectName)
 	a.logf("system", "info", "Set %s as DeadDrop for project %s and reset deaddrop history", filepath.ToSlash(rel), projectName)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok":               true,
@@ -12037,7 +9969,6 @@ func (a *App) handleDeadDropExecute(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Select an active project first.", http.StatusBadRequest)
 		return
 	}
-	a.invalidateDeadDropStatusCache(projectName)
 	resp, execErr, status := a.startDeadDropExecution(projectName, req, executionSourceInfo{TriggerType: "manual"})
 	if execErr != nil {
 		http.Error(w, execErr.Error(), status)
@@ -12487,445 +10418,6 @@ func (a *App) activeProjectWorkRoot() (string, string, error) {
 		return "", "", err
 	}
 	return projectName, projectRoot, nil
-}
-
-func workModeTmpWorkProjectRelPrefix() string {
-	return workModeTmpWorkDirName
-}
-
-func workModeTmpWorkWorkRelPrefix(projectName string) string {
-	return filepath.ToSlash(filepath.Join("projects", projectName, "projectwork", workModeTmpWorkDirName))
-}
-
-func workModeTmpWorkProjectRoot(projectworkRoot string) (string, error) {
-	return safeJoin(projectworkRoot, workModeTmpWorkDirName)
-}
-
-func cleanSlashPath(value string) string {
-	clean := strings.ReplaceAll(strings.TrimSpace(filepath.ToSlash(value)), "\\", "/")
-	clean = strings.TrimPrefix(clean, "/")
-	if clean == "" {
-		return ""
-	}
-	clean = path.Clean(clean)
-	if clean == "." {
-		return ""
-	}
-	return clean
-}
-
-func parseWorkModeTmpWorkRel(workRel string) (projectName string, tmpRel string, ok bool) {
-	clean := cleanSlashPath(workRel)
-	if clean == "" {
-		return "", "", false
-	}
-	parts := strings.Split(clean, "/")
-	if len(parts) < 4 || parts[0] != "projects" || parts[2] != "projectwork" || parts[3] != workModeTmpWorkDirName {
-		return "", "", false
-	}
-	projectName = parts[1]
-	if !isValidProjectName(projectName) {
-		return "", "", false
-	}
-	if len(parts) == 4 {
-		return projectName, "", true
-	}
-	tmpRel = path.Clean(strings.Join(parts[4:], "/"))
-	if tmpRel == "." || tmpRel == "" || tmpRel == ".." || strings.HasPrefix(tmpRel, "../") || strings.HasPrefix(tmpRel, "/") {
-		return "", "", false
-	}
-	return projectName, tmpRel, true
-}
-
-func isWorkModeTmpWorkWriteLockedState(state workModeSessionState) bool {
-	if state.Mode != workModeModeObserverReview {
-		return false
-	}
-	switch state.Status {
-	case workModeStatusRunning, workModeStatusPausedAfterCurrent, workModeStatusFinalizing:
-		return true
-	default:
-		return false
-	}
-}
-
-func (a *App) isWorkModeTmpWorkWriteLocked(projectName string) bool {
-	state, ok := a.getWorkModeSessionState(projectName)
-	return ok && isWorkModeTmpWorkWriteLockedState(state)
-}
-
-func (a *App) rejectLockedTmpWorkMutation(workRel string) error {
-	projectName, _, ok := parseWorkModeTmpWorkRel(workRel)
-	if !ok {
-		return nil
-	}
-	if a.isWorkModeTmpWorkWriteLocked(projectName) {
-		return errors.New("tmp-work is read-only while Observer Review Mode is running or paused")
-	}
-	return nil
-}
-
-func normalizeWorkModeTmpWorkFileRel(raw, projectName string) (string, error) {
-	parsedProject, tmpRel, ok := parseWorkModeTmpWorkRel(raw)
-	if !ok {
-		return "", errors.New("file must be inside tmp-work")
-	}
-	if parsedProject != projectName {
-		return "", errors.New("tmp-work file must be inside the active project")
-	}
-	if tmpRel == "" {
-		return "", errors.New("select a tmp-work file")
-	}
-	clean, err := normalizeWorkModeProjectworkRel(tmpRel, projectName)
-	if err != nil {
-		return "", err
-	}
-	if strings.HasPrefix(clean, workModeTmpWorkDirName+"/") || clean == workModeTmpWorkDirName {
-		return "", errors.New("nested tmp-work paths are not allowed")
-	}
-	return clean, nil
-}
-
-func projectWorkRelForTmpWorkFile(projectName, tmpRel string) string {
-	return filepath.ToSlash(filepath.Join("projects", projectName, "projectwork", filepath.FromSlash(tmpRel)))
-}
-
-func tmpWorkRelForProjectWorkFile(projectName, tmpRel string) string {
-	return filepath.ToSlash(filepath.Join("projects", projectName, "projectwork", workModeTmpWorkDirName, filepath.FromSlash(tmpRel)))
-}
-
-func prefixedTmpWorkChangedPaths(projectName string, changed []string) []string {
-	out := make([]string, 0, len(changed))
-	seen := map[string]bool{}
-	for _, rel := range changed {
-		rel = cleanSlashPath(rel)
-		if rel == "" || seen[rel] {
-			continue
-		}
-		seen[rel] = true
-		out = append(out, path.Join(workModeTmpWorkDirName, rel))
-	}
-	return out
-}
-
-func prefixedTmpWorkDiffs(diffs []workModeDiffFile) []workModeDiffFile {
-	out := make([]workModeDiffFile, 0, len(diffs))
-	for _, diff := range diffs {
-		diff.Path = path.Join(workModeTmpWorkDirName, cleanSlashPath(diff.Path))
-		out = append(out, diff)
-	}
-	return out
-}
-
-func workModeExistingTmpWorkUpdateable(tmpWorkRoot string, ops []builderFileOp, projectName string) map[string]bool {
-	updateable := map[string]bool{}
-	for _, op := range ops {
-		rel, err := normalizeWorkModeProjectworkRel(op.Path, projectName)
-		if err == nil && rel != "" {
-			updateable[rel] = true
-		}
-	}
-	_ = filepath.WalkDir(tmpWorkRoot, func(fullPath string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil || fullPath == tmpWorkRoot || entry == nil || entry.IsDir() || isSymlinkDirEntry(entry) {
-			return nil
-		}
-		rel, err := filepath.Rel(tmpWorkRoot, fullPath)
-		if err != nil {
-			return nil
-		}
-		rel = filepath.ToSlash(rel)
-		if rel != "" && !isHiddenWorkModePath(rel) {
-			updateable[rel] = true
-		}
-		return nil
-	})
-	return updateable
-}
-
-func isWorkModeTmpWorkRelativePath(rel string) bool {
-	rel = cleanSlashPath(rel)
-	return rel == workModeTmpWorkDirName || strings.HasPrefix(rel, workModeTmpWorkDirName+"/")
-}
-
-func filterWorkModeTmpWorkDraftFileOps(ops []builderFileOp, projectName string) ([]builderFileOp, []string, []workModeBlockedFileOutput) {
-	accepted := make([]builderFileOp, 0, len(ops))
-	skipped := []string{}
-	blocked := []workModeBlockedFileOutput{}
-	for _, op := range ops {
-		rel, err := normalizeWorkModeProjectworkRel(op.Path, projectName)
-		if err == nil && isWorkModeTmpWorkRelativePath(rel) {
-			reason := "Worker draft file ops must use intended project paths; tmp-work paths are managed by AgentGO"
-			action := strings.ToLower(strings.TrimSpace(op.Action))
-			skipped = append(skipped, rel+": "+reason)
-			blockedOutput := workModeBlockedFileOutput{Path: rel, Action: action, Reason: reason}
-			if strings.TrimSpace(op.Content) != "" {
-				blockedOutput.Content = op.Content
-			} else if strings.TrimSpace(op.ArtifactRef) != "" {
-				blockedOutput.ContentOmitted = true
-				blockedOutput.Content = "[artifact output omitted]"
-			}
-			blocked = append(blocked, blockedOutput)
-			continue
-		}
-		accepted = append(accepted, op)
-	}
-	return accepted, skipped, blocked
-}
-
-func seedTmpWorkOverwriteSources(projectworkRoot, tmpWorkRoot, projectName string, ops []builderFileOp) error {
-	for _, op := range ops {
-		if !strings.EqualFold(strings.TrimSpace(op.Action), "overwrite") {
-			continue
-		}
-		rel, err := normalizeWorkModeProjectworkRel(op.Path, projectName)
-		if err != nil || rel == "" {
-			continue
-		}
-		tmpTarget, err := safeJoin(tmpWorkRoot, rel)
-		if err != nil {
-			continue
-		}
-		if err := rejectSymlinkPath(tmpWorkRoot, tmpTarget); err != nil {
-			continue
-		}
-		if _, err := os.Stat(tmpTarget); err == nil {
-			continue
-		} else if err != nil && !errors.Is(err, os.ErrNotExist) {
-			return err
-		}
-		source, err := safeJoin(projectworkRoot, rel)
-		if err != nil {
-			continue
-		}
-		if err := rejectSymlinkPath(projectworkRoot, source); err != nil {
-			continue
-		}
-		data, err := readFileUnderRoot(projectworkRoot, source)
-		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				continue
-			}
-			return err
-		}
-		if err := writeFileUnderRoot(tmpWorkRoot, tmpTarget, data, 0o644); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func workModeApplyFileOpsToTmpWork(projectworkRoot, projectName string, ops []builderFileOp, artifacts []builderArtifact, limits ProjectLimits) ([]string, []string, []workModeBlockedFileOutput, []workModeDiffFile, error) {
-	tmpWorkRoot, err := workModeTmpWorkProjectRoot(projectworkRoot)
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-	if err := os.MkdirAll(tmpWorkRoot, 0o755); err != nil {
-		return nil, nil, nil, nil, err
-	}
-	if err := rejectSymlinkPath(projectworkRoot, tmpWorkRoot); err != nil {
-		return nil, nil, nil, nil, err
-	}
-	filteredOps, draftSkipped, draftBlocked := filterWorkModeTmpWorkDraftFileOps(ops, projectName)
-	if err := seedTmpWorkOverwriteSources(projectworkRoot, tmpWorkRoot, projectName, filteredOps); err != nil {
-		return nil, draftSkipped, draftBlocked, nil, err
-	}
-	updateable := workModeExistingTmpWorkUpdateable(tmpWorkRoot, filteredOps, projectName)
-	changed, skipped, blocked, diffs, err := workModeApplyFileOps(tmpWorkRoot, projectName, filteredOps, artifacts, limits, updateable)
-	skipped = append(draftSkipped, skipped...)
-	blocked = append(draftBlocked, blocked...)
-	if err != nil {
-		return nil, skipped, blocked, diffs, err
-	}
-	return prefixedTmpWorkChangedPaths(projectName, changed), skipped, blocked, prefixedTmpWorkDiffs(diffs), nil
-}
-
-func pruneEmptyDirsUnderRoot(root string, start string) {
-	rootAbs, err := filepath.Abs(root)
-	if err != nil {
-		return
-	}
-	current, err := filepath.Abs(start)
-	if err != nil {
-		return
-	}
-	for current != rootAbs && strings.HasPrefix(current, rootAbs+string(os.PathSeparator)) {
-		_ = os.Remove(current)
-		current = filepath.Dir(current)
-	}
-}
-
-func (a *App) mergeTmpWorkFile(projectName, tmpRel string) (string, string, error) {
-	projectworkRoot, err := a.projectWorkRoot(projectName)
-	if err != nil {
-		return "", "", err
-	}
-	tmpWorkRoot, err := workModeTmpWorkProjectRoot(projectworkRoot)
-	if err != nil {
-		return "", "", err
-	}
-	tmpRel, err = normalizeWorkModeProjectworkRel(tmpRel, projectName)
-	if err != nil {
-		return "", "", err
-	}
-	if strings.HasPrefix(tmpRel, workModeTmpWorkDirName+"/") || tmpRel == workModeTmpWorkDirName {
-		return "", "", errors.New("invalid nested tmp-work path")
-	}
-	source, err := safeJoin(tmpWorkRoot, tmpRel)
-	if err != nil {
-		return "", "", err
-	}
-	if err := rejectSymlinkPath(tmpWorkRoot, source); err != nil {
-		return "", "", err
-	}
-	info, err := os.Stat(source)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return "", "", errors.New("tmp-work file not found")
-		}
-		return "", "", err
-	}
-	if info.IsDir() {
-		return "", "", errors.New("select a tmp-work file, not a folder")
-	}
-	data, err := readFileUnderRoot(tmpWorkRoot, source)
-	if err != nil {
-		return "", "", err
-	}
-	target, err := safeJoin(projectworkRoot, tmpRel)
-	if err != nil {
-		return "", "", err
-	}
-	if err := rejectSymlinkPath(projectworkRoot, target); err != nil {
-		return "", "", err
-	}
-	if err := writeFileUnderRoot(projectworkRoot, target, data, 0o644); err != nil {
-		return "", "", err
-	}
-	if err := removeFileUnderRoot(tmpWorkRoot, source); err != nil {
-		return "", "", err
-	}
-	pruneEmptyDirsUnderRoot(tmpWorkRoot, filepath.Dir(source))
-	return tmpWorkRelForProjectWorkFile(projectName, tmpRel), projectWorkRelForTmpWorkFile(projectName, tmpRel), nil
-}
-
-func (a *App) handleWorkModeTmpWorkMerge(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	var req workModeTmpWorkMergeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
-		return
-	}
-	projectName, err := a.requireActiveProject()
-	if err != nil {
-		http.Error(w, "Select an active project first.", http.StatusBadRequest)
-		return
-	}
-	if a.isWorkModeTmpWorkWriteLocked(projectName) {
-		http.Error(w, "tmp-work is read-only while Observer Review Mode is running or paused", http.StatusConflict)
-		return
-	}
-	tmpRel, err := normalizeWorkModeTmpWorkFileRel(req.Path, projectName)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	sourcePath, targetPath, err := a.mergeTmpWorkFile(projectName, tmpRel)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if _, err := a.syncActiveBuilderProjectsFromProjectwork(projectName); err != nil {
-		a.logf("system", "warn", "Could not sync tmp-work merge into active Builder workspace: %v", err)
-	}
-	a.logf("system", "info", "tmp-work merged: %s -> %s", sourcePath, targetPath)
-	writeJSON(w, http.StatusOK, workModeTmpWorkMergeResponse{OK: true, SourcePath: sourcePath, TargetPath: targetPath, MergedFiles: []string{targetPath}, Message: "tmp-work file merged."})
-}
-
-func (a *App) handleWorkModeTmpWorkMergeAll(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	projectName, err := a.requireActiveProject()
-	if err != nil {
-		http.Error(w, "Select an active project first.", http.StatusBadRequest)
-		return
-	}
-	if a.isWorkModeTmpWorkWriteLocked(projectName) {
-		http.Error(w, "tmp-work is read-only while Observer Review Mode is running or paused", http.StatusConflict)
-		return
-	}
-	projectworkRoot, err := a.projectWorkRoot(projectName)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	tmpWorkRoot, err := workModeTmpWorkProjectRoot(projectworkRoot)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if err := rejectSymlinkPath(projectworkRoot, tmpWorkRoot); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	merged := []string{}
-	if _, err := os.Stat(tmpWorkRoot); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			writeJSON(w, http.StatusOK, workModeTmpWorkMergeResponse{OK: true, MergedFiles: merged, Message: "tmp-work is empty."})
-			return
-		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	rels := []string{}
-	walkErr := filepath.WalkDir(tmpWorkRoot, func(fullPath string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil || fullPath == tmpWorkRoot || entry == nil {
-			return walkErr
-		}
-		if isSymlinkDirEntry(entry) {
-			if entry.IsDir() {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if entry.IsDir() {
-			return nil
-		}
-		rel, err := filepath.Rel(tmpWorkRoot, fullPath)
-		if err != nil {
-			return nil
-		}
-		rel = filepath.ToSlash(rel)
-		if rel == "" || isHiddenWorkModePath(rel) || strings.EqualFold(path.Base(rel), "project.json") {
-			return nil
-		}
-		rels = append(rels, rel)
-		return nil
-	})
-	if walkErr != nil {
-		http.Error(w, walkErr.Error(), http.StatusBadRequest)
-		return
-	}
-	sort.Strings(rels)
-	for _, rel := range rels {
-		_, targetPath, err := a.mergeTmpWorkFile(projectName, rel)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		merged = append(merged, targetPath)
-	}
-	if len(merged) > 0 {
-		if _, err := a.syncActiveBuilderProjectsFromProjectwork(projectName); err != nil {
-			a.logf("system", "warn", "Could not sync tmp-work merge-all into active Builder workspace: %v", err)
-		}
-	}
-	a.logf("system", "info", "tmp-work merge-all completed for project %s; merged=%d", projectName, len(merged))
-	writeJSON(w, http.StatusOK, workModeTmpWorkMergeResponse{OK: true, MergedFiles: merged, Message: fmt.Sprintf("Merged %d tmp-work file(s).", len(merged))})
 }
 
 func (a *App) activeProjectRoot() (string, string, error) {
@@ -22595,7 +20087,7 @@ func validateModelMutation(req modelMutationRequest) error {
 		return errors.New("choose either Video Generation or 3D Mesh Generation, not both. Create a separate model card for the other mode")
 	}
 	switch req.AuthType {
-	case "none", "bearer", "basic", "header_key", "fal_key", "google_adc":
+	case "none", "bearer", "basic", "header_key", "google_adc":
 		return nil
 	default:
 		return errors.New("auth type is required")

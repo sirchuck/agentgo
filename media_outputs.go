@@ -20,20 +20,12 @@ func (a *App) nextMediaProjectworkOutputRoot(projectName string, model ModelConf
 	if err := os.MkdirAll(projectRoot, 0o755); err != nil {
 		return "", "", err
 	}
-	mediaFolder := "videos"
-	if modelIsMeshGeneration(model) {
-		mediaFolder = "3dmesh"
-	}
-	mediaRoot := filepath.Join(projectRoot, mediaFolder)
-	if err := os.MkdirAll(mediaRoot, 0o755); err != nil {
-		return "", "", err
-	}
 	base := modelSlug(model.Label)
 	if base == "" || base == "model" {
 		base = "model_" + modelIDString(model.ID)
 	}
 	next := 1
-	entries, err := os.ReadDir(mediaRoot)
+	entries, err := os.ReadDir(projectRoot)
 	if err != nil && !os.IsNotExist(err) {
 		return "", "", err
 	}
@@ -55,9 +47,9 @@ func (a *App) nextMediaProjectworkOutputRoot(projectName string, model ModelConf
 	}
 	for i := next; i < next+10000; i++ {
 		folder := fmt.Sprintf("%s_r%03d", base, i)
-		full := filepath.Join(mediaRoot, folder)
+		full := filepath.Join(projectRoot, folder)
 		if err := os.Mkdir(full, 0o755); err == nil {
-			rel := filepath.ToSlash(filepath.Join("projects", projectName, "projectwork", mediaFolder, folder))
+			rel := filepath.ToSlash(filepath.Join("projects", projectName, "projectwork", folder))
 			return rel, full, nil
 		} else if os.IsExist(err) {
 			continue

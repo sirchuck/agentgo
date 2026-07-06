@@ -56,33 +56,6 @@ func providerOptionBool(model ModelConfig, key string, fallback bool) bool {
 	}
 	return fallback
 }
-
-func providerOptionOptionalBool(model ModelConfig, key string) (bool, bool) {
-	if model.ProviderOptions == nil {
-		return false, false
-	}
-	value, ok := model.ProviderOptions[key]
-	if !ok || value == nil {
-		return false, false
-	}
-	switch typed := value.(type) {
-	case bool:
-		return typed, true
-	case string:
-		switch strings.ToLower(strings.TrimSpace(typed)) {
-		case "1", "true", "yes", "on":
-			return true, true
-		case "0", "false", "no", "off":
-			return false, true
-		}
-	case float64:
-		return typed != 0, true
-	case int:
-		return typed != 0, true
-	}
-	return false, false
-}
-
 func providerOptionValue(model ModelConfig, key string) (any, bool) {
 	if model.ProviderOptions == nil {
 		return nil, false
