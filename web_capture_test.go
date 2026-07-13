@@ -197,6 +197,32 @@ func TestHTMLCaptureToleratesBrowserHTMLThatIsNotXML(t *testing.T) {
 	}
 }
 
+func TestWorkModeCodeBlocksDecodeEntitiesBeforeDisplayAndCopy(t *testing.T) {
+	raw, err := os.ReadFile("templates/index.html")
+	if err != nil {
+		t.Fatalf("read template: %v", err)
+	}
+	templateText := string(raw)
+	for _, required := range []string{
+		"function decodeAgentGOCodeText(node)",
+		"decoder.innerHTML = source.replace(/<\\/textarea/gi, '&lt;/textarea')",
+		"el.textContent = decodeAgentGOCodeText(node)",
+		"const text = pre ? String(pre.textContent || '') : ''",
+	} {
+		if !strings.Contains(templateText, required) {
+			t.Fatalf("Work Mode code rendering regression guard missing %q", required)
+		}
+	}
+	for _, forbidden := range []string{
+		"hasElementChild ? (node.innerHTML || '') : (node.textContent || '')",
+		"const text = pre ? String(pre.innerHTML || '') : ''",
+	} {
+		if strings.Contains(templateText, forbidden) {
+			t.Fatalf("Work Mode code rendering still contains unsafe entity-preserving path %q", forbidden)
+		}
+	}
+}
+
 func TestWorkModeURLCapabilitiesReportsMissingBrowser(t *testing.T) {
 	t.Setenv("AGENTGO_BROWSER_PATH", "")
 	t.Setenv("CHROME_PATH", "")

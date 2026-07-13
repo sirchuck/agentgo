@@ -17463,6 +17463,13 @@ function sanitizeAgentGOImageSrc(value) {
   if (compact.startsWith('javascript:') || compact.startsWith('vbscript:')) return '';
   return src;
 }
+function decodeAgentGOCodeText(node) {
+  if (!node) return '';
+  const source = typeof node.innerHTML === 'string' ? node.innerHTML : String(node.textContent || '');
+  const decoder = document.createElement('textarea');
+  decoder.innerHTML = source.replace(/<\/textarea/gi, '&lt;/textarea');
+  return decoder.value;
+}
 function sanitizeAgentGOReplyHTML(value) {
   const raw = String(value || '');
   if (!workModeReplyHasAllowedHTML(raw)) return formatWorkModeMessageText(raw);
@@ -17498,8 +17505,7 @@ function sanitizeAgentGOReplyHTML(value) {
       if (color) el.setAttribute('style', `color:${color}`);
     }
     if (tag === 'code') {
-      const hasElementChild = Array.from(node.childNodes || []).some(child => child.nodeType === Node.ELEMENT_NODE);
-      el.textContent = hasElementChild ? (node.innerHTML || '') : (node.textContent || '');
+      el.textContent = decodeAgentGOCodeText(node);
       return el;
     }
     if (tag === 'img') {
