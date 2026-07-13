@@ -56,6 +56,14 @@ func applyModelHeaders(req *http.Request, model ModelConfig) {
 		if strings.TrimSpace(model.APIKey) != "" {
 			req.Header.Set(defaultString(model.AuthHeader, "x-api-key"), strings.TrimSpace(model.APIKey))
 		}
+	case "fal_key":
+		if strings.TrimSpace(model.APIKey) != "" {
+			key := strings.TrimSpace(model.APIKey)
+			if !strings.HasPrefix(strings.ToLower(key), "key ") {
+				key = "Key " + key
+			}
+			req.Header.Set(defaultString(model.AuthHeader, "Authorization"), key)
+		}
 	case "basic":
 		if strings.TrimSpace(model.APIUser) != "" || strings.TrimSpace(model.APIPass) != "" {
 			req.SetBasicAuth(strings.TrimSpace(model.APIUser), strings.TrimSpace(model.APIPass))

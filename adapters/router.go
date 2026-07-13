@@ -16,15 +16,17 @@ func selectAdapter(model ModelConfig) (Adapter, error) {
 		return anthropicMessagesAdapter{}, nil
 	case "gemini_generate_content":
 		return geminiGenerateContentAdapter{}, nil
-	case "openai_compatible":
+	case "openai_compatible", "xai_responses":
 		return openAICompatibleAdapter{}, nil
+	case "xai_image":
+		return xaiImagineImageAdapter{}, nil
 	case "custom_json":
 		return customJSONAdapter{}, nil
 	case "custom_multipart":
 		return customMultipartAdapter{}, nil
-	case "veo_video", "kling_video", "sora_video", "comfyui_ltx_video":
+	case "veo_video", "vertex_veo_video", "kling_video", "sora_video", "comfyui_ltx_video", "xai_video":
 		return nil, fmt.Errorf("adapter %q is a video-generation adapter and must use the dedicated video runtime", strings.TrimSpace(model.Adapter))
-	case "meshy_mesh", "tripo_mesh", "hyper3d_mesh":
+	case "meshy_mesh", "tripo_mesh", "hyper3d_mesh", "fal_mesh":
 		return nil, fmt.Errorf("adapter %q is a mesh-generation adapter and must use the dedicated mesh runtime", strings.TrimSpace(model.Adapter))
 	default:
 		return nil, fmt.Errorf("adapter %q is not implemented yet", strings.TrimSpace(model.Adapter))
@@ -90,6 +92,11 @@ func knownModelCapabilityHints(model ModelConfig) ModelCapabilities {
 			hints.SupportsImageIn = true
 		}
 	}
+	if adapter == "xai_responses" {
+		if containsAny(identity, "grok-4", "grok build", "grok-build") {
+			hints.SupportsImageIn = true
+		}
+	}
 	return hints
 }
 
@@ -100,6 +107,10 @@ func AdapterDefaultCapabilities(model ModelConfig) ModelCapabilities {
 	case "openai_responses":
 		caps.SupportsImageIn = true
 		caps.SupportsFileIn = true
+	case "xai_responses":
+		caps.SupportsImageIn = true
+	case "xai_image":
+		caps.SupportsImageIn = true
 	case "gemini_generate_content":
 		caps.SupportsImageIn = true
 		caps.SupportsAudioIn = true
@@ -113,9 +124,9 @@ func AdapterDefaultCapabilities(model ModelConfig) ModelCapabilities {
 		caps.SupportsAudioIn = true
 		caps.SupportsVideoIn = true
 		caps.SupportsFileIn = true
-	case "veo_video", "kling_video", "sora_video", "comfyui_ltx_video":
+	case "veo_video", "vertex_veo_video", "kling_video", "sora_video", "comfyui_ltx_video", "xai_video":
 		caps.SupportsImageIn = true
-	case "meshy_mesh", "tripo_mesh", "hyper3d_mesh":
+	case "meshy_mesh", "tripo_mesh", "hyper3d_mesh", "fal_mesh":
 		caps.SupportsImageIn = true
 	case "ollama_generate", "openai_compatible":
 		// Auto mode stays conservative unless the known model name indicates image support.
@@ -170,16 +181,22 @@ func normalizedAdapterName(model ModelConfig) string {
 		return "openai_responses"
 	case "ollama":
 		return "ollama_generate"
-	case "openrouter", "custom", "openai_compatible", "deepseek", "xai", "grok", "mistral":
+	case "openrouter", "custom", "openai_compatible", "deepseek", "mistral":
 		return "openai_compatible"
+	case "xai", "grok":
+		return "xai_responses"
 	case "anthropic", "claude":
 		return "anthropic_messages"
 	case "google", "gemini":
 		return "gemini_generate_content"
+	case "google_vertex", "vertex", "vertex_ai":
+		return "vertex_veo_video"
 	case "ideogram":
 		return "custom_multipart"
 	case "seedream":
 		return "custom_json"
+	case "fal", "fal_ai", "falai":
+		return "fal_mesh"
 	default:
 		return name
 	}

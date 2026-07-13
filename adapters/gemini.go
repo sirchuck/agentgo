@@ -33,6 +33,7 @@ type geminiContent struct {
 
 type geminiGenerationConfig struct {
 	ResponseMIMEType   string         `json:"responseMimeType,omitempty"`
+	ResponseSchema     map[string]any `json:"responseSchema,omitempty"`
 	ResponseModalities []string       `json:"responseModalities,omitempty"`
 	ImageConfig        map[string]any `json:"imageConfig,omitempty"`
 	MaxOutputTokens    int            `json:"maxOutputTokens,omitempty"`
@@ -76,7 +77,7 @@ func (geminiGenerateContentAdapter) Execute(ctx context.Context, model ModelConf
 	payload := geminiGenerateContentRequest{
 		Contents:          buildGeminiContents(req.Messages),
 		SystemInstruction: buildGeminiSystemInstruction(req.Instructions),
-		GenerationConfig:  buildGeminiGenerationConfig(prepared, req.ExpectJSON),
+		GenerationConfig:  buildGeminiGenerationConfig(prepared, req),
 	}
 	if len(payload.Contents) == 0 {
 		return Response{}, errors.New("request contained no messages")
@@ -196,10 +197,14 @@ func buildGeminiSystemInstruction(instructions string) *geminiContent {
 }
 
 // buildGeminiGenerationConfig copies the small set of v1 generation controls AgentGO supports.
-func buildGeminiGenerationConfig(model ModelConfig, expectJSON bool) *geminiGenerationConfig {
+func buildGeminiGenerationConfig(model ModelConfig, req Request) *geminiGenerationConfig {
 	config := &geminiGenerationConfig{}
-	if expectJSON {
+	if req.ExpectJSON {
 		config.ResponseMIMEType = "application/json"
+	}
+	if shouldUseStrictStructuredOutput(model, req) {
+		config.ResponseMIMEType = "application/json"
+		config.ResponseSchema = strictJSONSchema(req.JSONSchema)
 	}
 	if override := strings.TrimSpace(providerOptionString(model, "response_mime_type", "")); override != "" {
 		config.ResponseMIMEType = override
@@ -217,7 +222,7 @@ func buildGeminiGenerationConfig(model ModelConfig, expectJSON bool) *geminiGene
 		value := model.RequestDefaults.Temperature
 		config.Temperature = &value
 	}
-	if config.ResponseMIMEType == "" && len(config.ResponseModalities) == 0 && len(config.ImageConfig) == 0 && config.MaxOutputTokens == 0 && config.Temperature == nil {
+	if config.ResponseMIMEType == "" && len(config.ResponseSchema) == 0 && len(config.ResponseModalities) == 0 && len(config.ImageConfig) == 0 && config.MaxOutputTokens == 0 && config.Temperature == nil {
 		return nil
 	}
 	return config

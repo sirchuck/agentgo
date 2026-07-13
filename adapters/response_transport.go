@@ -134,8 +134,14 @@ func resolveResponseMedia(respBody []byte, model ModelConfig) (Response, error) 
 	if err := json.Unmarshal(respBody, &parsed); err != nil {
 		return Response{}, nil
 	}
-	fileName := strings.TrimSpace(asString(lookupPath(parsed, providerOptionString(model, "response_file_name_path", ""))))
-	mimeType := strings.TrimSpace(asString(lookupPath(parsed, providerOptionString(model, "response_file_mime_path", ""))))
+	fileName := ""
+	if lookup := strings.TrimSpace(providerOptionString(model, "response_file_name_path", "")); lookup != "" {
+		fileName = strings.TrimSpace(asString(lookupPath(parsed, lookup)))
+	}
+	mimeType := ""
+	if lookup := strings.TrimSpace(providerOptionString(model, "response_file_mime_path", "")); lookup != "" {
+		mimeType = strings.TrimSpace(asString(lookupPath(parsed, lookup)))
+	}
 	if base64Data := extractResponseFileBase64(parsed, model); base64Data != "" {
 		decoded, resolvedMIME, err := decodeResponseFileBase64(base64Data, mimeType)
 		if err != nil {
@@ -235,9 +241,14 @@ func decodeResponseFileBase64(value, fallbackMIME string) ([]byte, string, error
 		}
 		clean = payload
 	}
-	decoded, err := base64.StdEncoding.DecodeString(clean)
+	compact := strings.Join(strings.Fields(clean), "")
+	decoded, err := base64.StdEncoding.DecodeString(compact)
 	if err != nil {
-		return nil, "", fmt.Errorf("response file base64 decode failed: %w", err)
+		if fallback, fallbackErr := base64.RawStdEncoding.DecodeString(compact); fallbackErr == nil {
+			decoded = fallback
+		} else {
+			return nil, "", fmt.Errorf("response file base64 decode failed: %w", err)
+		}
 	}
 	return decoded, resolvedMIME, nil
 }

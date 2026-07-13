@@ -3,9 +3,9 @@
   "file_version": 1,
   "bind_host": "0.0.0.0",
   "http_port": 5226,
-  "https_port": 0,
-  "tls_cert_file": "",
-  "tls_key_file": "",
+  "https_port": 5227,
+  "tls_cert_file": "/etc/ssl/certs/ssl-cert-snakeoil.pem",
+  "tls_key_file": "/etc/ssl/private/ssl-cert-snakeoil.key",
   "work_root": "work",
   "max_response_history": 50,
   "risk_mode_max_iterations": 10,
@@ -18,5 +18,3 @@
     "max_runtime_slice_entries": 150
   }
 }
-
-

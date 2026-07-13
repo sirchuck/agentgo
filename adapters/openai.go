@@ -126,21 +126,90 @@ func buildOpenAIResponsesRequest(model ModelConfig, req Request, apiModel string
 		Input:        buildOpenAIInput(req.Messages),
 		Store:        false,
 	}
-	if shouldUseOpenAIImageGeneration(model, apiModel) {
+	if shouldUseOpenAIImageGeneration(model, apiModel, req) {
 		payload.Tools = []openAIImageGenerationTool{buildOpenAIImageGenerationTool(model)}
 		payload.ToolChoice = &openAIResponsesToolChoice{Type: "image_generation"}
 		return payload
 	}
-	payload.Text = map[string]any{"format": map[string]any{"type": "text"}}
+	payload.Text = buildOpenAIResponsesTextFormat(model, req)
 	return payload
 }
 
-func shouldUseOpenAIImageGeneration(model ModelConfig, apiModel string) bool {
+func buildOpenAIResponsesTextFormat(model ModelConfig, req Request) map[string]any {
+	if shouldUseStrictStructuredOutput(model, req) {
+		return map[string]any{
+			"format": map[string]any{
+				"type":   "json_schema",
+				"name":   structuredOutputSchemaName(model),
+				"schema": strictJSONSchema(req.JSONSchema),
+				"strict": true,
+			},
+		}
+	}
+	if req.ExpectJSON {
+		return map[string]any{"format": map[string]any{"type": "json_object"}}
+	}
+	return map[string]any{"format": map[string]any{"type": "text"}}
+}
+
+func shouldUseOpenAIImageGeneration(model ModelConfig, apiModel string, req Request) bool {
 	if providerOptionBool(model, "image_generation_tool", false) || providerOptionBool(model, "openai_image_generation_tool", false) {
 		return true
 	}
 	identity := strings.ToLower(strings.TrimSpace(apiModel))
-	return strings.Contains(identity, "gpt-image") || strings.Contains(identity, "chatgpt-image")
+	if strings.Contains(identity, "gpt-image") || strings.Contains(identity, "chatgpt-image") {
+		return true
+	}
+	if !model.Capabilities.SupportsBinaryOut {
+		return false
+	}
+	return openAIRequestLooksLikeImageGeneration(req)
+}
+
+func openAIRequestLooksLikeImageGeneration(req Request) bool {
+	text := strings.ToLower(strings.TrimSpace(openAILastUserText(req)))
+	if text == "" {
+		return false
+	}
+	imageNouns := []string{"image", "picture", "photo", "photograph", "illustration", "drawing", "artwork", "logo", "icon", "sprite", "thumbnail", "poster", "banner", "cover art", "avatar", "sticker", "meme", "comic", "png", "jpg", "jpeg", "webp", "gif"}
+	actionVerbs := []string{"generate", "create", "draw", "make", "produce", "render", "design", "illustrate", "paint", "sketch", "visualize", "return", "output", "save", "build"}
+	hasImageNoun := false
+	for _, noun := range imageNouns {
+		if strings.Contains(text, noun) {
+			hasImageNoun = true
+			break
+		}
+	}
+	if !hasImageNoun {
+		return false
+	}
+	for _, verb := range actionVerbs {
+		if strings.Contains(text, verb) {
+			return true
+		}
+	}
+	return strings.Contains(text, "text-to-image") || strings.Contains(text, "image generation")
+}
+
+func openAILastUserText(req Request) string {
+	for i := len(req.Messages) - 1; i >= 0; i-- {
+		message := req.Messages[i]
+		role := strings.ToLower(strings.TrimSpace(message.Role))
+		if role != "" && role != "user" {
+			continue
+		}
+		parts := []string{strings.TrimSpace(message.Text)}
+		for _, part := range message.Parts {
+			if strings.EqualFold(strings.TrimSpace(part.Kind), "text") && strings.TrimSpace(part.Text) != "" {
+				parts = append(parts, strings.TrimSpace(part.Text))
+			}
+		}
+		joined := strings.TrimSpace(strings.Join(parts, "\n"))
+		if joined != "" {
+			return joined
+		}
+	}
+	return ""
 }
 
 func buildOpenAIImageGenerationTool(model ModelConfig) openAIImageGenerationTool {

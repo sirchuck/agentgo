@@ -8,6 +8,109 @@ import (
 	"strings"
 )
 
+func cloneAnyMap(src map[string]any) map[string]any {
+	if len(src) == 0 {
+		return nil
+	}
+	out := make(map[string]any, len(src))
+	for key, value := range src {
+		out[key] = cloneAnyValue(value)
+	}
+	return out
+}
+
+func cloneAnyValue(value any) any {
+	switch typed := value.(type) {
+	case map[string]any:
+		return cloneAnyMap(typed)
+	case []any:
+		out := make([]any, len(typed))
+		for i, item := range typed {
+			out[i] = cloneAnyValue(item)
+		}
+		return out
+	case []string:
+		return append([]string(nil), typed...)
+	case []int:
+		return append([]int(nil), typed...)
+	default:
+		return typed
+	}
+}
+
+func strictStructuredOutputEnabled(model ModelConfig) bool {
+	if model.StrictStructuredOutput != nil {
+		return *model.StrictStructuredOutput
+	}
+	switch normalizedAdapterName(model) {
+	case "ollama_generate", "openai_responses", "gemini_generate_content", "anthropic_messages", "xai_responses":
+		return true
+	default:
+		return false
+	}
+}
+
+func shouldUseStrictStructuredOutput(model ModelConfig, req Request) bool {
+	return req.ExpectJSON && strictStructuredOutputEnabled(model) && len(req.JSONSchema) > 0
+}
+
+func structuredOutputSchemaName(model ModelConfig) string {
+	adapter := strings.ToLower(strings.TrimSpace(normalizedAdapterName(model)))
+	switch adapter {
+	case "anthropic_messages":
+		return "agentgo_work_mode_response"
+	case "xai_responses":
+		return "agentgo_work_mode_response"
+	case "openai_responses":
+		return "agentgo_work_mode_response"
+	case "gemini_generate_content":
+		return "agentgo_work_mode_response"
+	default:
+		return "agentgo_json_response"
+	}
+}
+
+func strictJSONSchema(schema map[string]any) map[string]any {
+	if len(schema) == 0 {
+		return nil
+	}
+	cloned := cloneAnyMap(schema)
+	makeStrictObjectSchema(cloned)
+	return cloned
+}
+
+func makeStrictObjectSchema(schema map[string]any) {
+	if len(schema) == 0 {
+		return
+	}
+	schemaType := strings.ToLower(strings.TrimSpace(fmt.Sprint(schema["type"])))
+	if schemaType == "object" {
+		props, _ := schema["properties"].(map[string]any)
+		if len(props) > 0 {
+			required := make([]string, 0, len(props))
+			for key, value := range props {
+				required = append(required, key)
+				if child, ok := value.(map[string]any); ok {
+					makeStrictObjectSchema(child)
+				}
+			}
+			schema["required"] = required
+		}
+		schema["additionalProperties"] = false
+	}
+	if items, ok := schema["items"].(map[string]any); ok {
+		makeStrictObjectSchema(items)
+	}
+	for _, compoundKey := range []string{"anyOf", "oneOf", "allOf"} {
+		items, _ := schema[compoundKey].([]any)
+		for _, item := range items {
+			if child, ok := item.(map[string]any); ok {
+				makeStrictObjectSchema(child)
+			}
+		}
+	}
+}
+
 func providerOptionString(model ModelConfig, key, fallback string) string {
 	if model.ProviderOptions == nil {
 		return fallback
@@ -56,6 +159,33 @@ func providerOptionBool(model ModelConfig, key string, fallback bool) bool {
 	}
 	return fallback
 }
+
+func providerOptionOptionalBool(model ModelConfig, key string) (bool, bool) {
+	if model.ProviderOptions == nil {
+		return false, false
+	}
+	value, ok := model.ProviderOptions[key]
+	if !ok || value == nil {
+		return false, false
+	}
+	switch typed := value.(type) {
+	case bool:
+		return typed, true
+	case string:
+		switch strings.ToLower(strings.TrimSpace(typed)) {
+		case "1", "true", "yes", "on":
+			return true, true
+		case "0", "false", "no", "off":
+			return false, true
+		}
+	case float64:
+		return typed != 0, true
+	case int:
+		return typed != 0, true
+	}
+	return false, false
+}
+
 func providerOptionValue(model ModelConfig, key string) (any, bool) {
 	if model.ProviderOptions == nil {
 		return nil, false

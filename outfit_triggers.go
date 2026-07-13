@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -631,7 +632,7 @@ func (a *App) startExecutionForCurrentConfig(projectName string, req executeRequ
 		allBuilders = append(allBuilders, model)
 	}
 	promptPresent := strings.TrimSpace(req.Prompt) != "" || len(wavePrompts) > 0
-	a.logf("system", "info", "Execute Prompt request received for project %s. prompt_present=%v active_builders=%d cypher=%v wiretap=%v context_files=%d temporary_attachments=%d waves=%d loops=%d reviewer=%s risk=%v", projectName, promptPresent, len(allBuilders), req.CypherEnabled, req.WireTapEnabled, len(req.ContextFiles), len(req.TemporaryAttachments), len(wavePrompts), req.LoopCount, reviewerID, riskEnabled)
+	a.logf("system", "info", "Execute Prompt request received for project %s. prompt_present=%v active_builders=%d cypher=%v wiretap=%v doubletap=%v doubletap_count=%d context_files=%d temporary_attachments=%d waves=%d loops=%d reviewer=%s risk=%v", projectName, promptPresent, len(allBuilders), req.CypherEnabled, req.WireTapEnabled, req.DoubleTapEnabled, req.DoubleTapCount, len(req.ContextFiles), len(req.TemporaryAttachments), len(wavePrompts), req.LoopCount, reviewerID, riskEnabled)
 	if len(allBuilders) == 0 {
 		a.logf("system", "warn", "Execute Prompt blocked for project %s: no active Builder AI", projectName)
 		return executeResponse{}, errors.New("Activate at least one Builder AI before executing a prompt."), http.StatusBadRequest
@@ -641,8 +642,18 @@ func (a *App) startExecutionForCurrentConfig(projectName string, req executeRequ
 		a.logf("system", "warn", "Execute Prompt blocked for project %s: %v", projectName, mediaErr)
 		return executeResponse{}, mediaErr, http.StatusBadRequest
 	}
-	if req.WireTapEnabled && req.CypherEnabled {
-		err := errors.New("WireTap can only run with normal Execute Prompt. Disable Cypher or disarm WireTap.")
+	deepModeCount := 0
+	if req.CypherEnabled {
+		deepModeCount++
+	}
+	if req.WireTapEnabled {
+		deepModeCount++
+	}
+	if req.DoubleTapEnabled {
+		deepModeCount++
+	}
+	if deepModeCount > 1 {
+		err := errors.New("Only one deep mode can be active. Disable Cypher, WireTap, or DoubleTap so only one remains armed.")
 		a.logf("system", "warn", "Execute Prompt blocked for project %s: %v", projectName, err)
 		return executeResponse{}, err, http.StatusBadRequest
 	}
@@ -656,6 +667,9 @@ func (a *App) startExecutionForCurrentConfig(projectName string, req executeRequ
 			a.logf("system", "warn", "Execute Prompt blocked for project %s: WireTap not ready: %v", projectName, err)
 			return executeResponse{}, err, http.StatusBadRequest
 		}
+	}
+	if req.DoubleTapEnabled && mediaKind != "" {
+		return executeResponse{}, errors.New("DoubleTap can only run with normal text Builder runs. Disable DoubleTap before running 3D Mesh or Video generation."), http.StatusBadRequest
 	}
 	if mediaKind != "" {
 		if req.CypherEnabled {
@@ -677,6 +691,10 @@ func (a *App) startExecutionForCurrentConfig(projectName string, req executeRequ
 	if req.CypherEnabled {
 		a.logf("system", "info", "Execute Prompt entering Cypher path for project %s with active_builders=%d", projectName, len(allBuilders))
 		return a.startCypherExecutionForCurrentConfig(projectName, req, source, allBuilders, skipped)
+	}
+	if req.DoubleTapEnabled {
+		a.logf("system", "info", "Execute Prompt entering DoubleTap path for project %s with active_builders=%d", projectName, len(allBuilders))
+		return a.startDoubleTapExecutionForCurrentConfig(projectName, req, source, allBuilders, skipped)
 	}
 	waves := buildExecutionWaves(allBuilders)
 	if len(waves) == 0 {
@@ -770,14 +788,15 @@ func (a *App) startExecutionForCurrentConfig(projectName string, req executeRequ
 		a.logf("system", "warn", "Executing with unmerged results (ignored). pending_models=%d", pendingIgnored)
 	}
 	a.clearPendingMergeState(projectName)
-	if reviewerID != "" {
-		if reviewer, ok := a.findModel(reviewerID); ok {
-			if _, metaRoot, err := a.projectPaths(reviewer, projectName); err == nil {
-				if err := clearReviewerOutputState(metaRoot); err != nil {
-					a.logf(reviewerID, "warn", "Failed clearing prior observer report: %v", err)
-				}
-			}
-		}
+	if clearedBuilderResponses, clearErr := a.clearAllBuilderResponseStatesForProject(projectName); clearErr != nil {
+		a.logf("system", "warn", "Failed clearing stale Builder response cards before fresh Execute Prompt run: %v", clearErr)
+	} else if clearedBuilderResponses > 0 {
+		a.logf("system", "info", "Cleared %d stale Builder response card(s) before fresh Execute Prompt run for project %s", clearedBuilderResponses, projectName)
+	}
+	if clearedReviewerReports, clearErr := a.clearReviewerOutputStatesForProject(projectName); clearErr != nil {
+		a.logf("system", "warn", "Failed clearing stale Observer report(s) before fresh Execute Prompt run: %v", clearErr)
+	} else if clearedReviewerReports > 0 {
+		a.logf("system", "info", "Cleared %d stale Observer report(s) before fresh Execute Prompt run for project %s", clearedReviewerReports, projectName)
 	}
 	state := waveExecutionState{ProjectName: projectName, ExecutionID: fmt.Sprintf("%s-%d", projectName, time.Now().UTC().UnixNano()), RootPrompt: firstPrompt, ContextFiles: firstContextFiles, TemporaryAttachments: req.TemporaryAttachments, WireTapEnabled: req.WireTapEnabled, WavePrompts: wavePrompts, WaveContextFiles: waveContextFiles, WaveMediaInputRoles: waveMediaInputRoles, Waves: waves, CurrentIndex: 0, CurrentWave: firstWave.Number, LoopCount: req.LoopCount, LoopsRemaining: req.LoopCount, CycleNumber: 1, AwaitingMerge: false, StartedAt: time.Now().UTC().Format(time.RFC3339)}
 	a.mu.Lock()
@@ -853,70 +872,87 @@ func (a *App) startCypherExecutionForCurrentConfig(projectName string, req execu
 	riskEnabled := a.riskModeEnabled
 	a.mu.RUnlock()
 	a.logf("system", "info", "Cypher Execute Prompt gate check for project %s. prompt_present=%v builders=%d reviewer=%s risk=%v", projectName, rootPrompt != "", len(builders), reviewerID, riskEnabled)
-	if rootPrompt == "" {
-		err := errors.New("Prompt is required before executing with Cypher.")
+	block := func(message string, status int) (executeResponse, error, int) {
+		err := errors.New(message)
 		a.logf("system", "warn", "Cypher Execute Prompt blocked for project %s: %v", projectName, err)
-		return executeResponse{}, err, http.StatusBadRequest
+		return executeResponse{}, err, status
+	}
+	if rootPrompt == "" {
+		return block("Prompt is required before executing with Cypher.", http.StatusBadRequest)
 	}
 	if reviewerID != "" {
-		err := errors.New("Cypher cannot run with Observer/Reviewer mode enabled. Disable Observer mode or disable Cypher.")
-		a.logf("system", "warn", "Cypher Execute Prompt blocked for project %s: %v", projectName, err)
-		return executeResponse{}, err, http.StatusBadRequest
+		return block("Cypher Action requires one active Builder and no conflicting modes/context/media inputs. Disable Observer/Reviewer mode and try again.", http.StatusBadRequest)
 	}
 	if riskEnabled {
-		err := errors.New("Cypher cannot run with Risk Mode. Disable Risk Mode or disable Cypher.")
-		a.logf("system", "warn", "Cypher Execute Prompt blocked for project %s: %v", projectName, err)
-		return executeResponse{}, err, http.StatusBadRequest
+		return block("Cypher Action requires one active Builder and no conflicting modes/context/media inputs. Disable Risk Mode and try again.", http.StatusBadRequest)
 	}
 	if a.waveExecutionInProgress(projectName) {
-		err := errors.New("A run is already active for this project. Press Emergency Stop before starting a new Cypher prompt.")
-		a.logf("system", "warn", "Cypher Execute Prompt blocked for project %s: %v", projectName, err)
-		return executeResponse{}, err, http.StatusConflict
+		return block("A run is already active for this project. Press Emergency Stop before starting a new Cypher prompt.", http.StatusConflict)
 	}
-	waves := buildExecutionWaves(builders)
-	if len(waves) == 0 {
-		err := errors.New("Activate at least one Builder AI before executing with Cypher.")
-		a.logf("system", "warn", "Cypher Execute Prompt blocked for project %s: %v", projectName, err)
-		return executeResponse{}, err, http.StatusBadRequest
+	if len(builders) < 1 {
+		return block("Must select at least one AI Builder", http.StatusBadRequest)
 	}
-	for _, wave := range waves {
-		if len(wave.BuilderIDs) != 1 {
-			err := fmt.Errorf("Cypher allows exactly one active Builder AI per wave. Wave %d has %d active Builders; move extra builders to separate waves or disable them.", wave.Number, len(wave.BuilderIDs))
-			a.logf("system", "warn", "Cypher Execute Prompt blocked for project %s: %v", projectName, err)
-			return executeResponse{}, err, http.StatusBadRequest
+	if len(builders) > 2 {
+		return block("Only two maximum AI Builders allowed", http.StatusBadRequest)
+	}
+	if req.LoopCount > 0 {
+		return block("Cypher Action cannot run with Loops. Set Loops to 0 and try again.", http.StatusBadRequest)
+	}
+	if req.WireTapEnabled || req.DoubleTapEnabled {
+		return block("Cypher Action cannot run with WireTap or DoubleTap. Arm only Cypher and try again.", http.StatusBadRequest)
+	}
+	if len(req.ContextFiles) > 0 || len(req.TemporaryAttachments) > 0 {
+		return block("Cypher Action requires no selected context files or media/temporary attachments. Clear context/media inputs and try again.", http.StatusBadRequest)
+	}
+	waveContextFiles := normalizeWaveContextFileMap(req.WaveContextFiles)
+	for _, files := range waveContextFiles {
+		if len(files) > 0 {
+			return block("Cypher Action requires no selected wave context files. Clear context files and try again.", http.StatusBadRequest)
 		}
+	}
+	workBuilder := builders[0]
+	projectRoot, err := a.projectSettingsDir(projectName)
+	if err != nil {
+		return executeResponse{}, err, http.StatusInternalServerError
+	}
+	manifest, exists, err := readCypherManifest(filepath.Join(projectRoot, cypherManifestFileName))
+	if err != nil {
+		return block(fmt.Sprintf("Could not read Cypher builder selection: %v", err), http.StatusBadRequest)
+	}
+	if exists {
+		if selected, ok := a.activeBuilderModelByID(manifest.LastBuilderSelection.WorkBuilderID); ok {
+			workBuilder = selected
+		} else if len(builders) > 1 {
+			return block("Cypher Work Builder from the last Cypher popup selection is not active. Click Cypher and select Summary/Work Builders again.", http.StatusBadRequest)
+		}
+	}
+	waves := buildExecutionWaves([]ModelConfig{workBuilder})
+	if len(waves) != 1 || len(waves[0].BuilderIDs) != 1 {
+		return block("Cypher Action requires one selected Work Builder in one wave. Disable Waves/extra Builders and try again.", http.StatusBadRequest)
 	}
 	wavePrompts := normalizeWavePromptMap(req.WavePrompts)
-	waveContextFiles := normalizeWaveContextFileMap(req.WaveContextFiles)
-	if len(waveContextFiles) == 0 && len(req.ContextFiles) > 0 {
-		waveContextFiles = map[int][]string{0: req.ContextFiles}
+	nonEmptyWavePrompts := 0
+	for _, prompt := range wavePrompts {
+		if strings.TrimSpace(prompt) != "" {
+			nonEmptyWavePrompts++
+		}
 	}
-	for _, wave := range waves {
-		if strings.TrimSpace(wavePrompts[wave.Number]) == "" {
-			wavePrompts[wave.Number] = rootPrompt
-		}
-		if len(waveContextFiles[wave.Number]) == 0 && len(req.ContextFiles) > 0 {
-			waveContextFiles[wave.Number] = append([]string(nil), req.ContextFiles...)
-		}
+	if nonEmptyWavePrompts > 1 {
+		return block("Cypher Action cannot run with multiple Wave prompts. Use the main prompt only and try again.", http.StatusBadRequest)
 	}
 	a.clearPendingMergeState(projectName)
 	a.clearLastMergedFiles(projectName)
 	executionID := fmt.Sprintf("%s-cypher-%d", projectName, time.Now().UTC().UnixNano())
 	firstWave := waves[0]
 	started := append([]string{}, firstWave.BuilderLabels...)
-	queued := []string{}
-	for _, wave := range waves[1:] {
-		queued = append(queued, wave.BuilderLabels...)
-	}
-	firstContextFiles := append([]string(nil), waveContextFiles[firstWave.Number]...)
-	state := waveExecutionState{ProjectName: projectName, ExecutionID: executionID, RootPrompt: rootPrompt, ContextFiles: firstContextFiles, TemporaryAttachments: req.TemporaryAttachments, WireTapEnabled: req.WireTapEnabled, WavePrompts: wavePrompts, WaveContextFiles: waveContextFiles, WaveMediaInputRoles: map[int]map[string]string{}, Waves: waves, CurrentIndex: 0, CurrentWave: firstWave.Number, CurrentPromptSource: "cypher", CurrentContextFilesUsed: len(firstContextFiles), LoopCount: req.LoopCount, LoopsRemaining: req.LoopCount, CycleNumber: 1, AwaitingMerge: false, StartedAt: time.Now().UTC().Format(time.RFC3339)}
+	state := waveExecutionState{ProjectName: projectName, ExecutionID: executionID, RootPrompt: rootPrompt, ContextFiles: nil, TemporaryAttachments: nil, WireTapEnabled: false, WavePrompts: map[int]string{firstWave.Number: rootPrompt}, WaveContextFiles: map[int][]string{}, WaveMediaInputRoles: map[int]map[string]string{}, Waves: waves, CurrentIndex: 0, CurrentWave: firstWave.Number, CurrentPromptSource: "cypher", CurrentContextFilesUsed: 0, LoopCount: 0, LoopsRemaining: 0, CycleNumber: 1, AwaitingMerge: false, StartedAt: time.Now().UTC().Format(time.RFC3339)}
 	a.mu.Lock()
 	a.setWaveExecutionLocked(projectName, state)
-	a.setWaveStatusLocked(projectName, waveStatusFromExecution(projectName, state, firstWave.Number, "running", withWaveProgress("Cypher Running", state.CurrentIndex, len(state.Waves)), "cypher", len(firstContextFiles)))
+	a.setWaveStatusLocked(projectName, waveStatusFromExecution(projectName, state, firstWave.Number, "running", withWaveProgress("Cypher Running", state.CurrentIndex, len(state.Waves)), "cypher", 0))
 	a.mu.Unlock()
-	a.logf("system", "info", "Cypher Execute Prompt started for project %s. first_wave=%d total_waves=%d loops=%d context_files=%d temporary_attachments=%s", projectName, firstWave.Number, len(waves), req.LoopCount, len(firstContextFiles), formatTemporaryAttachmentNames(req.TemporaryAttachments))
+	a.logf("system", "info", "Cypher Execute Prompt started for project %s. work_builder=%s", projectName, workBuilder.Label)
 	go a.runCypherWaveExecution(projectName, executionID, source, externalOutfitRun)
-	return executeResponse{Started: started, Skipped: skipped, WaveStarted: firstWave.Number, TotalWaves: len(waves), RemainingWaves: remainingWaveNumbers(waves, 1), QueuedBuilders: queued, ContextFilesUsed: len(firstContextFiles)}, nil, http.StatusOK
+	return executeResponse{Started: started, Skipped: skipped, WaveStarted: firstWave.Number, TotalWaves: 1, RemainingWaves: []int{}, QueuedBuilders: []string{}, ContextFilesUsed: 0}, nil, http.StatusOK
 }
 
 func (a *App) runCypherWaveExecution(projectName, executionID string, source executionSourceInfo, externalOutfitRun bool) {
@@ -947,8 +983,10 @@ func (a *App) runCypherWaveExecution(projectName, executionID string, source exe
 		}
 	}
 	for {
+		a.logf("system", "info", "Cypher Action checkpoint for project %s: loading wave state.", projectName)
 		state, ok := a.currentWaveExecution(projectName)
 		if !ok || state.ExecutionID != executionID {
+			a.logf("system", "warn", "Cypher Action stopped for project %s: current execution state is no longer active.", projectName)
 			return
 		}
 		if state.CurrentIndex < 0 || state.CurrentIndex >= len(state.Waves) {
@@ -967,28 +1005,41 @@ func (a *App) runCypherWaveExecution(projectName, executionID string, source exe
 			failRun(state, wave, model, err)
 			return
 		}
+		a.logf("system", "info", "Cypher Action checkpoint for project %s: synchronizing projectwork for builder %s.", projectName, model.Label)
 		if _, err := a.syncBuilderProjectsFromProjectwork(projectName, []ModelConfig{model}); err != nil {
 			failRun(state, wave, model, err)
 			return
 		}
+
+		// Cypher owns its own retrieval loop. Do not resolve or attach user-selected
+		// context files here. In particular, do not call resolveWaveContextFiles while
+		// holding a.mu; that helper reads the last-merged file list and can deadlock if
+		// called from inside the app mutex.
+		contextFiles := []string(nil)
+		temporaryAttachments := []temporaryAttachmentInput(nil)
+
 		a.mu.Lock()
 		liveState, ok := a.waveExecutionsByProject[projectName]
 		if !ok || liveState.ExecutionID != executionID {
 			a.mu.Unlock()
 			return
 		}
-		contextFiles := a.resolveWaveContextFiles(projectName, liveState, wave.Number)
 		liveState.CurrentWave = wave.Number
 		liveState.CurrentPromptSource = "cypher"
-		liveState.CurrentContextFilesUsed = len(contextFiles)
+		liveState.CurrentContextFilesUsed = 0
 		liveState.RootPrompt = prompt
-		liveState.ContextFiles = contextFiles
+		liveState.ContextFiles = nil
+		liveState.TemporaryAttachments = nil
+		liveState.WaveContextFiles = map[int][]string{}
+		liveState.WaveMediaInputRoles = map[int]map[string]string{}
 		liveState.AwaitingMerge = false
 		a.setWaveExecutionLocked(projectName, liveState)
-		a.setWaveStatusLocked(projectName, waveStatusFromExecution(projectName, liveState, wave.Number, "running", withWaveProgress("Cypher Running", liveState.CurrentIndex, len(liveState.Waves)), "cypher", len(contextFiles)))
+		a.setWaveStatusLocked(projectName, waveStatusFromExecution(projectName, liveState, wave.Number, "running", withWaveProgress("Cypher Running", liveState.CurrentIndex, len(liveState.Waves)), "cypher", 0))
 		a.mu.Unlock()
-		a.logf("system", "info", "Cypher wave %d started for project %s with builder %s context_files=%d temporary_attachments=%s", wave.Number, projectName, model.Label, len(contextFiles), formatTemporaryAttachmentNames(liveState.TemporaryAttachments))
-		result := a.runCypherExecution(projectName, executionID, model, prompt, contextFiles, liveState.TemporaryAttachments)
+		a.logf("system", "info", "Cypher wave %d started for project %s with builder %s context_files=0 temporary_attachments=none", wave.Number, projectName, model.Label)
+		a.logf("system", "info", "Cypher Action checkpoint for project %s: entering Phase 1/2/3 action engine.", projectName)
+		a.publishDiagnostics(cypherDiagnostics(projectName, model, "Action Startup Checkpoint").withStatusMessage("Cypher state prepared with no user-selected context files or temporary attachments; entering Phase 1/2/3 action engine."))
+		result := a.runCypherExecution(projectName, executionID, model, prompt, contextFiles, temporaryAttachments)
 		if !a.isWaveExecutionCurrent(projectName, executionID) {
 			return
 		}

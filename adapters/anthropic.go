@@ -30,18 +30,32 @@ type anthropicMessageContent struct {
 	Title  string                  `json:"title,omitempty"`
 }
 
+type anthropicTool struct {
+	Name        string         `json:"name"`
+	Description string         `json:"description,omitempty"`
+	InputSchema map[string]any `json:"input_schema"`
+	Strict      bool           `json:"strict,omitempty"`
+}
+
+type anthropicToolChoice struct {
+	Type string `json:"type"`
+	Name string `json:"name,omitempty"`
+}
+
 type anthropicMessage struct {
 	Role    string                    `json:"role"`
 	Content []anthropicMessageContent `json:"content"`
 }
 
 type anthropicMessagesRequest struct {
-	Model       string             `json:"model"`
-	System      string             `json:"system,omitempty"`
-	Messages    []anthropicMessage `json:"messages"`
-	MaxTokens   int                `json:"max_tokens"`
-	Temperature *float64           `json:"temperature,omitempty"`
-	Stream      bool               `json:"stream"`
+	Model       string               `json:"model"`
+	System      string               `json:"system,omitempty"`
+	Messages    []anthropicMessage   `json:"messages"`
+	MaxTokens   int                  `json:"max_tokens"`
+	Temperature *float64             `json:"temperature,omitempty"`
+	Tools       []anthropicTool      `json:"tools,omitempty"`
+	ToolChoice  *anthropicToolChoice `json:"tool_choice,omitempty"`
+	Stream      bool                 `json:"stream"`
 }
 
 type anthropicMessagesResponse struct {
@@ -72,6 +86,10 @@ func (anthropicMessagesAdapter) Execute(ctx context.Context, model ModelConfig, 
 		return Response{}, errors.New("model name is required")
 	}
 	payload := anthropicMessagesRequest{Model: apiModel, System: strings.TrimSpace(req.Instructions), Messages: buildAnthropicMessages(req.Messages), MaxTokens: anthropicMaxTokens(prepared), Temperature: anthropicTemperature(prepared), Stream: false}
+	if shouldUseStrictStructuredOutput(prepared, req) {
+		payload.Tools = []anthropicTool{buildAnthropicStructuredOutputTool(prepared, req)}
+		payload.ToolChoice = &anthropicToolChoice{Type: "tool", Name: structuredOutputSchemaName(prepared)}
+	}
 	if len(payload.Messages) == 0 {
 		return Response{}, errors.New("request contained no messages")
 	}
@@ -103,6 +121,15 @@ func (anthropicMessagesAdapter) Execute(ctx context.Context, model ModelConfig, 
 		response.RawBody = string(respBody)
 	}
 	return response, nil
+}
+
+func buildAnthropicStructuredOutputTool(model ModelConfig, req Request) anthropicTool {
+	return anthropicTool{
+		Name:        structuredOutputSchemaName(model),
+		Description: "Return the complete AgentGO Work Mode JSON envelope. This is not an external action; AgentGO reads the tool input as the model response.",
+		InputSchema: strictJSONSchema(req.JSONSchema),
+		Strict:      true,
+	}
 }
 
 // prepareAnthropicModel fills in Anthropic auth defaults before one request is sent.
@@ -226,6 +253,9 @@ func parseAnthropicStructuredResponse(respBody []byte, model ModelConfig) (Respo
 	if message := strings.TrimSpace(asString(lookupPath(parsed, "error.message"))); message != "" {
 		return Response{}, errors.New(message)
 	}
+	if toolInputJSON := extractAnthropicToolUseInputJSON(parsed); toolInputJSON != "" {
+		return Response{Text: toolInputJSON, RawBody: string(respBody)}, nil
+	}
 	response := Response{Text: extractAnthropicStructuredText(parsed), RawBody: string(respBody)}
 	if media, ok, err := extractAnthropicStructuredMedia(parsed, model); err != nil {
 		return Response{}, err
@@ -275,6 +305,29 @@ func extractAnthropicText(resp anthropicMessagesResponse) string {
 		}
 	}
 	return strings.TrimSpace(strings.Join(parts, "\n"))
+}
+
+func extractAnthropicToolUseInputJSON(parsed any) string {
+	content, _ := lookupPath(parsed, "content").([]any)
+	for _, item := range content {
+		block, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		if !strings.EqualFold(strings.TrimSpace(asString(block["type"])), "tool_use") {
+			continue
+		}
+		input, ok := block["input"]
+		if !ok || input == nil {
+			continue
+		}
+		data, err := json.Marshal(input)
+		if err != nil {
+			continue
+		}
+		return strings.TrimSpace(string(data))
+	}
+	return ""
 }
 
 func extractAnthropicStructuredText(parsed any) string {

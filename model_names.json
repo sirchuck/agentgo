@@ -2,57 +2,1090 @@
   "schema_version": 1,
   "models": [
     {
-      "provider": "fal",
-      "adapter": "fal_mesh",
-      "label": "fal Hunyuan3D v3 Mesh",
-      "model_name": "fal-ai/hunyuan3d-v3/text-to-3d",
-      "base_url": "https://queue.fal.run",
-      "api_path": "/fal-ai/hunyuan3d-v3/text-to-3d",
-      "auth_type": "fal_key",
+      "provider": "openai",
+      "adapter": "openai_responses",
+      "label": "OpenAI GPT-4.1",
+      "model_name": "gpt-4.1",
+      "base_url": "https://api.openai.com",
+      "api_path": "/v1/responses",
+      "auth_type": "bearer",
       "auth_header": "Authorization",
-      "api_key_env": "FAL_KEY",
+      "api_key_env": "OPENAI_API_KEY",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "file_in",
+        "tool_calling",
+        "structured_outputs",
+        "reasoning"
+      ],
+      "notes": "Legacy/stable GPT-4.1 family option retained for projects that still use it."
+    },
+    {
+      "provider": "openai",
+      "adapter": "openai_responses",
+      "label": "OpenAI GPT-4.1 Mini",
+      "model_name": "gpt-4.1-mini",
+      "base_url": "https://api.openai.com",
+      "api_path": "/v1/responses",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "OPENAI_API_KEY",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "file_in",
+        "tool_calling",
+        "structured_outputs",
+        "reasoning"
+      ],
+      "notes": "Smaller GPT-4.1 family option retained for lower-cost projects."
+    },
+    {
+      "provider": "openai",
+      "adapter": "openai_responses",
+      "label": "OpenAI GPT-4o Mini",
+      "model_name": "gpt-4o-mini",
+      "base_url": "https://api.openai.com",
+      "api_path": "/v1/responses",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "OPENAI_API_KEY",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "file_in",
+        "tool_calling",
+        "structured_outputs",
+        "reasoning"
+      ],
+      "notes": "Older low-cost multimodal OpenAI option retained for compatibility."
+    },
+    {
+      "provider": "openai",
+      "adapter": "openai_responses",
+      "label": "OpenAI GPT-5.4",
+      "model_name": "gpt-5.4",
+      "base_url": "https://api.openai.com",
+      "api_path": "/v1/responses",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "OPENAI_API_KEY",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "file_in",
+        "tool_calling",
+        "structured_outputs",
+        "reasoning"
+      ],
+      "notes": "General OpenAI model for coding and professional work through the Responses API."
+    },
+    {
+      "provider": "openai",
+      "adapter": "openai_responses",
+      "label": "OpenAI GPT-5.4 Mini",
+      "model_name": "gpt-5.4-mini",
+      "base_url": "https://api.openai.com",
+      "api_path": "/v1/responses",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "OPENAI_API_KEY",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "file_in",
+        "tool_calling",
+        "structured_outputs",
+        "reasoning"
+      ],
+      "notes": "Lower-latency, lower-cost OpenAI model through the Responses API."
+    },
+    {
+      "provider": "openai",
+      "adapter": "openai_responses",
+      "label": "OpenAI GPT-5.4 Nano",
+      "model_name": "gpt-5.4-nano",
+      "base_url": "https://api.openai.com",
+      "api_path": "/v1/responses",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "OPENAI_API_KEY",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "file_in",
+        "tool_calling",
+        "structured_outputs",
+        "reasoning"
+      ],
+      "notes": "Smallest/fastest OpenAI model option for lightweight requests through the Responses API."
+    },
+    {
+      "provider": "openai",
+      "adapter": "openai_responses",
+      "label": "OpenAI GPT-5.5",
+      "model_name": "gpt-5.5",
+      "base_url": "https://api.openai.com",
+      "api_path": "/v1/responses",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "OPENAI_API_KEY",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "file_in",
+        "tool_calling",
+        "structured_outputs",
+        "reasoning"
+      ],
+      "notes": "Flagship OpenAI model for complex reasoning, coding, and professional work through the Responses API."
+    },
+    {
+      "provider": "openai",
+      "adapter": "sora_video",
+      "label": "OpenAI Sora 2",
+      "model_name": "sora-2",
+      "base_url": "https://api.openai.com",
+      "api_path": "/v1/videos",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "OPENAI_API_KEY",
+      "capabilities": [
+        "text_to_video",
+        "image_to_video",
+        "video_generation"
+      ],
+      "notes": "Default OpenAI video generation model for the /v1/videos endpoint."
+    },
+    {
+      "provider": "openai",
+      "adapter": "sora_video",
+      "label": "OpenAI Sora 2 Pro",
+      "model_name": "sora-2-pro",
+      "base_url": "https://api.openai.com",
+      "api_path": "/v1/videos",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "OPENAI_API_KEY",
+      "capabilities": [
+        "text_to_video",
+        "image_to_video",
+        "video_generation"
+      ],
+      "notes": "Higher-end OpenAI video generation model for the /v1/videos endpoint."
+    },
+    {
+      "provider": "openai",
+      "adapter": "sora_video",
+      "label": "OpenAI Sora 2 Pro Snapshot 2025-10-06",
+      "model_name": "sora-2-pro-2025-10-06",
+      "base_url": "https://api.openai.com",
+      "api_path": "/v1/videos",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "OPENAI_API_KEY",
+      "capabilities": [
+        "text_to_video",
+        "image_to_video",
+        "video_generation"
+      ],
+      "notes": "Pinned Sora 2 Pro snapshot listed by the OpenAI video API."
+    },
+    {
+      "provider": "openai",
+      "adapter": "sora_video",
+      "label": "OpenAI Sora 2 Snapshot 2025-10-06",
+      "model_name": "sora-2-2025-10-06",
+      "base_url": "https://api.openai.com",
+      "api_path": "/v1/videos",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "OPENAI_API_KEY",
+      "capabilities": [
+        "text_to_video",
+        "image_to_video",
+        "video_generation"
+      ],
+      "notes": "Pinned Sora 2 snapshot listed by the OpenAI video API."
+    },
+    {
+      "provider": "openai",
+      "adapter": "sora_video",
+      "label": "OpenAI Sora 2 Snapshot 2025-12-08",
+      "model_name": "sora-2-2025-12-08",
+      "base_url": "https://api.openai.com",
+      "api_path": "/v1/videos",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "OPENAI_API_KEY",
+      "capabilities": [
+        "text_to_video",
+        "image_to_video",
+        "video_generation"
+      ],
+      "notes": "Pinned Sora 2 snapshot listed by the OpenAI video API."
+    },
+    {
+      "provider": "claude",
+      "adapter": "anthropic_messages",
+      "label": "Anthropic Claude Fable 5",
+      "model_name": "claude-fable-5",
+      "base_url": "https://api.anthropic.com",
+      "api_path": "/v1/messages",
+      "auth_type": "header_key",
+      "auth_header": "x-api-key",
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "file_in",
+        "tool_calling",
+        "structured_outputs",
+        "reasoning"
+      ],
+      "notes": "General-availability Claude Fable 5 model option, when enabled for the account."
+    },
+    {
+      "provider": "claude",
+      "adapter": "anthropic_messages",
+      "label": "Anthropic Claude Haiku 4.5",
+      "model_name": "claude-haiku-4-5",
+      "base_url": "https://api.anthropic.com",
+      "api_path": "/v1/messages",
+      "auth_type": "header_key",
+      "auth_header": "x-api-key",
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "file_in",
+        "tool_calling",
+        "structured_outputs",
+        "reasoning"
+      ],
+      "notes": "Current Haiku-tier Claude API alias for fast, lower-cost work."
+    },
+    {
+      "provider": "claude",
+      "adapter": "anthropic_messages",
+      "label": "Anthropic Claude Haiku 4.5 Snapshot",
+      "model_name": "claude-haiku-4-5-20251001",
+      "base_url": "https://api.anthropic.com",
+      "api_path": "/v1/messages",
+      "auth_type": "header_key",
+      "auth_header": "x-api-key",
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "file_in",
+        "tool_calling",
+        "structured_outputs",
+        "reasoning"
+      ],
+      "notes": "Pinned Haiku 4.5 snapshot ID."
+    },
+    {
+      "provider": "claude",
+      "adapter": "anthropic_messages",
+      "label": "Anthropic Claude Opus 4.8",
+      "model_name": "claude-opus-4-8",
+      "base_url": "https://api.anthropic.com",
+      "api_path": "/v1/messages",
+      "auth_type": "header_key",
+      "auth_header": "x-api-key",
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "file_in",
+        "tool_calling",
+        "structured_outputs",
+        "reasoning"
+      ],
+      "notes": "Current Opus-tier Claude API model alias for complex reasoning and agentic coding."
+    },
+    {
+      "provider": "claude",
+      "adapter": "anthropic_messages",
+      "label": "Anthropic Claude Sonnet 4.6",
+      "model_name": "claude-sonnet-4-6",
+      "base_url": "https://api.anthropic.com",
+      "api_path": "/v1/messages",
+      "auth_type": "header_key",
+      "auth_header": "x-api-key",
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "file_in",
+        "tool_calling",
+        "structured_outputs",
+        "reasoning"
+      ],
+      "notes": "Current Sonnet-tier Claude API model alias with balanced speed and intelligence."
+    },
+    {
+      "provider": "google",
+      "adapter": "gemini_generate_content",
+      "base_url": "https://generativelanguage.googleapis.com",
+      "api_path": "/v1beta/models/{model}:generateContent",
+      "auth_type": "header_key",
+      "auth_header": "x-goog-api-key",
+      "api_key_env": "GEMINI_API_KEY",
+      "label": "Google Gemini 2.5 Flash",
+      "model_name": "gemini-2.5-flash",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "audio_in",
+        "video_in",
+        "file_in",
+        "tool_calling",
+        "structured_outputs",
+        "thinking",
+        "search_grounding",
+        "code_execution"
+      ],
+      "notes": "Stable Gemini 2.5 Flash model for general multimodal chat, agent, and tool-use workflows."
+    },
+    {
+      "provider": "google",
+      "adapter": "gemini_generate_content",
+      "base_url": "https://generativelanguage.googleapis.com",
+      "api_path": "/v1beta/models/{model}:generateContent",
+      "auth_type": "header_key",
+      "auth_header": "x-goog-api-key",
+      "api_key_env": "GEMINI_API_KEY",
+      "label": "Google Gemini 2.5 Flash Image",
+      "model_name": "gemini-2.5-flash-image",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "image_generation",
+        "image_editing",
+        "structured_outputs",
+        "thinking"
+      ],
+      "notes": "Stable Gemini 2.5 Flash Image model for image generation/editing workflows."
+    },
+    {
+      "provider": "google",
+      "adapter": "gemini_generate_content",
+      "base_url": "https://generativelanguage.googleapis.com",
+      "api_path": "/v1beta/models/{model}:generateContent",
+      "auth_type": "header_key",
+      "auth_header": "x-goog-api-key",
+      "api_key_env": "GEMINI_API_KEY",
+      "label": "Google Gemini 2.5 Flash-Lite",
+      "model_name": "gemini-2.5-flash-lite",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "audio_in",
+        "video_in",
+        "file_in",
+        "tool_calling",
+        "structured_outputs",
+        "thinking"
+      ],
+      "notes": "Stable Gemini 2.5 Flash-Lite model for lighter, lower-cost requests."
+    },
+    {
+      "provider": "google",
+      "adapter": "gemini_generate_content",
+      "base_url": "https://generativelanguage.googleapis.com",
+      "api_path": "/v1beta/models/{model}:generateContent",
+      "auth_type": "header_key",
+      "auth_header": "x-goog-api-key",
+      "api_key_env": "GEMINI_API_KEY",
+      "label": "Google Gemini 2.5 Pro",
+      "model_name": "gemini-2.5-pro",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "audio_in",
+        "video_in",
+        "file_in",
+        "tool_calling",
+        "structured_outputs",
+        "thinking",
+        "search_grounding",
+        "code_execution"
+      ],
+      "notes": "Stable Gemini 2.5 Pro model for stronger reasoning and coding tasks."
+    },
+    {
+      "provider": "google",
+      "adapter": "gemini_generate_content",
+      "base_url": "https://generativelanguage.googleapis.com",
+      "api_path": "/v1beta/models/{model}:generateContent",
+      "auth_type": "header_key",
+      "auth_header": "x-goog-api-key",
+      "api_key_env": "GEMINI_API_KEY",
+      "label": "Google Gemini 3 Flash Preview",
+      "model_name": "gemini-3-flash-preview",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "audio_in",
+        "video_in",
+        "file_in",
+        "tool_calling",
+        "structured_outputs",
+        "thinking",
+        "search_grounding",
+        "code_execution"
+      ],
+      "notes": "Preview Gemini 3 Flash model for fast multimodal generation and agent tasks."
+    },
+    {
+      "provider": "google",
+      "adapter": "gemini_generate_content",
+      "base_url": "https://generativelanguage.googleapis.com",
+      "api_path": "/v1beta/models/{model}:generateContent",
+      "auth_type": "header_key",
+      "auth_header": "x-goog-api-key",
+      "api_key_env": "GEMINI_API_KEY",
+      "label": "Google Gemini 3 Pro Image",
+      "model_name": "gemini-3-pro-image",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "image_generation",
+        "image_editing",
+        "structured_outputs",
+        "thinking",
+        "search_grounding"
+      ],
+      "notes": "Higher-fidelity Gemini image generation/editing model for image-first workflows."
+    },
+    {
+      "provider": "google",
+      "adapter": "gemini_generate_content",
+      "base_url": "https://generativelanguage.googleapis.com",
+      "api_path": "/v1beta/models/{model}:generateContent",
+      "auth_type": "header_key",
+      "auth_header": "x-goog-api-key",
+      "api_key_env": "GEMINI_API_KEY",
+      "label": "Google Gemini 3.1 Flash Image",
+      "model_name": "gemini-3.1-flash-image",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "image_generation",
+        "image_editing",
+        "structured_outputs",
+        "thinking",
+        "search_grounding"
+      ],
+      "notes": "Stable Gemini image generation/editing model. For image output, set response modalities/provider options as needed."
+    },
+    {
+      "provider": "google",
+      "adapter": "gemini_generate_content",
+      "base_url": "https://generativelanguage.googleapis.com",
+      "api_path": "/v1beta/models/{model}:generateContent",
+      "auth_type": "header_key",
+      "auth_header": "x-goog-api-key",
+      "api_key_env": "GEMINI_API_KEY",
+      "label": "Google Gemini 3.1 Flash-Lite",
+      "model_name": "gemini-3.1-flash-lite",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "audio_in",
+        "video_in",
+        "file_in",
+        "tool_calling",
+        "structured_outputs",
+        "thinking"
+      ],
+      "notes": "Stable lightweight Gemini 3.1 Flash-Lite model for lower-latency and lower-cost work."
+    },
+    {
+      "provider": "google",
+      "adapter": "gemini_generate_content",
+      "base_url": "https://generativelanguage.googleapis.com",
+      "api_path": "/v1beta/models/{model}:generateContent",
+      "auth_type": "header_key",
+      "auth_header": "x-goog-api-key",
+      "api_key_env": "GEMINI_API_KEY",
+      "label": "Google Gemini 3.1 Pro Preview",
+      "model_name": "gemini-3.1-pro-preview",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "audio_in",
+        "video_in",
+        "file_in",
+        "tool_calling",
+        "structured_outputs",
+        "thinking",
+        "search_grounding",
+        "code_execution"
+      ],
+      "notes": "Preview Gemini 3.1 Pro model for advanced reasoning, coding, and agentic workflows."
+    },
+    {
+      "provider": "google",
+      "adapter": "gemini_generate_content",
+      "base_url": "https://generativelanguage.googleapis.com",
+      "api_path": "/v1beta/models/{model}:generateContent",
+      "auth_type": "header_key",
+      "auth_header": "x-goog-api-key",
+      "api_key_env": "GEMINI_API_KEY",
+      "label": "Google Gemini 3.1 Pro Preview Custom Tools",
+      "model_name": "gemini-3.1-pro-preview-customtools",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "audio_in",
+        "video_in",
+        "file_in",
+        "tool_calling",
+        "structured_outputs",
+        "thinking",
+        "custom_tools",
+        "code_execution"
+      ],
+      "notes": "Preview Gemini 3.1 Pro variant optimized for custom tools, bash-style tools, and agent loops."
+    },
+    {
+      "provider": "google",
+      "adapter": "gemini_generate_content",
+      "base_url": "https://generativelanguage.googleapis.com",
+      "api_path": "/v1beta/models/{model}:generateContent",
+      "auth_type": "header_key",
+      "auth_header": "x-goog-api-key",
+      "api_key_env": "GEMINI_API_KEY",
+      "label": "Google Gemini 3.5 Flash",
+      "model_name": "gemini-3.5-flash",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "audio_in",
+        "video_in",
+        "file_in",
+        "tool_calling",
+        "structured_outputs",
+        "thinking",
+        "search_grounding",
+        "code_execution"
+      ],
+      "notes": "Stable Gemini 3.5 Flash model for fast multimodal agent, chat, coding, and tool-use workflows."
+    },
+    {
+      "provider": "google",
+      "adapter": "veo_video",
+      "base_url": "https://generativelanguage.googleapis.com",
+      "api_path": "/v1beta/models/{model}:predictLongRunning",
+      "auth_type": "header_key",
+      "auth_header": "x-goog-api-key",
+      "api_key_env": "GEMINI_API_KEY",
+      "label": "Google Veo 3.1 Fast Preview",
+      "model_name": "veo-3.1-fast-generate-preview",
+      "capabilities": [
+        "text_to_video",
+        "image_to_video",
+        "video_generation",
+        "audio_out"
+      ],
+      "notes": "Preview Veo 3.1 Fast video model for faster text-to-video and image-guided video jobs. Gemini API path using generativelanguage.googleapis.com and x-goog-api-key; use google_vertex / vertex_veo_video for the Vertex/GCP path."
+    },
+    {
+      "provider": "google",
+      "adapter": "veo_video",
+      "base_url": "https://generativelanguage.googleapis.com",
+      "api_path": "/v1beta/models/{model}:predictLongRunning",
+      "auth_type": "header_key",
+      "auth_header": "x-goog-api-key",
+      "api_key_env": "GEMINI_API_KEY",
+      "label": "Google Veo 3.1 Lite Preview",
+      "model_name": "veo-3.1-lite-generate-preview",
+      "capabilities": [
+        "text_to_video",
+        "image_to_video",
+        "video_generation",
+        "audio_out"
+      ],
+      "notes": "Preview Veo 3.1 Lite video model for lighter video jobs; useful as a default cost-conscious Veo option. Gemini API path using generativelanguage.googleapis.com and x-goog-api-key; use google_vertex / vertex_veo_video for the Vertex/GCP path."
+    },
+    {
+      "provider": "google",
+      "adapter": "veo_video",
+      "base_url": "https://generativelanguage.googleapis.com",
+      "api_path": "/v1beta/models/{model}:predictLongRunning",
+      "auth_type": "header_key",
+      "auth_header": "x-goog-api-key",
+      "api_key_env": "GEMINI_API_KEY",
+      "label": "Google Veo 3.1 Preview",
+      "model_name": "veo-3.1-generate-preview",
+      "capabilities": [
+        "text_to_video",
+        "image_to_video",
+        "video_generation",
+        "audio_out"
+      ],
+      "notes": "Preview Veo 3.1 video model for text-to-video and image-guided video generation through the Gemini API. Gemini API path using generativelanguage.googleapis.com and x-goog-api-key; use google_vertex / vertex_veo_video for the Vertex/GCP path."
+    },
+    {
+      "provider": "google_vertex",
+      "adapter": "vertex_veo_video",
+      "label": "Vertex Veo 3.1 Fast Generate",
+      "model_name": "veo-3.1-fast-generate-001",
+      "base_url": "https://us-central1-aiplatform.googleapis.com",
+      "api_path": "/v1/projects/{project}/locations/{location}/publishers/google/models/{model}:predictLongRunning",
+      "auth_type": "google_adc",
+      "auth_header": "Authorization",
+      "api_key_env": "GOOGLE_APPLICATION_CREDENTIALS",
+      "capabilities": [
+        "text_to_video",
+        "image_to_video",
+        "video_generation",
+        "audio_out"
+      ],
+      "notes": "Google Cloud / Vertex/Gemini Enterprise Veo 3.1 Fast GA model ID. This is not the Gemini API preview model ID."
+    },
+    {
+      "provider": "google_vertex",
+      "adapter": "vertex_veo_video",
+      "label": "Vertex Veo 3.1 Generate",
+      "model_name": "veo-3.1-generate-001",
+      "base_url": "https://us-central1-aiplatform.googleapis.com",
+      "api_path": "/v1/projects/{project}/locations/{location}/publishers/google/models/{model}:predictLongRunning",
+      "auth_type": "google_adc",
+      "auth_header": "Authorization",
+      "api_key_env": "GOOGLE_APPLICATION_CREDENTIALS",
+      "capabilities": [
+        "text_to_video",
+        "image_to_video",
+        "video_generation",
+        "audio_out"
+      ],
+      "notes": "Google Cloud / Vertex/Gemini Enterprise Veo 3.1 GA model ID. This is not the Gemini API preview model ID."
+    },
+    {
+      "provider": "google_vertex",
+      "adapter": "vertex_veo_video",
+      "label": "Vertex Veo 3.1 Lite Generate",
+      "model_name": "veo-3.1-lite-generate-001",
+      "base_url": "https://us-central1-aiplatform.googleapis.com",
+      "api_path": "/v1/projects/{project}/locations/{location}/publishers/google/models/{model}:predictLongRunning",
+      "auth_type": "google_adc",
+      "auth_header": "Authorization",
+      "api_key_env": "GOOGLE_APPLICATION_CREDENTIALS",
+      "capabilities": [
+        "text_to_video",
+        "image_to_video",
+        "video_generation",
+        "audio_out"
+      ],
+      "notes": "Google Cloud / Vertex/Gemini Enterprise Veo 3.1 Lite GA model ID. This is not the Gemini API preview model ID."
+    },
+    {
+      "provider": "ollama",
+      "adapter": "ollama_generate",
+      "label": "Ollama Gemma 3 4B",
+      "model_name": "gemma3:4b",
+      "base_url": "http://127.0.0.1:11434",
+      "api_path": "/api/generate",
+      "auth_type": "none",
+      "capabilities": [
+        "text_in",
+        "image_in"
+      ],
+      "notes": "Local multimodal-capable example model; availability depends on Ollama installation."
+    },
+    {
+      "provider": "ollama",
+      "adapter": "ollama_generate",
+      "label": "Ollama LLaVA",
+      "model_name": "llava:latest",
+      "base_url": "http://127.0.0.1:11434",
+      "api_path": "/api/generate",
+      "auth_type": "none",
+      "capabilities": [
+        "text_in",
+        "image_in"
+      ],
+      "notes": "Local vision-language example model; must be pulled/installed in Ollama first."
+    },
+    {
+      "provider": "ollama",
+      "adapter": "ollama_generate",
+      "label": "Ollama Llama 3.2",
+      "model_name": "llama3.2:latest",
+      "base_url": "http://127.0.0.1:11434",
+      "api_path": "/api/generate",
+      "auth_type": "none",
+      "capabilities": [
+        "text_in"
+      ],
+      "notes": "Local example model; must be pulled/installed in Ollama first."
+    },
+    {
+      "provider": "ollama",
+      "adapter": "ollama_generate",
+      "label": "Ollama MiniCPM-V",
+      "model_name": "minicpm-v:latest",
+      "base_url": "http://127.0.0.1:11434",
+      "api_path": "/api/generate",
+      "auth_type": "none",
+      "capabilities": [
+        "text_in",
+        "image_in"
+      ],
+      "notes": "Local vision-language example model; must be pulled/installed in Ollama first."
+    },
+    {
+      "provider": "ollama",
+      "adapter": "ollama_generate",
+      "label": "Ollama Moondream",
+      "model_name": "moondream:latest",
+      "base_url": "http://127.0.0.1:11434",
+      "api_path": "/api/generate",
+      "auth_type": "none",
+      "capabilities": [
+        "text_in",
+        "image_in"
+      ],
+      "notes": "Local lightweight vision example model; must be pulled/installed in Ollama first."
+    },
+    {
+      "provider": "ollama",
+      "adapter": "ollama_generate",
+      "label": "Ollama Phi 3.5",
+      "model_name": "phi3.5:latest",
+      "base_url": "http://127.0.0.1:11434",
+      "api_path": "/api/generate",
+      "auth_type": "none",
+      "capabilities": [
+        "text_in"
+      ],
+      "notes": "Local lightweight example model; must be pulled/installed in Ollama first."
+    },
+    {
+      "provider": "ollama",
+      "adapter": "ollama_generate",
+      "label": "Ollama Qwen2.5 Coder 7B",
+      "model_name": "qwen2.5-coder:7b",
+      "base_url": "http://127.0.0.1:11434",
+      "api_path": "/api/generate",
+      "auth_type": "none",
+      "capabilities": [
+        "text_in",
+        "coding"
+      ],
+      "notes": "Local coding example model; must be pulled/installed in Ollama first."
+    },
+    {
+      "provider": "kling",
+      "adapter": "kling_video",
+      "label": "Kling 1",
+      "model_name": "kling-v1",
+      "base_url": "https://api.klingai.com",
+      "api_path": "/v1/videos/generations",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "KLING_API_KEY",
+      "capabilities": [
+        "text_to_video",
+        "image_to_video",
+        "video_generation"
+      ],
+      "notes": "Kling baseline video model name."
+    },
+    {
+      "provider": "kling",
+      "adapter": "kling_video",
+      "label": "Kling 1.5",
+      "model_name": "kling-v1-5",
+      "base_url": "https://api.klingai.com",
+      "api_path": "/v1/videos/generations",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "KLING_API_KEY",
+      "capabilities": [
+        "text_to_video",
+        "image_to_video",
+        "video_generation"
+      ],
+      "notes": "Kling video model name for v1.5 generation."
+    },
+    {
+      "provider": "kling",
+      "adapter": "kling_video",
+      "label": "Kling 1.6",
+      "model_name": "kling-v1-6",
+      "base_url": "https://api.klingai.com",
+      "api_path": "/v1/videos/generations",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "KLING_API_KEY",
+      "capabilities": [
+        "text_to_video",
+        "image_to_video",
+        "video_generation"
+      ],
+      "notes": "Kling video model name for v1.6 generation."
+    },
+    {
+      "provider": "kling",
+      "adapter": "kling_video",
+      "label": "Kling 2 Master",
+      "model_name": "kling-v2-master",
+      "base_url": "https://api.klingai.com",
+      "api_path": "/v1/videos/generations",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "KLING_API_KEY",
+      "capabilities": [
+        "text_to_video",
+        "image_to_video",
+        "video_generation"
+      ],
+      "notes": "Kling video model name for v2 master generation."
+    },
+    {
+      "provider": "kling",
+      "adapter": "kling_video",
+      "label": "Kling 2.1",
+      "model_name": "kling-v2-1",
+      "base_url": "https://api.klingai.com",
+      "api_path": "/v1/videos/generations",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "KLING_API_KEY",
+      "capabilities": [
+        "text_to_video",
+        "image_to_video",
+        "video_generation"
+      ],
+      "notes": "Kling video model name for current v2.1 generation."
+    },
+    {
+      "provider": "kling",
+      "adapter": "kling_video",
+      "label": "Kling 2.1 Master",
+      "model_name": "kling-v2-1-master",
+      "base_url": "https://api.klingai.com",
+      "api_path": "/v1/videos/generations",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "KLING_API_KEY",
+      "capabilities": [
+        "text_to_video",
+        "image_to_video",
+        "video_generation"
+      ],
+      "notes": "Kling video model name for higher-quality generation where account access supports it."
+    },
+    {
+      "provider": "comfyui",
+      "adapter": "comfyui_ltx_video",
+      "label": "ComfyUI LTX Video Workflow",
+      "model_name": "",
+      "base_url": "http://127.0.0.1:8188",
+      "api_path": "/prompt",
+      "auth_type": "none",
+      "capabilities": [
+        "text_to_video",
+        "image_to_video",
+        "local_workflow"
+      ],
+      "notes": "ComfyUI model/checkpoint choices are local workflow settings, not a cloud model ID. This preset fills the local server route and leaves Model Name blank."
+    },
+    {
+      "provider": "ideogram",
+      "adapter": "custom_multipart",
+      "label": "Ideogram 3.0 Generate",
+      "model_name": "",
+      "base_url": "https://api.ideogram.ai",
+      "api_path": "/v1/ideogram-v3/generate",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "IDEOGRAM_API_KEY",
+      "capabilities": [
+        "text_to_image",
+        "image_generation"
+      ],
+      "notes": "Ideogram version is encoded in the endpoint path, not Model Name. This preset leaves Model Name blank and switches the API path to Ideogram 3.0 generate."
+    },
+    {
+      "provider": "ideogram",
+      "adapter": "custom_multipart",
+      "label": "Ideogram 4.0 Generate",
+      "model_name": "",
+      "base_url": "https://api.ideogram.ai",
+      "api_path": "/v1/ideogram-v4/generate",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "IDEOGRAM_API_KEY",
+      "capabilities": [
+        "text_to_image",
+        "image_generation"
+      ],
+      "notes": "Ideogram version is encoded in the endpoint path, not Model Name. This preset leaves Model Name blank and switches the API path to Ideogram 4.0 generate."
+    },
+    {
+      "provider": "seedream",
+      "adapter": "custom_json",
+      "label": "Seedream 4.0",
+      "model_name": "seedream-4-0",
+      "base_url": "https://ark.ap-southeast.bytepluses.com/api/v3",
+      "api_path": "/images/generations",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "ARK_API_KEY",
+      "capabilities": [
+        "text_to_image",
+        "image_to_image",
+        "multi_image"
+      ],
+      "notes": "BytePlus/Ark Seedream image-generation model name when using the Seedream provider preset."
+    },
+    {
+      "provider": "seedream",
+      "adapter": "custom_json",
+      "label": "Seedream 4.5",
+      "model_name": "seedream-4-5",
+      "base_url": "https://ark.ap-southeast.bytepluses.com/api/v3",
+      "api_path": "/images/generations",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "ARK_API_KEY",
+      "capabilities": [
+        "text_to_image",
+        "image_to_image",
+        "multi_image"
+      ],
+      "notes": "BytePlus/Ark Seedream image-generation model name when using the Seedream provider preset."
+    },
+    {
+      "provider": "seedream",
+      "adapter": "custom_json",
+      "label": "Seedream 5.0 Lite",
+      "model_name": "seedream-5-0-lite",
+      "base_url": "https://ark.ap-southeast.bytepluses.com/api/v3",
+      "api_path": "/images/generations",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "ARK_API_KEY",
+      "capabilities": [
+        "text_to_image",
+        "image_to_image",
+        "multi_image"
+      ],
+      "notes": "BytePlus/Ark Seedream image-generation model name when using the Seedream provider preset."
+    },
+    {
+      "provider": "meshy",
+      "adapter": "meshy_mesh",
+      "label": "Meshy 5",
+      "model_name": "meshy-5",
+      "base_url": "https://api.meshy.ai",
+      "api_path": "/openapi/v2/text-to-3d",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "MESHY_API_KEY",
       "capabilities": [
         "text_to_mesh",
         "image_to_mesh",
         "multi_view_image_to_mesh",
         "glb_preview"
       ],
-      "notes": "Current baseline Hunyuan route. AgentGO switches to image-to-3d when images are provided."
+      "notes": "Meshy 5 3D generation model selector."
     },
     {
-      "provider": "fal",
-      "adapter": "fal_mesh",
-      "label": "fal Hunyuan3D V2 Image Mesh",
-      "model_name": "fal-ai/hunyuan3d/v2",
-      "base_url": "https://queue.fal.run",
-      "api_path": "/fal-ai/hunyuan3d/v2",
-      "auth_type": "fal_key",
+      "provider": "meshy",
+      "adapter": "meshy_mesh",
+      "label": "Meshy 6",
+      "model_name": "meshy-6",
+      "base_url": "https://api.meshy.ai",
+      "api_path": "/openapi/v2/text-to-3d",
+      "auth_type": "bearer",
       "auth_header": "Authorization",
-      "api_key_env": "FAL_KEY",
-      "capabilities": [
-        "image_to_mesh",
-        "download",
-        "glb_preview_if_returned"
-      ],
-      "notes": "Image-to-3D only. Output is parsed from model_mesh."
-    },
-    {
-      "provider": "fal",
-      "adapter": "fal_mesh",
-      "label": "fal Hunyuan 3D v3.1 Rapid Mesh",
-      "model_name": "fal-ai/hunyuan-3d/v3.1/rapid/text-to-3d",
-      "base_url": "https://queue.fal.run",
-      "api_path": "/fal-ai/hunyuan-3d/v3.1/rapid/text-to-3d",
-      "auth_type": "fal_key",
-      "auth_header": "Authorization",
-      "api_key_env": "FAL_KEY",
+      "api_key_env": "MESHY_API_KEY",
       "capabilities": [
         "text_to_mesh",
         "image_to_mesh",
-        "download",
-        "glb_preview_if_returned"
+        "multi_view_image_to_mesh",
+        "glb_preview"
       ],
-      "notes": "AgentGO switches to image-to-3d when a primary image is provided. Rapid may return OBJ for some text jobs; non-GLB results are download-only."
+      "notes": "Meshy 6 3D generation model selector."
+    },
+    {
+      "provider": "meshy",
+      "adapter": "meshy_mesh",
+      "label": "Meshy Latest",
+      "model_name": "latest",
+      "base_url": "https://api.meshy.ai",
+      "api_path": "/openapi/v2/text-to-3d",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "MESHY_API_KEY",
+      "capabilities": [
+        "text_to_mesh",
+        "image_to_mesh",
+        "multi_view_image_to_mesh",
+        "glb_preview"
+      ],
+      "notes": "Meshy default/latest 3D generation model selector."
+    },
+    {
+      "provider": "tripo",
+      "adapter": "tripo_mesh",
+      "label": "Tripo Default",
+      "model_name": "",
+      "base_url": "https://api.tripo3d.ai",
+      "api_path": "/v2/openapi/task",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "capabilities": [
+        "text_to_mesh",
+        "image_to_mesh",
+        "multi_view_image_to_mesh",
+        "glb_preview"
+      ],
+      "notes": "Leave model name blank unless you want to force a model_version. Tripo selects the current default for the account/task.",
+      "api_key_env": "TRIPO_API_KEY"
+    },
+    {
+      "provider": "tripo",
+      "adapter": "tripo_mesh",
+      "label": "Tripo Model Version v2.5 2025-01-23",
+      "model_name": "v2.5-20250123",
+      "base_url": "https://api.tripo3d.ai",
+      "api_path": "/v2/openapi/task",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "TRIPO_API_KEY",
+      "capabilities": [
+        "text_to_mesh",
+        "image_to_mesh",
+        "multi_view_image_to_mesh",
+        "glb_preview"
+      ],
+      "notes": "Pinned Tripo model_version used by the sample config; account support may vary."
+    },
+    {
+      "provider": "hyper3d",
+      "adapter": "hyper3d_mesh",
+      "label": "Hyper3D Rodin Default",
+      "model_name": "",
+      "base_url": "https://api.hyper3d.com/api",
+      "api_path": "/v2/rodin",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "HYPER3D_API_KEY",
+      "capabilities": [
+        "text_to_mesh",
+        "image_to_mesh",
+        "glb_preview"
+      ],
+      "notes": "Hyper3D/Rodin selects the generation family through its API endpoint/options. Leave Model Name blank unless your account requires a specific override."
     },
     {
       "provider": "fal",
@@ -75,19 +1108,74 @@
     {
       "provider": "fal",
       "adapter": "fal_mesh",
-      "label": "fal Trellis Mesh",
-      "model_name": "fal-ai/trellis",
+      "label": "fal Hunyuan 3D v3.1 Rapid Mesh",
+      "model_name": "fal-ai/hunyuan-3d/v3.1/rapid/text-to-3d",
       "base_url": "https://queue.fal.run",
-      "api_path": "/fal-ai/trellis",
+      "api_path": "/fal-ai/hunyuan-3d/v3.1/rapid/text-to-3d",
+      "auth_type": "fal_key",
+      "auth_header": "Authorization",
+      "api_key_env": "FAL_KEY",
+      "capabilities": [
+        "text_to_mesh",
+        "image_to_mesh",
+        "download",
+        "glb_preview_if_returned"
+      ],
+      "notes": "AgentGO switches to image-to-3d when a primary image is provided. Rapid may return OBJ for some text jobs; non-GLB results are download-only."
+    },
+    {
+      "provider": "fal",
+      "adapter": "fal_mesh",
+      "label": "fal Hunyuan3D V2 Image Mesh",
+      "model_name": "fal-ai/hunyuan3d/v2",
+      "base_url": "https://queue.fal.run",
+      "api_path": "/fal-ai/hunyuan3d/v2",
       "auth_type": "fal_key",
       "auth_header": "Authorization",
       "api_key_env": "FAL_KEY",
       "capabilities": [
         "image_to_mesh",
-        "multi_image_to_mesh",
-        "download"
+        "download",
+        "glb_preview_if_returned"
       ],
-      "notes": "Classic Trellis. AgentGO switches to fal-ai/trellis/multi for 2+ selected images."
+      "notes": "Image-to-3D only. Output is parsed from model_mesh."
+    },
+    {
+      "provider": "fal",
+      "adapter": "fal_mesh",
+      "label": "fal Hunyuan3D v3 Mesh",
+      "model_name": "fal-ai/hunyuan3d-v3/text-to-3d",
+      "base_url": "https://queue.fal.run",
+      "api_path": "/fal-ai/hunyuan3d-v3/text-to-3d",
+      "auth_type": "fal_key",
+      "auth_header": "Authorization",
+      "api_key_env": "FAL_KEY",
+      "capabilities": [
+        "text_to_mesh",
+        "image_to_mesh",
+        "multi_view_image_to_mesh",
+        "glb_preview"
+      ],
+      "notes": "Current baseline Hunyuan route. AgentGO switches to image-to-3d when images are provided."
+    },
+    {
+      "provider": "fal",
+      "adapter": "fal_mesh",
+      "label": "fal Meshy 5 Retexture",
+      "model_name": "fal-ai/meshy/v5/retexture",
+      "base_url": "https://queue.fal.run",
+      "api_path": "/fal-ai/meshy/v5/retexture",
+      "auth_type": "fal_key",
+      "auth_header": "Authorization",
+      "api_key_env": "FAL_KEY",
+      "capabilities": [
+        "mesh_to_mesh_retexture",
+        "style_prompt",
+        "style_image",
+        "download",
+        "glb_preview"
+      ],
+      "notes": "Requires a source 3D model plus either a style prompt or a style image. Completed mesh jobs in AgentGO can be reused as the source."
     },
     {
       "provider": "fal",
@@ -127,38 +1215,225 @@
     {
       "provider": "fal",
       "adapter": "fal_mesh",
-      "label": "fal Meshy 5 Retexture",
-      "model_name": "fal-ai/meshy/v5/retexture",
+      "label": "fal Trellis Mesh",
+      "model_name": "fal-ai/trellis",
       "base_url": "https://queue.fal.run",
-      "api_path": "/fal-ai/meshy/v5/retexture",
+      "api_path": "/fal-ai/trellis",
       "auth_type": "fal_key",
       "auth_header": "Authorization",
       "api_key_env": "FAL_KEY",
       "capabilities": [
-        "mesh_to_mesh_retexture",
-        "style_prompt",
-        "style_image",
-        "download",
-        "glb_preview"
+        "image_to_mesh",
+        "multi_image_to_mesh",
+        "download"
       ],
-      "notes": "Requires a source 3D model plus either a style prompt or a style image. Completed mesh jobs in AgentGO can be reused as the source."
+      "notes": "Classic Trellis. AgentGO switches to fal-ai/trellis/multi for 2+ selected images."
     },
     {
-      "provider": "tripo",
-      "adapter": "tripo_mesh",
-      "label": "Tripo 3D Mesh",
-      "model_name": "",
-      "base_url": "https://api.tripo3d.ai",
-      "api_path": "/v2/openapi/task",
+      "provider": "xai",
+      "adapter": "xai_responses",
+      "label": "xAI Grok 4.5",
+      "model_name": "grok-4.5",
+      "base_url": "https://api.x.ai",
+      "api_path": "/v1/responses",
       "auth_type": "bearer",
       "auth_header": "Authorization",
+      "api_key_env": "XAI_API_KEY",
       "capabilities": [
-        "text_to_mesh",
-        "image_to_mesh",
-        "download",
-        "glb_preview_if_returned"
+        "text_in",
+        "image_in",
+        "tool_calling",
+        "structured_outputs",
+        "reasoning",
+        "coding"
       ],
-      "notes": "Leave Model Name blank unless you want to force a Tripo model_version."
+      "notes": "Current flagship Grok model for chat, coding, agentic tasks, and knowledge work through xAI's Responses API."
+    },
+    {
+      "provider": "xai",
+      "adapter": "xai_responses",
+      "label": "xAI Grok 4.5 Latest",
+      "model_name": "grok-4.5-latest",
+      "base_url": "https://api.x.ai",
+      "api_path": "/v1/responses",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "XAI_API_KEY",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "tool_calling",
+        "structured_outputs",
+        "reasoning",
+        "coding"
+      ],
+      "notes": "Moving alias for the latest Grok 4.5 release. Use when automatic upgrades are preferred over a pinned release."
+    },
+    {
+      "provider": "xai",
+      "adapter": "xai_responses",
+      "base_url": "https://api.x.ai",
+      "api_path": "/v1/responses",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "XAI_API_KEY",
+      "label": "xAI Grok 4.3",
+      "model_name": "grok-4.3",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "tool_calling",
+        "structured_outputs",
+        "reasoning"
+      ],
+      "notes": "Current lower-cost general-purpose Grok model. Supports reasoning effort controls, image understanding, tool calling, and structured outputs through xAI's Responses API."
+    },
+    {
+      "provider": "xai",
+      "adapter": "xai_responses",
+      "base_url": "https://api.x.ai",
+      "api_path": "/v1/responses",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "XAI_API_KEY",
+      "label": "xAI Grok 4.20 Reasoning",
+      "model_name": "grok-4.20-0309-reasoning",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "tool_calling",
+        "structured_outputs",
+        "reasoning"
+      ],
+      "notes": "Grok 4.20 reasoning variant for deliberate analysis, agentic tool use, and structured responses."
+    },
+    {
+      "provider": "xai",
+      "adapter": "xai_responses",
+      "base_url": "https://api.x.ai",
+      "api_path": "/v1/responses",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "XAI_API_KEY",
+      "label": "xAI Grok 4.20 Non-Reasoning",
+      "model_name": "grok-4.20-0309-non-reasoning",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "tool_calling",
+        "structured_outputs",
+        "non_reasoning"
+      ],
+      "notes": "Grok 4.20 non-reasoning variant for faster direct responses, agentic tool use, and structured outputs."
+    },
+    {
+      "provider": "xai",
+      "adapter": "xai_responses",
+      "base_url": "https://api.x.ai",
+      "api_path": "/v1/responses",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "XAI_API_KEY",
+      "label": "xAI Grok 4.20 Multi-Agent",
+      "model_name": "grok-4.20-multi-agent-0309",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "tool_calling",
+        "structured_outputs",
+        "reasoning",
+        "multi_agent"
+      ],
+      "notes": "Grok 4.20 multi-agent research model. Availability can vary by xAI team and the model field remains manually editable."
+    },
+    {
+      "provider": "xai",
+      "adapter": "xai_responses",
+      "base_url": "https://api.x.ai",
+      "api_path": "/v1/responses",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "XAI_API_KEY",
+      "label": "xAI Grok Build 0.1",
+      "model_name": "grok-build-0.1",
+      "capabilities": [
+        "text_in",
+        "image_in",
+        "tool_calling",
+        "structured_outputs",
+        "reasoning",
+        "coding"
+      ],
+      "notes": "Early-access coding model for agentic software engineering and workflow tasks."
+    },
+    {
+      "provider": "xai",
+      "adapter": "xai_image",
+      "label": "xAI Grok Imagine Image Quality",
+      "model_name": "grok-imagine-image-quality",
+      "base_url": "https://api.x.ai",
+      "api_path": "/v1/images/generations",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "XAI_API_KEY",
+      "capabilities": [
+        "text_to_image",
+        "image_to_image",
+        "binary_out"
+      ],
+      "notes": "Higher-quality Grok Imagine image generation and editing model with 1K and 2K output options."
+    },
+    {
+      "provider": "xai",
+      "adapter": "xai_image",
+      "label": "xAI Grok Imagine Image",
+      "model_name": "grok-imagine-image",
+      "base_url": "https://api.x.ai",
+      "api_path": "/v1/images/generations",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "XAI_API_KEY",
+      "capabilities": [
+        "text_to_image",
+        "image_to_image",
+        "binary_out"
+      ],
+      "notes": "Lower-cost Grok Imagine image generation and editing model with 1K and 2K output options."
+    },
+    {
+      "provider": "xai",
+      "adapter": "xai_video",
+      "label": "xAI Grok Imagine Video",
+      "model_name": "grok-imagine-video",
+      "base_url": "https://api.x.ai",
+      "api_path": "/v1/videos/generations",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "XAI_API_KEY",
+      "capabilities": [
+        "video_generation",
+        "video_reference_images",
+        "text_to_video",
+        "image_to_video",
+        "reference_images"
+      ],
+      "notes": "General Grok Imagine video model for text, starter-image, reference-image, video editing, and extension workflows supported by xAI. AgentGO currently exposes its generation paths."
+    },
+    {
+      "provider": "xai",
+      "adapter": "xai_video",
+      "label": "xAI Grok Imagine Video 1.5",
+      "model_name": "grok-imagine-video-1.5",
+      "base_url": "https://api.x.ai",
+      "api_path": "/v1/videos/generations",
+      "auth_type": "bearer",
+      "auth_header": "Authorization",
+      "api_key_env": "XAI_API_KEY",
+      "capabilities": [
+        "image_to_video",
+        "video_generation"
+      ],
+      "notes": "Image-to-video model that requires a starter image. xAI currently documents that it does not support text-to-video."
     }
   ]
 }
