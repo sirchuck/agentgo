@@ -14,7 +14,15 @@ GO_BIN="${GO_BIN:-go}"
 HIGH_SIERRA_GO_BIN="${HIGH_SIERRA_GO_BIN:-go1.20}"
 
 REQUIRED_RUNTIME_DIRS=("templates" "assets" "system_prompts")
-REQUIRED_RUNTIME_FILES=("version.json" "model_names.json")
+REQUIRED_RUNTIME_FILES=("version.json" "model_names.json" "README.md")
+GENERATED_RUNTIME_FILES=("config.json" "models.json")
+REQUIRED_RELEASE_BINARIES=(
+  "${APP_NAME}-windows-amd64.exe"
+  "${APP_NAME}-linux-amd64"
+  "${APP_NAME}-linux-arm64"
+  "${APP_NAME}-macos-arm64"
+  "${APP_NAME}-macos-amd64"
+)
 
 echo
 echo "========================================"
@@ -135,6 +143,27 @@ cat > "$DIST_DIR/models.json" <<'JSON'
 }
 JSON
 
+echo "Auditing release contents..."
+for dir in "${REQUIRED_RUNTIME_DIRS[@]}"; do
+  if [[ ! -d "$DIST_DIR/$dir" ]]; then
+    echo "ERROR: Release audit failed; runtime folder missing from dist: $dir"
+    exit 1
+  fi
+done
+for file in "${REQUIRED_RUNTIME_FILES[@]}" "${GENERATED_RUNTIME_FILES[@]}"; do
+  if [[ ! -s "$DIST_DIR/$file" ]]; then
+    echo "ERROR: Release audit failed; runtime file missing or empty in dist: $file"
+    exit 1
+  fi
+done
+for binary in "${REQUIRED_RELEASE_BINARIES[@]}"; do
+  if [[ ! -s "$DIST_DIR/$binary" ]]; then
+    echo "ERROR: Release audit failed; required binary missing or empty in dist: $binary"
+    exit 1
+  fi
+done
+echo "Release audit passed."
+
 echo
 echo "========================================"
 echo "Build complete."
@@ -151,6 +180,7 @@ echo "  config.json        clean public default"
 echo "  models.json        clean empty model list"
 echo "  version.json"
 echo "  model_names.json"
+echo "  README.md          in-app README / pumpkin notes content"
 echo "  templates/"
 echo "  assets/"
 echo "  system_prompts/"

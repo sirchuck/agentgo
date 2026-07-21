@@ -1010,7 +1010,7 @@ func (a *App) executeMeshJobAsync(projectName string, model ModelConfig, jobID s
 			}
 		}
 	}
-	result, err := adapters.ExecuteMesh(ctx, toAdapterModelConfig(model), meshReq)
+	result, err := adapters.ExecuteMesh(ctx, a.adapterModelConfig(model), meshReq)
 	record.ProviderJobID = result.ProviderJobID
 	record.RemoteStatus = result.RemoteStatus
 	record.ProviderTaskType = result.TaskType
@@ -1289,7 +1289,7 @@ func (a *App) runMeshModelRequest(model ModelConfig, projectName, executionID, p
 	if inputImage != nil {
 		meshReq.InputImage = &adapters.MeshBinary{Name: inputImage.Name, MIMEType: inputImage.MIMEType, Data: inputImage.Data}
 	}
-	meshResult, err := adapters.ExecuteMesh(ctx, toAdapterModelConfig(model), meshReq)
+	meshResult, err := adapters.ExecuteMesh(ctx, a.adapterModelConfig(model), meshReq)
 	record.ProviderJobID = meshResult.ProviderJobID
 	record.RemoteStatus = meshResult.RemoteStatus
 	record.ProviderTaskType = meshResult.TaskType

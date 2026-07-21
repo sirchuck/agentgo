@@ -220,12 +220,12 @@ func normalizeAnthropicRole(role string) string {
 	return "user"
 }
 
-// anthropicMaxTokens chooses a safe output cap when the saved model config leaves it blank.
+// anthropicMaxTokens supplies the maximum chosen by AgentGO; Anthropic requires this field.
 func anthropicMaxTokens(model ModelConfig) int {
 	if model.MaxOutputTokens > 0 {
 		return model.MaxOutputTokens
 	}
-	return 4096
+	return 128000
 }
 
 // anthropicTemperature keeps zero as omitted while still allowing positive temperature overrides.

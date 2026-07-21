@@ -1,7 +1,13 @@
 package main
 
 import (
+	"archive/zip"
+	"bytes"
+	"context"
+	"encoding/base64"
 	"encoding/json"
+	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -23,6 +29,84 @@ func TestSlowHTTPRequestWarningThresholdUsesWorkModeAllowance(t *testing.T) {
 	}
 	if got := slowHTTPRequestWarningThreshold("/api/projects", http.MethodPost); got != 2*time.Second {
 		t.Fatalf("normal route slow threshold = %s, want 2s", got)
+	}
+}
+
+func TestLiveFreezeDiagnosticEligibilityTargetsFastStateReads(t *testing.T) {
+	for _, path := range []string{"/api/healthz", "/api/logs", "/api/risk", "/api/wave-state", "/api/deaddrop/status", "/api/projects", "/api/models", "/api/context-files"} {
+		if !liveFreezeDiagnosticEligible(path, http.MethodGet) {
+			t.Fatalf("expected live freeze diagnostics for GET %s", path)
+		}
+	}
+	if liveFreezeDiagnosticEligible("/api/work-mode/send", http.MethodPost) {
+		t.Fatal("long-running Work Mode send must not use the 10-second freeze watchdog")
+	}
+}
+
+func TestCaptureLiveFreezeDiagnosticWritesRequestAndGoroutineEvidence(t *testing.T) {
+	root := t.TempDir()
+	app := &App{
+		cfg:                      AppConfig{WorkRoot: root},
+		startedAt:                time.Now().Add(-time.Minute),
+		httpActiveByRoute:        map[string]int{"/api/wave-state": 1},
+		httpActiveRequestDetails: map[uint64]httpActiveRequestInfo{},
+		httpConns:                map[net.Conn]http.ConnState{},
+	}
+	timing := newHTTPRequestTiming()
+	timing.lockWaits["app.wave_state"] = 12 * time.Second
+	info := httpActiveRequestInfo{
+		ID:       7,
+		Method:   http.MethodGet,
+		Path:     "/api/wave-state",
+		Remote:   "10.0.2.2:63054",
+		Started:  time.Now().Add(-12 * time.Second),
+		Watchdog: true,
+	}
+	app.httpActiveRequestDetails[info.ID] = info
+	path, err := app.captureLiveFreezeDiagnostic(info, timing)
+	if err != nil {
+		t.Fatalf("capture live freeze diagnostic: %v", err)
+	}
+	data, err := os.ReadFile(filepath.FromSlash(path))
+	if err != nil {
+		t.Fatalf("read live freeze diagnostic: %v", err)
+	}
+	text := string(data)
+	for _, required := range []string{
+		"AgentGO live freeze diagnostic",
+		"request_id=7",
+		"path=/api/wave-state",
+		"phase=handler_before_response_write",
+		"app.wave_state=12s",
+		"=== HTTP STATE ===",
+		"activeRequestDetails",
+		"=== GOROUTINES ===",
+	} {
+		if !strings.Contains(text, required) {
+			t.Fatalf("live freeze diagnostic missing %q", required)
+		}
+	}
+}
+
+func TestWaveStateRecordsApplicationLockWaits(t *testing.T) {
+	app := &App{
+		activeProjectName:       "Work",
+		waveStatusByProject:     map[string]waveStatusState{},
+		waveExecutionsByProject: map[string]waveExecutionState{},
+	}
+	timing := newHTTPRequestTiming()
+	req := httptest.NewRequest(http.MethodGet, "/api/wave-state", nil)
+	req = req.WithContext(context.WithValue(req.Context(), httpRequestTimingContextKey{}, timing))
+	rec := httptest.NewRecorder()
+	app.handleWaveState(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("wave-state status = %d, want 200", rec.Code)
+	}
+	snapshot := timing.snapshot()
+	for _, name := range []string{"app.active_project", "app.wave_state"} {
+		if _, ok := snapshot.LockWaits[name]; !ok {
+			t.Fatalf("wave-state timing did not record %s", name)
+		}
 	}
 }
 
@@ -175,6 +259,209 @@ func TestRequireWorkModeJSONBoolFieldForWorkerReviewComplete(t *testing.T) {
 	}
 	if err := requireWorkModeJSONBoolField(`{"reply":"draft","files":[],"review_complete":"true"}`, "review_complete"); err == nil || !strings.Contains(err.Error(), "must be a boolean") {
 		t.Fatalf("string review_complete error = %v, want boolean type error", err)
+	}
+}
+
+func TestParseWorkModeAIResponsePreservesMemoryForNonStringValues(t *testing.T) {
+	tests := []struct {
+		name       string
+		memoryJSON string
+		wantIssue  bool
+	}{
+		{name: "string", memoryJSON: `"# Durable memory"`, wantIssue: false},
+		{name: "blank string", memoryJSON: `""`, wantIssue: false},
+		{name: "null", memoryJSON: `null`, wantIssue: false},
+		{name: "empty array", memoryJSON: `[]`, wantIssue: true},
+		{name: "object", memoryJSON: `{}`, wantIssue: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			raw := `{"reply":"ok","files":[],"artifacts":[],"memory":` + tt.memoryJSON + `,"warnings":[]}`
+			parsed, err := parseWorkModeAIResponse(raw)
+			if err != nil {
+				t.Fatalf("parseWorkModeAIResponse: %v", err)
+			}
+			if tt.memoryJSON == `"# Durable memory"` && parsed.Memory != "# Durable memory" {
+				t.Fatalf("memory = %q", parsed.Memory)
+			}
+			if tt.wantIssue != (parsed.MemoryIssue != "") {
+				t.Fatalf("memory issue = %q, wantIssue=%v", parsed.MemoryIssue, tt.wantIssue)
+			}
+			if tt.wantIssue && parsed.Memory != "" {
+				t.Fatalf("invalid memory should be ignored, got %q", parsed.Memory)
+			}
+		})
+	}
+}
+
+func TestParseWorkModeAIResponseAcceptsCaseInsensitiveJSONFence(t *testing.T) {
+	for _, language := range []string{"json", "Json", "JSON"} {
+		raw := "```" + language + "\n{\"reply\":\"ok\",\"files\":[],\"artifacts\":[],\"memory\":\"\",\"warnings\":[]}\n```"
+		parsed, err := parseWorkModeAIResponse(raw)
+		if err != nil {
+			t.Fatalf("%s fence failed: %v", language, err)
+		}
+		if parsed.Reply != "ok" {
+			t.Fatalf("%s reply = %q", language, parsed.Reply)
+		}
+	}
+}
+
+func TestWriteWorkModeJSONErrorIncludesOriginalAndRepairResponses(t *testing.T) {
+	rr := httptest.NewRecorder()
+	writeWorkModeJSONError(rr, &workModeJSONRepairError{
+		OriginalParseError: "original bad",
+		OriginalResponse:   "original raw",
+		RepairParseError:   "repair bad",
+		RepairResponse:     "repair raw",
+	}, "repair raw")
+	if rr.Code != http.StatusBadGateway {
+		t.Fatalf("status = %d", rr.Code)
+	}
+	var got workModeJSONErrorResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode error response: %v", err)
+	}
+	if got.OriginalParseError != "original bad" || got.OriginalResponse != "original raw" || got.RepairParseError != "repair bad" || got.RepairResponse != "repair raw" {
+		t.Fatalf("unexpected structured error: %#v", got)
+	}
+}
+
+func TestAppEffectiveModelMaxOutputTokensUsesAutomaticMaximum(t *testing.T) {
+	catalog := knownModelMaxOutputCatalog{
+		byExactKey: map[string]int{},
+		byAdapterKey: map[string]int{
+			maxOutputAdapterKey("openai_responses", "gpt-4.1-mini"): 32768,
+		},
+	}
+	app := &App{knownModelMaxOutputCatalog: catalog}
+	if got := app.effectiveModelMaxOutputTokens(ModelConfig{Adapter: "openai_responses", ModelName: "gpt-4.1-mini"}); got != 32768 {
+		t.Fatalf("known OpenAI maximum = %d, want 32768", got)
+	}
+	if got := app.effectiveModelMaxOutputTokens(ModelConfig{Adapter: "anthropic_messages", ModelName: "unknown-claude"}); got != anthropicAutomaticMaxOutputTokens {
+		t.Fatalf("unknown Anthropic maximum = %d, want %d", got, anthropicAutomaticMaxOutputTokens)
+	}
+	if got := app.effectiveModelMaxOutputTokens(ModelConfig{Provider: "anthropic", Adapter: "anthropic_messages", MaxOutputTokens: 12000}); got != 12000 {
+		t.Fatalf("custom Anthropic guardrail = %d, want 12000", got)
+	}
+	if got := app.effectiveModelMaxOutputTokens(ModelConfig{Adapter: "openai_responses", ModelName: "unknown-openai"}); got != 0 {
+		t.Fatalf("unknown OpenAI maximum = %d, want provider-managed 0", got)
+	}
+}
+
+func TestHandleModelMaxOutputTokensPersistsModelSpecificDefaults(t *testing.T) {
+	modelsPath := filepath.Join(t.TempDir(), "models.json")
+	app := &App{
+		cfg: AppConfig{Models: []ModelConfig{
+			{ID: 1, Label: "Claude Sonnet", Provider: "anthropic", Adapter: "anthropic", MaxOutputTokens: 0},
+			{ID: 2, Label: "Claude Observer", Provider: "anthropic", Adapter: "anthropic", MaxOutputTokens: 12000},
+		}},
+		modelsPath:         modelsPath,
+		modelSchemaVersion: 1,
+	}
+	body := `{"models":[{"modelId":"1","maxOutputTokens":32000},{"modelId":"2","maxOutputTokens":24000}]}`
+	req := httptest.NewRequest(http.MethodPost, "/api/models/max-output-tokens", strings.NewReader(body))
+	rr := httptest.NewRecorder()
+
+	app.handleModelMaxOutputTokens(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rr.Code, rr.Body.String())
+	}
+	if app.cfg.Models[0].MaxOutputTokens != 32000 || app.cfg.Models[1].MaxOutputTokens != 24000 {
+		t.Fatalf("model values not updated: %#v", app.cfg.Models)
+	}
+	persisted, err := os.ReadFile(modelsPath)
+	if err != nil {
+		t.Fatalf("read persisted models: %v", err)
+	}
+	if !bytes.Contains(persisted, []byte(`"max_output_tokens": 32000`)) || !bytes.Contains(persisted, []byte(`"max_output_tokens": 24000`)) {
+		t.Fatalf("persisted model defaults missing: %s", persisted)
+	}
+}
+
+func TestBuildWorkModeTranscriptZIPIncludesOfflineBrandingAndAssets(t *testing.T) {
+	assetsDir := t.TempDir()
+	for _, name := range []string{"frostcandy_logo_font.png", "agentgo_logo.png", "fc_agentgo_yetti.png"} {
+		if err := os.WriteFile(filepath.Join(assetsDir, name), []byte("asset-"+name), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	req := workModeTranscriptExportRequest{
+		Title:         "Demo Transcript",
+		ProjectName:   "Camera Project",
+		ExportedAt:    "2026-07-15T12:00:00Z",
+		BuilderLabel:  "Claude Sonnet",
+		BuilderID:     "claude-sonnet-4",
+		ObserverLabel: "Gemini Pro",
+		ObserverID:    "gemini-2.5-pro",
+		BodyHTML: `<article class="transcript-message ai"><div class="work-mode-message-body"><pre><code>&lt;script onload="demo()"&gt;
+<span class="agentgo-code-change">let changed = true;</span></code></pre><img src="assets/transcript-image-001.png" alt="Example"></div></article>`,
+		TranscriptJSON: json.RawMessage(`{"messages":[{"role":"ai","text":"ok"}]}`),
+		Assets:         []workModeTranscriptAsset{{Path: "assets/transcript-image-001.png", MIMEType: "image/png", Data: base64.StdEncoding.EncodeToString([]byte("image"))}},
+	}
+	archive, filename, err := buildWorkModeTranscriptZIP(req, assetsDir)
+	if err != nil {
+		t.Fatalf("build transcript zip: %v", err)
+	}
+	if !strings.HasPrefix(filename, "AgentGO-transcript-camera-project-") || !strings.HasSuffix(filename, ".zip") {
+		t.Fatalf("unexpected filename %q", filename)
+	}
+	zr, err := zip.NewReader(bytes.NewReader(archive), int64(len(archive)))
+	if err != nil {
+		t.Fatalf("open transcript zip: %v", err)
+	}
+	files := map[string][]byte{}
+	for _, entry := range zr.File {
+		rc, err := entry.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := io.ReadAll(rc)
+		_ = rc.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		files[entry.Name] = data
+	}
+	for _, name := range []string{"index.html", "transcript.json", "assets/frostcandy_logo_font.png", "assets/agentgo_logo.png", "assets/fc_agentgo_yetti.png", "assets/transcript-image-001.png"} {
+		if _, ok := files[name]; !ok {
+			t.Fatalf("transcript zip missing %s", name)
+		}
+	}
+	index := string(files["index.html"])
+	for _, required := range []string{
+		`href="https://agentgo.frostcandy.com" target="_blank"`,
+		`<img src="assets/frostcandy_logo_font.png" alt="FrostCandy">`,
+		`<img src="assets/agentgo_logo.png" alt="AgentGO">`,
+		`<h1>AgentGO Work-Mode Transcript</h1>`,
+		`AI Builder: Claude Sonnet (claude-sonnet-4) - Observer: Gemini Pro (gemini-2.5-pro)`,
+		`Project: Camera Project · Exported 2026-07-15T12:00:00Z`,
+		`.transcript-brand{display:flex;flex-direction:column;align-items:center;gap:8px;margin:0 auto 20px`,
+		`.transcript-yeti{display:block;width:min(180px,45vw);height:auto;margin:20px auto 0}`,
+		`assets/transcript-image-001.png`,
+		`&lt;script onload="demo()"&gt;`,
+		`<span class="agentgo-code-change">let changed = true;</span>`,
+		`pre code .agentgo-code-change{color:#FFE27C}`,
+	} {
+		if !strings.Contains(index, required) {
+			t.Fatalf("transcript index missing %q", required)
+		}
+	}
+}
+
+func TestBuildWorkModeTranscriptZIPRejectsExecutableHTML(t *testing.T) {
+	assetsDir := t.TempDir()
+	for _, name := range []string{"frostcandy_logo_font.png", "agentgo_logo.png", "fc_agentgo_yetti.png"} {
+		if err := os.WriteFile(filepath.Join(assetsDir, name), []byte(name), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_, _, err := buildWorkModeTranscriptZIP(workModeTranscriptExportRequest{
+		BodyHTML:       `<article><script>alert(1)</script></article>`,
+		TranscriptJSON: json.RawMessage(`{"messages":[]}`),
+	}, assetsDir)
+	if err == nil || !strings.Contains(err.Error(), "unsafe") {
+		t.Fatalf("unsafe transcript error = %v", err)
 	}
 }
 
@@ -383,6 +670,110 @@ func TestHandleCreateModelInitializesActiveProjectScaffold(t *testing.T) {
 	} {
 		if info, err := os.Stat(path); err != nil || !info.IsDir() {
 			t.Fatalf("expected active-project scaffold directory %s: info=%v err=%v", path, info, err)
+		}
+	}
+}
+
+func TestResolveWorkModeRequestMemoryUsesProjectContinuedMemory(t *testing.T) {
+	metaRoot := t.TempDir()
+	continuedRoot := t.TempDir()
+	continuedPath := filepath.Join(continuedRoot, workModeContinuedMemoryFilename)
+	if err := os.WriteFile(continuedPath, []byte("project continued memory"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	staleBrowserMemory := "stale browser memory must not replace the server file"
+	data, name, writePath, persist, err := resolveWorkModeRequestMemory(metaRoot, continuedPath, workModeRequest{
+		UseMemory:     true,
+		MemoryContent: &staleBrowserMemory,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(data); got != "project continued memory" {
+		t.Fatalf("memory = %q, want project continued memory", got)
+	}
+	if name != "" || writePath != continuedPath || !persist {
+		t.Fatalf("continued memory resolved as name=%q path=%q persist=%v", name, writePath, persist)
+	}
+	if err := writeWorkModeRequestMemory(writePath, persist, "updated continued memory"); err != nil {
+		t.Fatal(err)
+	}
+	updated, err := os.ReadFile(continuedPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(updated); got != "updated continued memory" {
+		t.Fatalf("continued memory = %q", got)
+	}
+}
+
+func TestResolveWorkModeRequestMemorySharesNamedFile(t *testing.T) {
+	metaRoot := t.TempDir()
+	memoriesRoot, err := workModeMemoriesRoot(metaRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(memoriesRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	displayName, fileName, err := normalizeWorkModeMemoryFileName("Shared Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	memoryPath := filepath.Join(memoriesRoot, fileName)
+	if err := os.WriteFile(memoryPath, []byte("shared version one"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	continuedPath := filepath.Join(t.TempDir(), workModeContinuedMemoryFilename)
+	if err := os.WriteFile(continuedPath, []byte("continued"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	data, name, writePath, persist, err := resolveWorkModeRequestMemory(metaRoot, continuedPath, workModeRequest{
+		UseMemory:  true,
+		MemoryName: displayName,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(data); got != "shared version one" {
+		t.Fatalf("memory = %q", got)
+	}
+	if name != displayName || writePath != memoryPath || !persist {
+		t.Fatalf("named memory resolved as name=%q path=%q persist=%v", name, writePath, persist)
+	}
+	if err := writeWorkModeRequestMemory(writePath, persist, "shared version two"); err != nil {
+		t.Fatal(err)
+	}
+	updated, err := os.ReadFile(memoryPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(updated); got != "shared version two" {
+		t.Fatalf("named memory = %q, want latest update", got)
+	}
+}
+
+func TestWorkModeTemplateContainsConversationTabPatchControls(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("templates", "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(data)
+	for _, required := range []string{
+		`id="workModeTabList"`,
+		`id="workModeAddTabBtn"`,
+		`data-work-tab-close`,
+		`data-work-memory-cancel`,
+		`function syncNamedWorkModeMemory`,
+		`memoryName`,
+		`memoryContent`,
+		`sessionOnly: true`,
+		`max-height:calc(100vh - 120px)`,
+		`padding-bottom:24px`,
+		`restoreWorkModeReplyScrolling`,
+	} {
+		if !strings.Contains(source, required) {
+			t.Fatalf("Work Mode template missing %q", required)
 		}
 	}
 }

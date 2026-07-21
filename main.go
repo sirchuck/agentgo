@@ -286,15 +286,21 @@ type App struct {
 	cfg                         AppConfig
 	configPath                  string
 	modelsPath                  string
+	knownModelMaxOutputCatalog  knownModelMaxOutputCatalog
 	modelSchemaVersion          int
 	modelTopID                  int
 	tmpl                        *template.Template
 	release                     ReleaseInfo
 	startedAt                   time.Time
 	mu                          sync.RWMutex
+	activeSessionMu             sync.Mutex
+	sessionResetMu              sync.Mutex
+	activeSession               activeSessionFile
 	httpMu                      sync.Mutex
 	httpActiveRequests          int
 	httpActiveByRoute           map[string]int
+	httpActiveRequestDetails    map[uint64]httpActiveRequestInfo
+	httpRequestTopID            uint64
 	httpTotalRequests           uint64
 	httpSlowRequests            uint64
 	httpRejectedPolls           uint64
@@ -330,6 +336,9 @@ type App struct {
 	diagSubscriberTopID         int
 	activeOutfitRunsByProject   map[string]activeOutfitRun
 	workModeSessionsByProject   map[string]workModeSessionState
+	agenticAuditMu              sync.Mutex
+	agenticStreams              map[string]*agenticLiveStream
+	agenticSemiAllowances       map[string]map[string]bool
 	sessionTokenEstimate        tokenUsageEstimate
 	currentLoopTokenEstimate    *tokenUsageBreakdown
 	currentWaveTokenEstimate    *tokenUsageBreakdown
@@ -348,31 +357,145 @@ type LogEntry struct {
 	Risk    bool   `json:"risk,omitempty"`
 }
 
+type httpRequestTimingContextKey struct{}
+
+type httpRequestTiming struct {
+	mu                    sync.Mutex
+	firstWriteStartedAt   time.Time
+	firstWriteCompletedAt time.Time
+	currentWriteStartedAt time.Time
+	writeInProgress       bool
+	totalWriteDuration    time.Duration
+	writeCalls            int
+	lockWaits             map[string]time.Duration
+}
+
+type httpRequestTimingSnapshot struct {
+	FirstWriteStartedAt   time.Time
+	FirstWriteCompletedAt time.Time
+	CurrentWriteStartedAt time.Time
+	WriteInProgress       bool
+	TotalWriteDuration    time.Duration
+	WriteCalls            int
+	LockWaits             map[string]time.Duration
+}
+
+type httpActiveRequestInfo struct {
+	ID       uint64
+	Method   string
+	Path     string
+	Remote   string
+	Started  time.Time
+	Watchdog bool
+}
+
+func newHTTPRequestTiming() *httpRequestTiming {
+	return &httpRequestTiming{lockWaits: map[string]time.Duration{}}
+}
+
+func requestTimingFromContext(ctx context.Context) *httpRequestTiming {
+	if ctx == nil {
+		return nil
+	}
+	timing, _ := ctx.Value(httpRequestTimingContextKey{}).(*httpRequestTiming)
+	return timing
+}
+
+func recordRequestLockWait(r *http.Request, name string, wait time.Duration) {
+	timing := requestTimingFromContext(r.Context())
+	if timing == nil || strings.TrimSpace(name) == "" {
+		return
+	}
+	timing.mu.Lock()
+	timing.lockWaits[strings.TrimSpace(name)] += wait
+	timing.mu.Unlock()
+}
+
+func (t *httpRequestTiming) beginWrite() {
+	if t == nil {
+		return
+	}
+	now := time.Now()
+	t.mu.Lock()
+	if t.firstWriteStartedAt.IsZero() {
+		t.firstWriteStartedAt = now
+	}
+	t.currentWriteStartedAt = now
+	t.writeInProgress = true
+	t.writeCalls++
+	t.mu.Unlock()
+}
+
+func (t *httpRequestTiming) endWrite() {
+	if t == nil {
+		return
+	}
+	now := time.Now()
+	t.mu.Lock()
+	if !t.currentWriteStartedAt.IsZero() {
+		t.totalWriteDuration += now.Sub(t.currentWriteStartedAt)
+	}
+	if t.firstWriteCompletedAt.IsZero() {
+		t.firstWriteCompletedAt = now
+	}
+	t.currentWriteStartedAt = time.Time{}
+	t.writeInProgress = false
+	t.mu.Unlock()
+}
+
+func (t *httpRequestTiming) snapshot() httpRequestTimingSnapshot {
+	if t == nil {
+		return httpRequestTimingSnapshot{}
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	lockWaits := make(map[string]time.Duration, len(t.lockWaits))
+	for name, wait := range t.lockWaits {
+		lockWaits[name] = wait
+	}
+	return httpRequestTimingSnapshot{
+		FirstWriteStartedAt:   t.firstWriteStartedAt,
+		FirstWriteCompletedAt: t.firstWriteCompletedAt,
+		CurrentWriteStartedAt: t.currentWriteStartedAt,
+		WriteInProgress:       t.writeInProgress,
+		TotalWriteDuration:    t.totalWriteDuration,
+		WriteCalls:            t.writeCalls,
+		LockWaits:             lockWaits,
+	}
+}
+
 type statusRecordingResponseWriter struct {
 	http.ResponseWriter
 	status int
 	bytes  int
+	timing *httpRequestTiming
 }
 
 func (w *statusRecordingResponseWriter) WriteHeader(status int) {
 	if w.status == 0 {
 		w.status = status
 	}
+	w.timing.beginWrite()
 	w.ResponseWriter.WriteHeader(status)
+	w.timing.endWrite()
 }
 
 func (w *statusRecordingResponseWriter) Write(data []byte) (int, error) {
 	if w.status == 0 {
 		w.status = http.StatusOK
 	}
+	w.timing.beginWrite()
 	n, err := w.ResponseWriter.Write(data)
+	w.timing.endWrite()
 	w.bytes += n
 	return n, err
 }
 
 func (w *statusRecordingResponseWriter) Flush() {
 	if flusher, ok := w.ResponseWriter.(http.Flusher); ok {
+		w.timing.beginWrite()
 		flusher.Flush()
+		w.timing.endWrite()
 	}
 }
 
@@ -387,6 +510,7 @@ const (
 	slowHTTPRequestWarningAfter         = 2 * time.Second
 	workModeSlowHTTPRequestWarningAfter = 60 * time.Second
 	workModeURLCaptureSlowWarningAfter  = 120 * time.Second
+	liveFreezeDiagnosticAfter           = 10 * time.Second
 	deadDropStatusCacheTTL              = 15 * time.Second
 	defaultHTTPReadHeaderTimeout        = 10 * time.Second
 	defaultHTTPIdleTimeout              = 90 * time.Second
@@ -415,6 +539,126 @@ func slowHTTPRequestWarningThreshold(path string, method string) time.Duration {
 	return slowHTTPRequestWarningAfter
 }
 
+func liveFreezeDiagnosticEligible(path string, method string) bool {
+	if method == http.MethodGet {
+		switch path {
+		case "/api/healthz", "/api/logs", "/api/risk", "/api/wave-state", "/api/deaddrop/status", "/api/projects", "/api/models", "/api/models/definitions", "/api/context-files", "/api/work-mode/url/capabilities":
+			return true
+		}
+	}
+	return false
+}
+
+func formatDurationMap(values map[string]time.Duration) string {
+	if len(values) == 0 {
+		return "none"
+	}
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys))
+	for _, key := range keys {
+		parts = append(parts, fmt.Sprintf("%s=%s", key, values[key].Round(time.Microsecond)))
+	}
+	return strings.Join(parts, ",")
+}
+
+func httpRequestPhase(snapshot httpRequestTimingSnapshot) string {
+	if snapshot.WriteInProgress || (!snapshot.FirstWriteStartedAt.IsZero() && snapshot.FirstWriteCompletedAt.IsZero()) {
+		return "response_write"
+	}
+	if snapshot.FirstWriteStartedAt.IsZero() {
+		return "handler_before_response_write"
+	}
+	return "handler_after_response_write"
+}
+
+func formatRelativeRequestTime(start, event time.Time) string {
+	if start.IsZero() || event.IsZero() {
+		return "none"
+	}
+	return event.Sub(start).Round(time.Microsecond).String()
+}
+
+func (a *App) freezeDiagnosticsRoot() string {
+	return filepath.Join(a.cfg.WorkRoot, "diagnostics", "freezes")
+}
+
+func (a *App) captureLiveFreezeDiagnostic(info httpActiveRequestInfo, timing *httpRequestTiming) (string, error) {
+	now := time.Now()
+	timingSnapshot := timing.snapshot()
+	stateSnapshot := a.httpStateSnapshot()
+	var mem runtime.MemStats
+	runtime.ReadMemStats(&mem)
+
+	var goroutines bytes.Buffer
+	if profile := pprof.Lookup("goroutine"); profile != nil {
+		_ = profile.WriteTo(&goroutines, 2)
+	} else {
+		_, _ = fmt.Fprintln(&goroutines, "goroutine profile unavailable")
+	}
+
+	stateJSON, err := json.MarshalIndent(stateSnapshot, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	root := a.freezeDiagnosticsRoot()
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		return "", err
+	}
+	filename := fmt.Sprintf("freeze_%s_request-%d.txt", now.Format("20060102_150405_000000000"), info.ID)
+	fullPath := filepath.Join(root, filename)
+	phase := httpRequestPhase(timingSnapshot)
+	currentWriteElapsed := time.Duration(0)
+	if timingSnapshot.WriteInProgress && !timingSnapshot.CurrentWriteStartedAt.IsZero() {
+		currentWriteElapsed = now.Sub(timingSnapshot.CurrentWriteStartedAt)
+	}
+	var report bytes.Buffer
+	fmt.Fprintf(&report, "AgentGO live freeze diagnostic\n")
+	fmt.Fprintf(&report, "captured_at=%s\n", now.Format(time.RFC3339Nano))
+	fmt.Fprintf(&report, "request_id=%d\nmethod=%s\npath=%s\nremote=%s\n", info.ID, info.Method, info.Path, info.Remote)
+	fmt.Fprintf(&report, "request_started=%s\nelapsed=%s\nphase=%s\n", info.Started.Format(time.RFC3339Nano), now.Sub(info.Started).Round(time.Millisecond), phase)
+	fmt.Fprintf(&report, "write_calls=%d\nfirst_write_started_after=%s\nfirst_write_returned_after=%s\ncompleted_write_time=%s\ncurrent_write_elapsed=%s\n", timingSnapshot.WriteCalls, formatRelativeRequestTime(info.Started, timingSnapshot.FirstWriteStartedAt), formatRelativeRequestTime(info.Started, timingSnapshot.FirstWriteCompletedAt), timingSnapshot.TotalWriteDuration.Round(time.Microsecond), currentWriteElapsed.Round(time.Microsecond))
+	fmt.Fprintf(&report, "lock_waits=%s\n", formatDurationMap(timingSnapshot.LockWaits))
+	if session, ok, available := a.tryActiveSessionSnapshot(); !available {
+		fmt.Fprintf(&report, "active_session_id=unavailable\n")
+	} else if ok {
+		fmt.Fprintf(&report, "active_session_id=%s\nactive_session_project=%s\nactive_session_updated_at=%s\n", session.SessionID, session.ActiveProject, session.UpdatedAt)
+	} else {
+		fmt.Fprintf(&report, "active_session_id=none\n")
+	}
+	fmt.Fprintf(&report, "pid=%d\ngoroutines=%d\nheap_alloc_bytes=%d\nheap_sys_bytes=%d\nstack_inuse_bytes=%d\nnum_gc=%d\n", os.Getpid(), runtime.NumGoroutine(), mem.HeapAlloc, mem.HeapSys, mem.StackInuse, mem.NumGC)
+	fmt.Fprintf(&report, "\n=== HTTP STATE ===\n%s\n", stateJSON)
+	fmt.Fprintf(&report, "\n=== GOROUTINES ===\n%s", goroutines.String())
+	if err := os.WriteFile(fullPath, report.Bytes(), 0o644); err != nil {
+		return "", err
+	}
+	return filepath.ToSlash(fullPath), nil
+}
+
+func (a *App) startLiveFreezeWatchdog(info httpActiveRequestInfo, timing *httpRequestTiming, done <-chan struct{}) {
+	if !info.Watchdog {
+		return
+	}
+	go func() {
+		timer := time.NewTimer(liveFreezeDiagnosticAfter)
+		defer timer.Stop()
+		select {
+		case <-done:
+			return
+		case <-timer.C:
+			path, err := a.captureLiveFreezeDiagnostic(info, timing)
+			if err != nil {
+				log.Printf("[WARN] http: Live freeze diagnostic failed for %s %s after %s: %v", info.Method, info.Path, liveFreezeDiagnosticAfter, err)
+				return
+			}
+			log.Printf("[WARN] http: Live freeze diagnostic captured for %s %s after %s: %s", info.Method, info.Path, liveFreezeDiagnosticAfter, path)
+		}
+	}()
+}
+
 func (a *App) wrapHTTPHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
@@ -434,15 +678,36 @@ func (a *App) wrapHTTPHandler(next http.Handler) http.Handler {
 		}
 
 		start := time.Now()
+		timing := newHTTPRequestTiming()
+		r = r.WithContext(context.WithValue(r.Context(), httpRequestTimingContextKey{}, timing))
+
 		a.httpMu.Lock()
+		a.httpRequestTopID++
+		requestID := a.httpRequestTopID
+		info := httpActiveRequestInfo{
+			ID:       requestID,
+			Method:   r.Method,
+			Path:     path,
+			Remote:   r.RemoteAddr,
+			Started:  start,
+			Watchdog: liveFreezeDiagnosticEligible(path, r.Method),
+		}
 		a.httpTotalRequests++
 		a.httpActiveRequests++
 		a.httpActiveByRoute[path]++
+		if a.httpActiveRequestDetails == nil {
+			a.httpActiveRequestDetails = map[uint64]httpActiveRequestInfo{}
+		}
+		a.httpActiveRequestDetails[requestID] = info
 		a.httpMu.Unlock()
 
-		rec := &statusRecordingResponseWriter{ResponseWriter: w}
+		done := make(chan struct{})
+		a.startLiveFreezeWatchdog(info, timing, done)
+		rec := &statusRecordingResponseWriter{ResponseWriter: w, timing: timing}
 		defer func() {
+			close(done)
 			duration := time.Since(start)
+			timingSnapshot := timing.snapshot()
 			slowWarningAfter := slowHTTPRequestWarningThreshold(path, r.Method)
 			status := rec.status
 			if status == 0 {
@@ -459,6 +724,7 @@ func (a *App) wrapHTTPHandler(next http.Handler) http.Handler {
 			} else {
 				delete(a.httpActiveByRoute, path)
 			}
+			delete(a.httpActiveRequestDetails, requestID)
 			if duration >= slowWarningAfter {
 				a.httpSlowRequests++
 			}
@@ -467,7 +733,11 @@ func (a *App) wrapHTTPHandler(next http.Handler) http.Handler {
 			}
 			a.httpMu.Unlock()
 			if duration >= slowWarningAfter {
-				a.logf("http", "warn", "Slow request %s %s took %s status=%d bytes=%d remote=%s aborted=%t", r.Method, path, duration.Round(time.Millisecond), status, rec.bytes, r.RemoteAddr, aborted)
+				handlerNonWrite := duration - timingSnapshot.TotalWriteDuration
+				if handlerNonWrite < 0 {
+					handlerNonWrite = 0
+				}
+				a.logf("http", "warn", "Slow request %s %s total=%s handler_nonwrite=%s response_write=%s first_write_after=%s first_write_return_after=%s lock_waits=%s status=%d bytes=%d remote=%s aborted=%t", r.Method, path, duration.Round(time.Millisecond), handlerNonWrite.Round(time.Millisecond), timingSnapshot.TotalWriteDuration.Round(time.Millisecond), formatRelativeRequestTime(start, timingSnapshot.FirstWriteStartedAt), formatRelativeRequestTime(start, timingSnapshot.FirstWriteCompletedAt), formatDurationMap(timingSnapshot.LockWaits), status, rec.bytes, r.RemoteAddr, aborted)
 			}
 		}()
 
@@ -496,6 +766,22 @@ func (a *App) httpStateSnapshot() map[string]any {
 	for _, state := range a.httpConns {
 		connStates[state.String()]++
 	}
+	activeRequestDetails := make([]map[string]any, 0, len(a.httpActiveRequestDetails))
+	now := time.Now()
+	for _, request := range a.httpActiveRequestDetails {
+		activeRequestDetails = append(activeRequestDetails, map[string]any{
+			"id":             request.ID,
+			"method":         request.Method,
+			"path":           request.Path,
+			"remote":         request.Remote,
+			"startedAt":      request.Started.Format(time.RFC3339Nano),
+			"elapsedMillis":  now.Sub(request.Started).Milliseconds(),
+			"freezeWatchdog": request.Watchdog,
+		})
+	}
+	sort.Slice(activeRequestDetails, func(i, j int) bool {
+		return activeRequestDetails[i]["id"].(uint64) < activeRequestDetails[j]["id"].(uint64)
+	})
 	return map[string]any{
 		"ok":                       true,
 		"uptimeSeconds":            int64(time.Since(a.startedAt).Seconds()),
@@ -503,6 +789,7 @@ func (a *App) httpStateSnapshot() map[string]any {
 		"goroutines":               runtime.NumGoroutine(),
 		"activeRequests":           a.httpActiveRequests,
 		"activeRequestsByRoute":    activeByRoute,
+		"activeRequestDetails":     activeRequestDetails,
 		"totalRequests":            a.httpTotalRequests,
 		"slowRequests":             a.httpSlowRequests,
 		"abortedRequests":          a.httpAbortedRequests,
@@ -743,6 +1030,7 @@ type projectInfo struct {
 type projectListResponse struct {
 	ActiveProject string        `json:"activeProject"`
 	Projects      []projectInfo `json:"projects"`
+	SessionID     string        `json:"sessionId,omitempty"`
 }
 
 type sessionResetRequest struct {
@@ -801,8 +1089,9 @@ type tokenUsageEstimate struct {
 }
 
 type projectImportGitRequest struct {
-	RepoURL string `json:"repoUrl"`
-	Branch  string `json:"branch"`
+	RepoURL            string `json:"repoUrl"`
+	Branch             string `json:"branch"`
+	IncludeGitMetadata bool   `json:"includeGitMetadata"`
 }
 
 type projectImportURLRequest struct {
@@ -866,6 +1155,25 @@ type storedWorkModeAttachmentMetadata struct {
 	OriginalIsText    bool   `json:"original_is_text"`
 }
 
+type workModeTranscriptAsset struct {
+	Path     string `json:"path"`
+	MIMEType string `json:"mimeType,omitempty"`
+	Data     string `json:"data"`
+}
+
+type workModeTranscriptExportRequest struct {
+	Title          string                    `json:"title,omitempty"`
+	ProjectName    string                    `json:"projectName,omitempty"`
+	ExportedAt     string                    `json:"exportedAt,omitempty"`
+	BuilderLabel   string                    `json:"builderLabel,omitempty"`
+	BuilderID      string                    `json:"builderId,omitempty"`
+	ObserverLabel  string                    `json:"observerLabel,omitempty"`
+	ObserverID     string                    `json:"observerId,omitempty"`
+	BodyHTML       string                    `json:"bodyHTML"`
+	TranscriptJSON json.RawMessage           `json:"transcript"`
+	Assets         []workModeTranscriptAsset `json:"assets,omitempty"`
+}
+
 type chatRequest struct {
 	ModelID            string `json:"modelId"`
 	Prompt             string `json:"prompt"`
@@ -903,12 +1211,15 @@ type workModeRequest struct {
 	IncludeRoleContext   *bool                      `json:"includeRoleContext,omitempty"`
 	ResponseMode         string                     `json:"responseMode,omitempty"`
 	UseMemory            bool                       `json:"useMemory,omitempty"`
+	MemoryName           string                     `json:"memoryName,omitempty"`
+	MemoryContent        *string                    `json:"memoryContent,omitempty"`
 	UseAgentGOStyling    bool                       `json:"agentGOStyling,omitempty"`
 	AllowCreate          bool                       `json:"allowCreate,omitempty"`
 	AllowUpdate          bool                       `json:"allowUpdate,omitempty"`
 	ObserverReview       bool                       `json:"observerReview,omitempty"`
 	ObserverModelID      string                     `json:"observerModelId,omitempty"`
 	MaxPasses            int                        `json:"maxPasses,omitempty"`
+	Agentic              workModeAgenticRequest     `json:"agentic,omitempty"`
 }
 
 type workModeStylingResponse struct {
@@ -922,8 +1233,10 @@ type workModeStylingSaveRequest struct {
 }
 
 type workModeMemoryRequest struct {
-	ModelID string `json:"modelId"`
-	Name    string `json:"name,omitempty"`
+	ModelID     string  `json:"modelId"`
+	Name        string  `json:"name,omitempty"`
+	Content     *string `json:"content,omitempty"`
+	SessionOnly bool    `json:"sessionOnly,omitempty"`
 }
 
 type workModeMemoryFile struct {
@@ -934,10 +1247,13 @@ type workModeMemoryFile struct {
 }
 
 type workModeMemoryResponse struct {
-	ActiveExists bool                 `json:"activeExists"`
-	ActiveBytes  int64                `json:"activeBytes,omitempty"`
-	Saved        []workModeMemoryFile `json:"saved"`
-	Message      string               `json:"message,omitempty"`
+	ActiveExists  bool                 `json:"activeExists"`
+	ActiveBytes   int64                `json:"activeBytes,omitempty"`
+	ActiveContent string               `json:"activeContent,omitempty"`
+	Saved         []workModeMemoryFile `json:"saved"`
+	Name          string               `json:"name,omitempty"`
+	Content       string               `json:"content,omitempty"`
+	Message       string               `json:"message,omitempty"`
 }
 
 func normalizeWorkModeWarnings(values []string) []string {
@@ -954,9 +1270,22 @@ func normalizeWorkModeWarnings(values []string) []string {
 	return out
 }
 
+func labeledWorkModeRepairDetail(detail *workModeJSONRepairDetail, owner string, pass int) (workModeJSONRepairDetail, bool) {
+	if detail == nil {
+		return workModeJSONRepairDetail{}, false
+	}
+	copy := *detail
+	copy.Owner = strings.TrimSpace(owner)
+	copy.Pass = pass
+	return copy, true
+}
+
 type workModeResponse struct {
 	Reply          string                      `json:"reply"`
+	Memory         string                      `json:"memory,omitempty"`
+	MemoryName     string                      `json:"memoryName,omitempty"`
 	Warnings       []string                    `json:"warnings,omitempty"`
+	RepairDetails  []workModeJSONRepairDetail  `json:"repairDetails,omitempty"`
 	ChangedFiles   []string                    `json:"changedFiles,omitempty"`
 	SkippedFiles   []string                    `json:"skippedFiles,omitempty"`
 	BlockedFiles   []workModeBlockedFileOutput `json:"blockedFiles,omitempty"`
@@ -967,6 +1296,7 @@ type workModeResponse struct {
 	MemoryWarning  string                      `json:"memoryWarning,omitempty"`
 	State          *workModeSessionState       `json:"state,omitempty"`
 	ReviewMessages []workModeReviewMessage     `json:"reviewMessages,omitempty"`
+	Agentic        *workModeAgenticResult      `json:"agentic,omitempty"`
 }
 
 type workModeDiffFile struct {
@@ -994,19 +1324,36 @@ type workModeBlockedFileOutput struct {
 }
 
 type workModeAIResponse struct {
-	Reply          string            `json:"reply"`
-	Files          []builderFileOp   `json:"files"`
-	Artifacts      []builderArtifact `json:"artifacts,omitempty"`
-	Memory         string            `json:"memory,omitempty"`
-	Warnings       []string          `json:"warnings,omitempty"`
-	ReviewComplete bool              `json:"review_complete,omitempty"`
+	Reply            string                    `json:"reply"`
+	Files            []builderFileOp           `json:"files"`
+	Artifacts        []builderArtifact         `json:"artifacts,omitempty"`
+	Memory           string                    `json:"memory,omitempty"`
+	Warnings         []string                  `json:"warnings,omitempty"`
+	ReviewComplete   bool                      `json:"review_complete,omitempty"`
+	AgenticStatus    string                    `json:"agentic_status,omitempty"`
+	AgenticCommand   workModeAgenticCommand    `json:"command,omitempty"`
+	AgenticSummary   string                    `json:"summary,omitempty"`
+	AgenticQuestion  string                    `json:"question,omitempty"`
+	AgenticWorkspace map[string]any            `json:"workspace,omitempty"`
+	MemoryIssue      string                    `json:"-"`
+	RepairDetail     *workModeJSONRepairDetail `json:"-"`
 }
 
 type workModeObserverResponse struct {
-	Reply           string   `json:"reply"`
-	HasInput        bool     `json:"has_input"`
-	Recommendations []string `json:"recommendations,omitempty"`
-	Warnings        []string `json:"warnings,omitempty"`
+	Reply           string                    `json:"reply"`
+	HasInput        bool                      `json:"has_input"`
+	Recommendations []string                  `json:"recommendations,omitempty"`
+	Warnings        []string                  `json:"warnings,omitempty"`
+	RepairDetail    *workModeJSONRepairDetail `json:"-"`
+}
+
+type workModeJSONRepairDetail struct {
+	Owner              string `json:"owner,omitempty"`
+	Pass               int    `json:"pass,omitempty"`
+	OriginalParseError string `json:"originalParseError,omitempty"`
+	OriginalResponse   string `json:"originalResponse,omitempty"`
+	RepairParseError   string `json:"repairParseError,omitempty"`
+	RepairResponse     string `json:"repairResponse,omitempty"`
 }
 
 type workModeReviewMessage struct {
@@ -1026,6 +1373,7 @@ const (
 
 	workModeModeNormal         = "normal_work_mode"
 	workModeModeObserverReview = "observer_review_mode"
+	workModeModeAgenticStaged  = "agentic_staged_workspace"
 
 	workModeStatusRunning            = "running"
 	workModeStatusPausedAfterCurrent = "paused_after_current_call"
@@ -1082,10 +1430,14 @@ type workModeRoleSelection struct {
 }
 
 type workModeJSONErrorResponse struct {
-	Error       string `json:"error"`
-	Message     string `json:"message"`
-	ParseError  string `json:"parseError"`
-	RawResponse string `json:"rawResponse"`
+	Error              string `json:"error"`
+	Message            string `json:"message"`
+	ParseError         string `json:"parseError"`
+	RawResponse        string `json:"rawResponse"`
+	OriginalParseError string `json:"originalParseError,omitempty"`
+	OriginalResponse   string `json:"originalResponse,omitempty"`
+	RepairParseError   string `json:"repairParseError,omitempty"`
+	RepairResponse     string `json:"repairResponse,omitempty"`
 }
 
 type promptHelperResponse struct {
@@ -2571,6 +2923,10 @@ func main() {
 	cfg := loadConfig(configPath)
 	applyConfigDefaults(&cfg)
 	registry := loadOrInitModelRegistry(modelsPath)
+	maxOutputCatalog, err := loadKnownModelMaxOutputCatalog(modelNamesPath)
+	if err != nil {
+		log.Fatalf("model max-output catalog error: %v", err)
+	}
 	release := loadReleaseInfo(releasePath)
 	cfg.Models = registry.Models
 	ensureWorkDirs(cfg)
@@ -2582,6 +2938,7 @@ func main() {
 		cfg:                         cfg,
 		configPath:                  configPath,
 		modelsPath:                  modelsPath,
+		knownModelMaxOutputCatalog:  maxOutputCatalog,
 		modelSchemaVersion:          registry.SchemaVersion,
 		modelTopID:                  registry.TopID,
 		tmpl:                        template.Must(template.ParseFiles("templates/index.html")),
@@ -2589,6 +2946,7 @@ func main() {
 		startedAt:                   time.Now(),
 		toggles:                     map[string]bool{},
 		httpActiveByRoute:           map[string]int{},
+		httpActiveRequestDetails:    map[uint64]httpActiveRequestInfo{},
 		httpConns:                   map[net.Conn]http.ConnState{},
 		deadDropStatusCache:         map[string]deadDropStatusCacheEntry{},
 		activeCancels:               map[string]activeCancelEntry{},
@@ -2601,9 +2959,14 @@ func main() {
 		diagSubscribers:             map[int]chan diagnosticsEntry{},
 		activeOutfitRunsByProject:   map[string]activeOutfitRun{},
 		workModeSessionsByProject:   map[string]workModeSessionState{},
+		agenticStreams:              map[string]*agenticLiveStream{},
+		agenticSemiAllowances:       map[string]map[string]bool{},
 	}
 	for _, m := range cfg.Models {
 		app.toggles[modelIDString(m.ID)] = false
+	}
+	if err := app.restoreActiveSession(); err != nil {
+		log.Printf("active session restore warning: %v", err)
 	}
 	if err := app.ensureOutfitsDir(); err != nil {
 		log.Fatalf("could not initialize Outfits folder: %v", err)
@@ -2623,6 +2986,7 @@ func main() {
 	mux.HandleFunc("/api/model-names", func(w http.ResponseWriter, r *http.Request) { handleKnownModelNames(w, r, modelNamesPath) })
 	mux.HandleFunc("/api/models/create", app.handleCreateModel)
 	mux.HandleFunc("/api/models/update", app.handleUpdateModel)
+	mux.HandleFunc("/api/models/max-output-tokens", app.handleModelMaxOutputTokens)
 	mux.HandleFunc("/api/models/delete", app.handleDeleteModel)
 	mux.HandleFunc("/api/models/toggle", app.handleModelToggle)
 	mux.HandleFunc("/api/models/run-order", app.handleModelRunOrder)
@@ -2645,7 +3009,31 @@ func main() {
 	mux.HandleFunc("/api/work-mode/url/capture", app.withWorkModeRecovery("/api/work-mode/url/capture", app.handleWorkModeURLCapture))
 	mux.HandleFunc("/api/work-mode/session", app.withWorkModeRecovery("/api/work-mode/session", app.handleWorkModeSession))
 	mux.HandleFunc("/api/work-mode/attachments", app.withWorkModeRecovery("/api/work-mode/attachments", app.handleWorkModeAttachments))
+	mux.HandleFunc("/api/work-mode/transcript/export", app.withWorkModeRecovery("/api/work-mode/transcript/export", app.handleWorkModeTranscriptExport))
+	mux.HandleFunc("/api/work-mode/terminal/info", app.withWorkModeRecovery("/api/work-mode/terminal/info", app.handleWorkModeTerminalInfo))
+	mux.HandleFunc("/api/work-mode/terminal/whitelist", app.withWorkModeRecovery("/api/work-mode/terminal/whitelist", app.handleWorkModeTerminalWhitelist))
+	mux.HandleFunc("/api/work-mode/terminal/whitelist/validate", app.withWorkModeRecovery("/api/work-mode/terminal/whitelist/validate", app.handleWorkModeTerminalWhitelistValidate))
+	mux.HandleFunc("/api/work-mode/terminal/whitelist/save", app.withWorkModeRecovery("/api/work-mode/terminal/whitelist/save", app.handleWorkModeTerminalWhitelistSave))
+	mux.HandleFunc("/api/work-mode/terminal/environment", app.withWorkModeRecovery("/api/work-mode/terminal/environment", app.handleWorkModeTerminalEnvironment))
+	mux.HandleFunc("/api/work-mode/terminal/environment/upsert", app.withWorkModeRecovery("/api/work-mode/terminal/environment/upsert", app.handleWorkModeTerminalEnvironmentUpsert))
+	mux.HandleFunc("/api/work-mode/terminal/environment/delete", app.withWorkModeRecovery("/api/work-mode/terminal/environment/delete", app.handleWorkModeTerminalEnvironmentDelete))
+	mux.HandleFunc("/api/work-mode/terminal/environment/reveal", app.withWorkModeRecovery("/api/work-mode/terminal/environment/reveal", app.handleWorkModeTerminalEnvironmentReveal))
+	mux.HandleFunc("/api/work-mode/agentic-work", app.withWorkModeRecovery("/api/work-mode/agentic-work", app.handleAgenticWorkspaceReview))
+	mux.HandleFunc("/api/work-mode/agentic-work/merge", app.withWorkModeRecovery("/api/work-mode/agentic-work/merge", app.handleAgenticWorkspaceMerge))
+	mux.HandleFunc("/api/work-mode/agentic-work/merge-all", app.withWorkModeRecovery("/api/work-mode/agentic-work/merge-all", app.handleAgenticWorkspaceMergeAll))
+	mux.HandleFunc("/api/work-mode/agentic-work/reject", app.withWorkModeRecovery("/api/work-mode/agentic-work/reject", app.handleAgenticWorkspaceReject))
+	mux.HandleFunc("/api/work-mode/agentic-work/discard", app.withWorkModeRecovery("/api/work-mode/agentic-work/discard", app.handleAgenticWorkspaceDiscard))
+	mux.HandleFunc("/api/work-mode/agentic-work/interrupt", app.withWorkModeRecovery("/api/work-mode/agentic-work/interrupt", app.handleAgenticWorkspaceInterrupt))
+	mux.HandleFunc("/api/work-mode/agentic-command/approve", app.withWorkModeRecovery("/api/work-mode/agentic-command/approve", app.handleAgenticManualApprove))
+	mux.HandleFunc("/api/work-mode/agentic-command/deny", app.withWorkModeRecovery("/api/work-mode/agentic-command/deny", app.handleAgenticManualDeny))
+	mux.HandleFunc("/api/work-mode/agentic-command/semi-decision", app.withWorkModeRecovery("/api/work-mode/agentic-command/semi-decision", app.handleAgenticSemiDecision))
+	mux.HandleFunc("/api/work-mode/agentic-command/full-execute", app.withWorkModeRecovery("/api/work-mode/agentic-command/full-execute", app.handleAgenticFullExecute))
+	mux.HandleFunc("/api/work-mode/agentic-command/stop", app.withWorkModeRecovery("/api/work-mode/agentic-command/stop", app.handleAgenticManualStop))
+	mux.HandleFunc("/api/work-mode/agentic-recovery", app.withWorkModeRecovery("/api/work-mode/agentic-recovery", app.handleAgenticRecovery))
+	mux.HandleFunc("/api/work-mode/agentic-disconnect", app.withWorkModeRecovery("/api/work-mode/agentic-disconnect", app.handleAgenticDisconnect))
+	mux.HandleFunc("/api/work-mode/agentic-audit", app.withWorkModeRecovery("/api/work-mode/agentic-audit", app.handleAgenticAuditPoll))
 	mux.HandleFunc("/api/work-mode/styling", app.withWorkModeRecovery("/api/work-mode/styling", app.handleWorkModeStyling))
+	mux.HandleFunc("/api/work-mode/settings", app.withWorkModeRecovery("/api/work-mode/settings", app.handleWorkModeSettings))
 	mux.HandleFunc("/api/work-mode/memory", app.withWorkModeRecovery("/api/work-mode/memory", app.handleWorkModeMemory))
 	mux.HandleFunc("/api/work-mode/memory/new", app.withWorkModeRecovery("/api/work-mode/memory/new", app.handleWorkModeMemoryNew))
 	mux.HandleFunc("/api/work-mode/memory/load", app.withWorkModeRecovery("/api/work-mode/memory/load", app.handleWorkModeMemoryLoad))
@@ -2723,6 +3111,8 @@ func main() {
 	mux.HandleFunc("/api/projects/select", app.handleSelectProject)
 	mux.HandleFunc("/api/projects/delete", app.handleDeleteProject)
 	mux.HandleFunc("/api/projects/update", app.handleUpdateProject)
+	mux.HandleFunc("/api/session/active", app.handleActiveSession)
+	mux.HandleFunc("/api/session/claim", app.handleActiveSessionClaim)
 	mux.HandleFunc("/api/session/reset", app.handleSessionReset)
 	mux.HandleFunc("/api/session/initialize-skip", app.handleInitializeSkipLog)
 	mux.HandleFunc("/api/session/usage", app.handleSessionUsage)
@@ -3265,6 +3655,12 @@ func (a *App) ensureProjectScaffold(name string) error {
 	if err := a.ensureProjectSettings(name); err != nil {
 		return err
 	}
+	if err := a.ensureProjectTerminalConfig(name); err != nil {
+		return err
+	}
+	if err := a.ensureProjectWorkModeSettings(name); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -3418,6 +3814,94 @@ func (a *App) projectWorkRoot(projectName string) (string, error) {
 		return "", errors.New("invalid project name")
 	}
 	return safeJoin(a.cfg.WorkRoot, "projects", projectName, "projectwork")
+}
+
+type workModeTerminalInfoResponse struct {
+	Computer           string `json:"computer"`
+	OperatingSystem    string `json:"operatingSystem"`
+	Architecture       string `json:"architecture"`
+	ProjectWorkspace   string `json:"projectWorkspace"`
+	VirtualEnvironment string `json:"virtualEnvironment"`
+}
+
+func workModeOperatingSystemLabel() string {
+	switch runtime.GOOS {
+	case "windows":
+		return "Windows"
+	case "darwin":
+		return "macOS"
+	case "linux":
+		return "Linux"
+	default:
+		return runtime.GOOS
+	}
+}
+
+func workModeVirtualEnvironmentLabel() string {
+	if runtime.GOOS != "linux" {
+		return "Unable to determine"
+	}
+	parts := make([]string, 0, 3)
+	for _, name := range []string{"/sys/class/dmi/id/sys_vendor", "/sys/class/dmi/id/product_name", "/sys/class/dmi/id/board_vendor"} {
+		data, err := os.ReadFile(name)
+		if err == nil {
+			if value := strings.TrimSpace(string(data)); value != "" {
+				parts = append(parts, value)
+			}
+		}
+	}
+	joined := strings.ToLower(strings.Join(parts, " "))
+	for _, match := range []struct {
+		needle string
+		label  string
+	}{
+		{"virtualbox", "VirtualBox detected"},
+		{"vmware", "VMware detected"},
+		{"kvm", "KVM virtual environment detected"},
+		{"qemu", "QEMU virtual environment detected"},
+		{"hyper-v", "Hyper-V detected"},
+		{"microsoft corporation virtual machine", "Hyper-V virtual environment detected"},
+		{"xen", "Xen virtual environment detected"},
+	} {
+		if strings.Contains(joined, match.needle) {
+			return match.label
+		}
+	}
+	if joined == "" {
+		return "Unable to determine"
+	}
+	return "Not detected (best effort)"
+}
+
+func (a *App) handleWorkModeTerminalInfo(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	projectName := strings.TrimSpace(r.URL.Query().Get("project"))
+	if !isValidProjectName(projectName) {
+		http.Error(w, "invalid project name", http.StatusBadRequest)
+		return
+	}
+	workspace, err := a.projectWorkRoot(projectName)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if absolute, absErr := filepath.Abs(workspace); absErr == nil {
+		workspace = absolute
+	}
+	computer, err := os.Hostname()
+	if err != nil || strings.TrimSpace(computer) == "" {
+		computer = "Unknown computer"
+	}
+	writeJSON(w, http.StatusOK, workModeTerminalInfoResponse{
+		Computer:           computer,
+		OperatingSystem:    workModeOperatingSystemLabel(),
+		Architecture:       runtime.GOARCH,
+		ProjectWorkspace:   workspace,
+		VirtualEnvironment: workModeVirtualEnvironmentLabel(),
+	})
 }
 
 func mustMkdir(path string) {
@@ -3680,8 +4164,14 @@ func (a *App) handleWaveState(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	projectName := a.activeProject()
+	activeProjectLockStarted := time.Now()
 	a.mu.RLock()
+	recordRequestLockWait(r, "app.active_project", time.Since(activeProjectLockStarted))
+	projectName := strings.TrimSpace(a.activeProjectName)
+	a.mu.RUnlock()
+	waveStateLockStarted := time.Now()
+	a.mu.RLock()
+	recordRequestLockWait(r, "app.wave_state", time.Since(waveStateLockStarted))
 	state, ok := a.waveStatusByProject[strings.TrimSpace(projectName)]
 	execState, hasExec := a.waveExecutionsByProject[strings.TrimSpace(projectName)]
 	a.mu.RUnlock()
@@ -3803,13 +4293,56 @@ func (a *App) workModeMemoryMetaRoot(modelID, projectName string) (ModelConfig, 
 	return roles.Worker, metaRoot, nil
 }
 
-func (a *App) workModeMemoryResponse(metaRoot, message string) (workModeMemoryResponse, error) {
-	activeExists, activeBytes := workModeMemoryActiveInfo(metaRoot)
+func (a *App) workModeMemoryResponse(metaRoot, continuedPath, message string) (workModeMemoryResponse, error) {
+	activeContent := ""
+	if data, err := os.ReadFile(continuedPath); err == nil {
+		activeContent = string(data)
+	}
 	saved, err := listWorkModeMemoryFiles(metaRoot)
 	if err != nil {
 		return workModeMemoryResponse{}, err
 	}
-	return workModeMemoryResponse{ActiveExists: activeExists, ActiveBytes: activeBytes, Saved: saved, Message: message}, nil
+	return workModeMemoryResponse{ActiveExists: strings.TrimSpace(activeContent) != "", ActiveBytes: int64(len(activeContent)), ActiveContent: activeContent, Saved: saved, Message: message}, nil
+}
+
+func resolveWorkModeRequestMemory(metaRoot, continuedPath string, req workModeRequest) ([]byte, string, string, bool, error) {
+	if !req.UseMemory {
+		return nil, "", "", false, nil
+	}
+	if strings.TrimSpace(req.MemoryName) != "" {
+		displayName, fileName, err := normalizeWorkModeMemoryFileName(req.MemoryName)
+		if err != nil {
+			return nil, "", "", false, err
+		}
+		memoriesRoot, err := workModeMemoriesRoot(metaRoot)
+		if err != nil {
+			return nil, "", "", false, err
+		}
+		full, err := safeJoin(memoriesRoot, fileName)
+		if err != nil {
+			return nil, "", "", false, errors.New("invalid memory file")
+		}
+		data, err := os.ReadFile(full)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return nil, "", "", false, errors.New("saved memory file was not found")
+			}
+			return nil, "", "", false, err
+		}
+		return data, displayName, full, true, nil
+	}
+	data, err := os.ReadFile(continuedPath)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return nil, "", "", false, err
+	}
+	return data, "", continuedPath, true, nil
+}
+
+func writeWorkModeRequestMemory(path string, persist bool, content string) error {
+	if !persist || strings.TrimSpace(path) == "" {
+		return nil
+	}
+	return writeWorkModeMemoryFile(path, content)
 }
 
 func (a *App) handleWorkModeStyling(w http.ResponseWriter, r *http.Request) {
@@ -3869,7 +4402,12 @@ func (a *App) handleWorkModeMemory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	resp, err := a.workModeMemoryResponse(metaRoot, "")
+	continuedPath, err := a.workModeContinuedMemoryPath(projectName)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	resp, err := a.workModeMemoryResponse(metaRoot, continuedPath, "")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -3879,6 +4417,9 @@ func (a *App) handleWorkModeMemory(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) decodeWorkModeMemoryRequest(w http.ResponseWriter, r *http.Request) (workModeMemoryRequest, string, string, error) {
 	var req workModeMemoryRequest
+	if !a.requireActiveSessionMatch(w, r) {
+		return req, "", "", errors.New("active session mismatch")
+	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return req, "", "", err
@@ -3901,15 +4442,20 @@ func (a *App) handleWorkModeMemoryNew(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	_, _, metaRoot, err := a.decodeWorkModeMemoryRequest(w, r)
+	_, projectName, metaRoot, err := a.decodeWorkModeMemoryRequest(w, r)
 	if err != nil {
 		return
 	}
-	if err := clearChatMemoryFile(metaRoot); err != nil {
+	if err := a.clearContinuedWorkModeMemory(projectName); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	resp, err := a.workModeMemoryResponse(metaRoot, "New Work Mode memory started.")
+	continuedPath, err := a.workModeContinuedMemoryPath(projectName)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	resp, err := a.workModeMemoryResponse(metaRoot, continuedPath, "New Work Mode memory started.")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -3922,7 +4468,7 @@ func (a *App) handleWorkModeMemoryLoad(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	req, _, metaRoot, err := a.decodeWorkModeMemoryRequest(w, r)
+	req, projectName, metaRoot, err := a.decodeWorkModeMemoryRequest(w, r)
 	if err != nil {
 		return
 	}
@@ -3950,11 +4496,14 @@ func (a *App) handleWorkModeMemoryLoad(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := os.WriteFile(filepath.Join(metaRoot, chatMemoryFileName), data, 0o644); err != nil {
+	continuedPath, err := a.workModeContinuedMemoryPath(projectName)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	resp, err := a.workModeMemoryResponse(metaRoot, "Loaded memory: "+displayName)
+	resp, err := a.workModeMemoryResponse(metaRoot, continuedPath, "Loaded memory: "+displayName)
+	resp.Name = displayName
+	resp.Content = string(data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -3967,7 +4516,7 @@ func (a *App) handleWorkModeMemorySave(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	req, _, metaRoot, err := a.decodeWorkModeMemoryRequest(w, r)
+	req, projectName, metaRoot, err := a.decodeWorkModeMemoryRequest(w, r)
 	if err != nil {
 		return
 	}
@@ -3976,10 +4525,20 @@ func (a *App) handleWorkModeMemorySave(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	data, err := os.ReadFile(filepath.Join(metaRoot, chatMemoryFileName))
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	data := []byte("")
+	if req.Content != nil {
+		data = []byte(*req.Content)
+	} else {
+		continuedPath, pathErr := a.workModeContinuedMemoryPath(projectName)
+		if pathErr != nil {
+			http.Error(w, pathErr.Error(), http.StatusInternalServerError)
+			return
+		}
+		data, err = os.ReadFile(continuedPath)
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 	if strings.TrimSpace(string(data)) == "" {
 		http.Error(w, "current memory is empty", http.StatusBadRequest)
@@ -3999,11 +4558,18 @@ func (a *App) handleWorkModeMemorySave(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid memory file", http.StatusBadRequest)
 		return
 	}
-	if err := os.WriteFile(full, data, 0o644); err != nil {
+	if err := writeWorkModeMemoryFile(full, string(data)); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	resp, err := a.workModeMemoryResponse(metaRoot, "Saved memory: "+displayName)
+	continuedPath, err := a.workModeContinuedMemoryPath(projectName)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	resp, err := a.workModeMemoryResponse(metaRoot, continuedPath, "Saved memory: "+displayName)
+	resp.Name = displayName
+	resp.Content = string(data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -4016,7 +4582,7 @@ func (a *App) handleWorkModeMemoryDelete(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	req, _, metaRoot, err := a.decodeWorkModeMemoryRequest(w, r)
+	req, projectName, metaRoot, err := a.decodeWorkModeMemoryRequest(w, r)
 	if err != nil {
 		return
 	}
@@ -4039,7 +4605,21 @@ func (a *App) handleWorkModeMemoryDelete(w http.ResponseWriter, r *http.Request)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	resp, err := a.workModeMemoryResponse(metaRoot, "Deleted memory: "+displayName)
+	if settings, settingsErr := a.loadWorkModeSettings(projectName); settingsErr == nil &&
+		settings.MemoryDefault == workModeMemoryDefaultNamed &&
+		settings.DefaultMemoryModelID == strings.TrimSpace(req.ModelID) &&
+		strings.EqualFold(settings.DefaultMemoryFile, displayName) {
+		if saveErr := a.saveWorkModeSettings(projectName, defaultWorkModeSettingsFile()); saveErr != nil {
+			http.Error(w, saveErr.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+	continuedPath, err := a.workModeContinuedMemoryPath(projectName)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	resp, err := a.workModeMemoryResponse(metaRoot, continuedPath, "Deleted memory: "+displayName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -4075,6 +4655,9 @@ func extractChatMemoryBlock(reply string) (string, string, bool) {
 func (a *App) handleModelToggle(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !a.requireActiveSessionMatch(w, r) {
 		return
 	}
 	var req struct {
@@ -4122,6 +4705,9 @@ func (a *App) handleModelToggle(w http.ResponseWriter, r *http.Request) {
 			a.logf(req.ModelID, "warn", "Could not clear chat memory.md while toggling model: %v", err)
 		}
 	}
+	if err := a.syncActiveSessionFromRuntime(); err != nil {
+		a.logf("system", "warn", "Could not persist active session after model toggle: %v", err)
+	}
 	a.logf(req.ModelID, "info", "Model toggled %v", req.Enabled)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
@@ -4129,6 +4715,9 @@ func (a *App) handleModelToggle(w http.ResponseWriter, r *http.Request) {
 func (a *App) handleReviewerToggle(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !a.requireActiveSessionMatch(w, r) {
 		return
 	}
 	var req struct {
@@ -4157,6 +4746,9 @@ func (a *App) handleReviewerToggle(w http.ResponseWriter, r *http.Request) {
 		a.reviewerID = ""
 	}
 	a.mu.Unlock()
+	if err := a.syncActiveSessionFromRuntime(); err != nil {
+		a.logf("system", "warn", "Could not persist active session after Observer change: %v", err)
+	}
 	a.logf(req.ModelID, "info", "Reviewer mode set to %v", req.Reviewer)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
@@ -4771,14 +5363,76 @@ func parseWorkModeAIResponse(raw string) (workModeAIResponse, error) {
 	if err != nil {
 		return resp, err
 	}
-	if err := json.Unmarshal([]byte(jsonText), &resp); err != nil {
+	var envelope struct {
+		Reply            string                 `json:"reply"`
+		Files            []builderFileOp        `json:"files"`
+		Artifacts        []builderArtifact      `json:"artifacts,omitempty"`
+		Memory           json.RawMessage        `json:"memory"`
+		Warnings         []string               `json:"warnings,omitempty"`
+		ReviewComplete   bool                   `json:"review_complete,omitempty"`
+		AgenticStatus    string                 `json:"agentic_status,omitempty"`
+		AgenticCommand   workModeAgenticCommand `json:"command,omitempty"`
+		AgenticSummary   string                 `json:"summary,omitempty"`
+		AgenticQuestion  string                 `json:"question,omitempty"`
+		AgenticWorkspace map[string]any         `json:"workspace,omitempty"`
+	}
+	if err := json.Unmarshal([]byte(jsonText), &envelope); err != nil {
 		return resp, err
+	}
+	resp.Reply = envelope.Reply
+	resp.Files = envelope.Files
+	resp.Artifacts = envelope.Artifacts
+	resp.Warnings = envelope.Warnings
+	resp.ReviewComplete = envelope.ReviewComplete
+	resp.AgenticStatus = strings.TrimSpace(envelope.AgenticStatus)
+	resp.AgenticCommand = normalizeWorkModeAgenticCommand(envelope.AgenticCommand)
+	resp.AgenticSummary = strings.TrimSpace(envelope.AgenticSummary)
+	resp.AgenticQuestion = strings.TrimSpace(envelope.AgenticQuestion)
+	resp.AgenticWorkspace = normalizeAgenticEnvironmentWorkspace(envelope.AgenticWorkspace)
+	if len(envelope.Memory) > 0 && string(envelope.Memory) != "null" {
+		var memoryText string
+		if err := json.Unmarshal(envelope.Memory, &memoryText); err == nil {
+			resp.Memory = memoryText
+		} else {
+			resp.MemoryIssue = "AI returned Work Mode memory in a non-string format. Existing memory was preserved."
+		}
 	}
 	if resp.Files == nil {
 		resp.Files = []builderFileOp{}
 	}
 	resp.Reply = strings.TrimSpace(resp.Reply)
 	return resp, nil
+}
+
+type workModeJSONRepairError struct {
+	OriginalParseError string
+	OriginalResponse   string
+	RepairParseError   string
+	RepairResponse     string
+}
+
+func errorString(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
+}
+
+func (e *workModeJSONRepairError) Error() string {
+	if e == nil {
+		return "Work Mode JSON repair failed"
+	}
+	parts := []string{}
+	if strings.TrimSpace(e.OriginalParseError) != "" {
+		parts = append(parts, "original parse failed: "+strings.TrimSpace(e.OriginalParseError))
+	}
+	if strings.TrimSpace(e.RepairParseError) != "" {
+		parts = append(parts, "automatic JSON repair failed: "+strings.TrimSpace(e.RepairParseError))
+	}
+	if len(parts) == 0 {
+		return "Work Mode JSON repair failed"
+	}
+	return strings.Join(parts, "; ")
 }
 
 func requireWorkModeJSONBoolFieldInCandidate(jsonText, field string) error {
@@ -4859,13 +5513,26 @@ func (a *App) repairAndParseWorkModeAdapterResponse(ctx context.Context, model M
 	repairPayload := workModeJSONRepairPayload(originalPayload, originalResp.Text, originalErr)
 	repairResp, repairErr := a.executeAdapterResponse(ctx, model, repairPayload)
 	if repairErr != nil {
-		return workModeAIResponse{}, originalResp, fmt.Errorf("%v; automatic JSON repair failed: %w", originalErr, repairErr)
+		return workModeAIResponse{}, originalResp, &workModeJSONRepairError{
+			OriginalParseError: errorString(originalErr),
+			OriginalResponse:   originalResp.Text,
+			RepairParseError:   repairErr.Error(),
+		}
 	}
 	parsed, parseErr := parseWorkModeAdapterResponse(repairResp, projectworkRoot, projectName)
 	if parseErr != nil {
-		return workModeAIResponse{}, repairResp, fmt.Errorf("original parse failed: %v; automatic JSON repair parse failed: %w", originalErr, parseErr)
+		return workModeAIResponse{}, repairResp, &workModeJSONRepairError{
+			OriginalParseError: errorString(originalErr),
+			OriginalResponse:   originalResp.Text,
+			RepairParseError:   parseErr.Error(),
+			RepairResponse:     repairResp.Text,
+		}
 	}
-	parsed.Warnings = append(parsed.Warnings, "AgentGO automatically repaired the provider's Work Mode JSON envelope after the first response could not be parsed.")
+	parsed.RepairDetail = &workModeJSONRepairDetail{
+		OriginalParseError: errorString(originalErr),
+		OriginalResponse:   originalResp.Text,
+		RepairResponse:     repairResp.Text,
+	}
 	return parsed, repairResp, nil
 }
 
@@ -4881,13 +5548,26 @@ func (a *App) repairAndParseWorkModeObserverResponse(ctx context.Context, model 
 	repairPayload := workModeJSONRepairPayload(originalPayload, originalResp.Text, originalErr)
 	repairResp, repairErr := a.executeAdapterResponse(ctx, model, repairPayload)
 	if repairErr != nil {
-		return workModeObserverResponse{}, originalResp, fmt.Errorf("%v; automatic JSON repair failed: %w", originalErr, repairErr)
+		return workModeObserverResponse{}, originalResp, &workModeJSONRepairError{
+			OriginalParseError: errorString(originalErr),
+			OriginalResponse:   originalResp.Text,
+			RepairParseError:   repairErr.Error(),
+		}
 	}
 	parsed, parseErr := parseWorkModeObserverResponse(repairResp.Text)
 	if parseErr != nil {
-		return workModeObserverResponse{}, repairResp, fmt.Errorf("original parse failed: %v; automatic JSON repair parse failed: %w", originalErr, parseErr)
+		return workModeObserverResponse{}, repairResp, &workModeJSONRepairError{
+			OriginalParseError: errorString(originalErr),
+			OriginalResponse:   originalResp.Text,
+			RepairParseError:   parseErr.Error(),
+			RepairResponse:     repairResp.Text,
+		}
 	}
-	parsed.Warnings = append(parsed.Warnings, "AgentGO automatically repaired the Observer JSON envelope after the first response could not be parsed.")
+	parsed.RepairDetail = &workModeJSONRepairDetail{
+		OriginalParseError: errorString(originalErr),
+		OriginalResponse:   originalResp.Text,
+		RepairResponse:     repairResp.Text,
+	}
 	return parsed, repairResp, nil
 }
 
@@ -5504,7 +6184,7 @@ func workModeBlockedOutputFromOp(rel string, op builderFileOp, artifactBytes map
 	return out
 }
 
-func workModeApplyFileOps(projectworkRoot, projectName string, ops []builderFileOp, artifacts []builderArtifact, limits ProjectLimits, updateable map[string]bool) ([]string, []string, []workModeBlockedFileOutput, []workModeDiffFile, error) {
+func workModeApplyFileOps(projectworkRoot, projectName string, ops []builderFileOp, artifacts []builderArtifact, limits ProjectLimits, updateable map[string]bool, allowDelete bool) ([]string, []string, []workModeBlockedFileOutput, []workModeDiffFile, error) {
 	limits = normalizeProjectLimits(limits)
 	artifactBytes, artifactMeta, err := decodeBuilderArtifacts(artifacts)
 	if err != nil {
@@ -5529,42 +6209,48 @@ func workModeApplyFileOps(projectworkRoot, projectName string, ops []builderFile
 			skipped = append(skipped, fmt.Sprintf("%s: invalid path", strings.TrimSpace(op.Path)))
 			continue
 		}
-		if action == "delete" {
+		if action == "delete" && !allowDelete {
 			skipped = append(skipped, rel+": delete is not supported in Work Mode")
 			continue
 		}
-		if action != "create" && action != "overwrite" {
+		if action != "create" && action != "overwrite" && action != "delete" {
 			skipped = append(skipped, rel+": unsupported action")
 			continue
 		}
-		if action == "overwrite" && !updateable[rel] {
+		if (action == "overwrite" || action == "delete") && !updateable[rel] {
 			reason := "update skipped because the file was not sent to the AI in this Work Mode run"
+			if action == "delete" {
+				reason = "delete skipped because the file was not sent to the AI in this Work Mode run"
+			}
 			skipped = append(skipped, rel+": "+reason)
 			blocked = append(blocked, workModeBlockedOutputFromOp(rel, op, artifactBytes, reason))
 			continue
 		}
-		payload := []byte(op.Content)
-		if ref := strings.TrimSpace(op.ArtifactRef); ref != "" {
-			data, ok := artifactBytes[ref]
-			if !ok {
-				skipped = append(skipped, rel+": missing artifact")
-				continue
+		payload := []byte(nil)
+		if action != "delete" {
+			payload = []byte(op.Content)
+			if ref := strings.TrimSpace(op.ArtifactRef); ref != "" {
+				data, ok := artifactBytes[ref]
+				if !ok {
+					skipped = append(skipped, rel+": missing artifact")
+					continue
+				}
+				if op.Content != "" {
+					skipped = append(skipped, rel+": provide content or artifact_ref, not both")
+					continue
+				}
+				payload = data
+				artifact := artifactMeta[ref]
+				if workModeLooksLikeImageOutput(rel, artifact.MIMEType) && !workModePayloadLooksLikeImage(data, artifact.MIMEType) {
+					reason := "image output skipped because the artifact data is not a valid image payload"
+					skipped = append(skipped, rel+": "+reason)
+					blocked = append(blocked, workModeBlockedOutputFromOp(rel, op, artifactBytes, reason))
+					continue
+				}
 			}
-			if op.Content != "" {
-				skipped = append(skipped, rel+": provide content or artifact_ref, not both")
-				continue
+			if action == "create" && len(payload) == 0 && strings.TrimSpace(op.ArtifactRef) == "" {
+				// Allow intentionally empty new files.
 			}
-			payload = data
-			artifact := artifactMeta[ref]
-			if workModeLooksLikeImageOutput(rel, artifact.MIMEType) && !workModePayloadLooksLikeImage(data, artifact.MIMEType) {
-				reason := "image output skipped because the artifact data is not a valid image payload"
-				skipped = append(skipped, rel+": "+reason)
-				blocked = append(blocked, workModeBlockedOutputFromOp(rel, op, artifactBytes, reason))
-				continue
-			}
-		}
-		if action == "create" && len(payload) == 0 && strings.TrimSpace(op.ArtifactRef) == "" {
-			// Allow intentionally empty new files.
 		}
 		if len(payload) > limits.MaxFileSizeKB*1024 {
 			return changed, skipped, blocked, diffs, fmt.Errorf("Work Mode rejected: file %q exceeds max_file_size_kb (%d bytes > %d KB)", rel, len(payload), limits.MaxFileSizeKB)
@@ -5599,7 +6285,7 @@ func workModeApplyFileOps(projectworkRoot, projectName string, ops []builderFile
 			if statErr != nil && !errors.Is(statErr, os.ErrNotExist) {
 				return changed, skipped, blocked, diffs, statErr
 			}
-		} else if action == "overwrite" {
+		} else {
 			if statErr != nil {
 				if errors.Is(statErr, os.ErrNotExist) {
 					skipped = append(skipped, item.rel+": file not found")
@@ -5614,7 +6300,7 @@ func workModeApplyFileOps(projectworkRoot, projectName string, ops []builderFile
 		}
 		previous := []byte{}
 		previousOmitted := false
-		if action == "overwrite" {
+		if action == "overwrite" || action == "delete" {
 			previous, err = readFileUnderRoot(projectworkRoot, target)
 			if err != nil {
 				return changed, skipped, blocked, diffs, err
@@ -5623,13 +6309,22 @@ func workModeApplyFileOps(projectworkRoot, projectName string, ops []builderFile
 				previousOmitted = true
 			}
 		}
-		currentOmitted := !utf8.Valid(item.payload)
-		if err := writeFileUnderRoot(projectworkRoot, target, item.payload, 0o644); err != nil {
+		currentOmitted := action != "delete" && !utf8.Valid(item.payload)
+		if action == "delete" {
+			if err := removeFileUnderRoot(projectworkRoot, target); err != nil {
+				return changed, skipped, blocked, diffs, err
+			}
+			pruneEmptyDirsUnderRoot(projectworkRoot, filepath.Dir(target))
+		} else if err := writeFileUnderRoot(projectworkRoot, target, item.payload, 0o644); err != nil {
 			return changed, skipped, blocked, diffs, err
 		}
 		changed = append(changed, item.rel)
 		if !currentOmitted && !previousOmitted {
-			diffs = append(diffs, workModeDiffFile{Path: item.rel, Previous: string(previous), Current: string(item.payload)})
+			current := string(item.payload)
+			if action == "delete" {
+				current = ""
+			}
+			diffs = append(diffs, workModeDiffFile{Path: item.rel, Previous: string(previous), Current: current})
 		} else if currentOmitted || previousOmitted {
 			diffs = append(diffs, workModeDiffFile{Path: item.rel, PreviousOmitted: previousOmitted, CurrentOmitted: currentOmitted})
 		}
@@ -5684,23 +6379,27 @@ func approximateWorkModeOutputTokens(text string) int {
 	return charEstimate
 }
 
-func workModeOutputLimitWarning(model ModelConfig, resp adapters.Response) string {
-	maxTokens := model.MaxOutputTokens
-	if maxTokens <= 0 {
+func (a *App) effectiveModelMaxOutputTokens(model ModelConfig) int {
+	return resolveModelMaxOutputTokens(model, a.knownModelMaxOutputCatalog).EffectiveTokens
+}
+
+func (a *App) workModeOutputLimitWarning(model ModelConfig, resp adapters.Response) string {
+	resolution := resolveModelMaxOutputTokens(model, a.knownModelMaxOutputCatalog)
+	if resolution.Mode != "custom" || resolution.EffectiveTokens <= 0 {
 		return ""
 	}
 	estimated := approximateWorkModeOutputTokens(resp.Text)
 	if estimated <= 0 {
 		return ""
 	}
-	threshold := int(math.Ceil(float64(maxTokens) * 0.90))
+	threshold := int(math.Ceil(float64(resolution.EffectiveTokens) * 0.90))
 	if threshold < 1 {
-		threshold = maxTokens
+		threshold = resolution.EffectiveTokens
 	}
 	if estimated < threshold {
 		return ""
 	}
-	return "It looks like you may be brushing up against your default max token output. You can tell AgentGO to ask the AI to increase this limit in your model setup area."
+	return "The Builder response is close to your custom Max Output guardrail. Choose Automatic Maximum or raise the custom token limit if responses are cut off."
 }
 
 func normalizeWorkModeMaxPasses(value int) int {
@@ -6129,6 +6828,245 @@ func (a *App) handleWorkModeAttachments(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+const (
+	workModeTranscriptMaxRequestBytes = 100 << 20
+	workModeTranscriptMaxHTMLBytes    = 20 << 20
+	workModeTranscriptMaxAssetBytes   = 50 << 20
+	workModeTranscriptMaxAssets       = 240
+)
+
+var workModeTranscriptUnsafeAttributeRE = regexp.MustCompile(`(?is)<[a-z][^>]*(?:\son[a-z0-9_-]+\s*=|\s(?:href|src)\s*=\s*["\']?\s*(?:javascript:|data:text/html))`)
+
+func validateWorkModeTranscriptHTML(value string) error {
+	if strings.TrimSpace(value) == "" {
+		return errors.New("transcript is empty")
+	}
+	if len(value) > workModeTranscriptMaxHTMLBytes {
+		return errors.New("transcript HTML is too large")
+	}
+	lower := strings.ToLower(value)
+	for _, forbidden := range []string{"<script", "<iframe", "<object", "<embed", "<form"} {
+		if strings.Contains(lower, forbidden) {
+			return errors.New("transcript HTML contains unsafe content")
+		}
+	}
+	if workModeTranscriptUnsafeAttributeRE.MatchString(value) {
+		return errors.New("transcript HTML contains unsafe attributes")
+	}
+	return nil
+}
+
+func normalizeWorkModeTranscriptAssetPath(value string) (string, error) {
+	clean := path.Clean("/" + strings.TrimSpace(strings.ReplaceAll(value, "\\", "/")))
+	if !strings.HasPrefix(clean, "/assets/") || clean == "/assets/" {
+		return "", errors.New("transcript asset path must be inside assets/")
+	}
+	clean = strings.TrimPrefix(clean, "/")
+	if strings.Contains(clean, "..") {
+		return "", errors.New("invalid transcript asset path")
+	}
+	return clean, nil
+}
+
+func workModeTranscriptSlug(value string) string {
+	clean := strings.ToLower(strings.TrimSpace(value))
+	var b strings.Builder
+	lastDash := false
+	for _, r := range clean {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			b.WriteRune(r)
+			lastDash = false
+			continue
+		}
+		if !lastDash && b.Len() > 0 {
+			b.WriteByte('-')
+			lastDash = true
+		}
+	}
+	return strings.Trim(b.String(), "-")
+}
+
+func writeWorkModeTranscriptZipFile(zw *zip.Writer, name string, data []byte) error {
+	header := &zip.FileHeader{Name: name, Method: zip.Deflate}
+	header.SetMode(0o644)
+	header.SetModTime(time.Now())
+	entry, err := zw.CreateHeader(header)
+	if err != nil {
+		return err
+	}
+	_, err = entry.Write(data)
+	return err
+}
+
+func workModeTranscriptModelIdentity(label, id, fallback string) string {
+	cleanLabel := strings.TrimSpace(label)
+	cleanID := strings.TrimSpace(id)
+	if cleanLabel == "" {
+		cleanLabel = strings.TrimSpace(fallback)
+	}
+	if cleanLabel == "" {
+		cleanLabel = "Unknown"
+	}
+	if cleanID == "" || strings.EqualFold(cleanID, cleanLabel) {
+		return cleanLabel
+	}
+	return cleanLabel + " (" + cleanID + ")"
+}
+
+func buildWorkModeTranscriptIndex(req workModeTranscriptExportRequest) string {
+	title := "AgentGO Work-Mode Transcript"
+	project := strings.TrimSpace(req.ProjectName)
+	exportedAt := strings.TrimSpace(req.ExportedAt)
+	if exportedAt == "" {
+		exportedAt = time.Now().Format(time.RFC3339)
+	}
+	projectMeta := "Exported " + exportedAt
+	if project != "" {
+		projectMeta = "Project: " + project + " · " + projectMeta
+	}
+	builder := workModeTranscriptModelIdentity(req.BuilderLabel, req.BuilderID, "Builder")
+	observer := "None"
+	if strings.TrimSpace(req.ObserverLabel) != "" || strings.TrimSpace(req.ObserverID) != "" {
+		observer = workModeTranscriptModelIdentity(req.ObserverLabel, req.ObserverID, "Observer")
+	}
+	modelMeta := "AI Builder: " + builder + " - Observer: " + observer
+	return fmt.Sprintf(`<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>%s</title>
+<style>
+:root{color-scheme:light;--ink:#16243b;--muted:#657895;--line:#dbe5f0;--paper:#fff;--blue:#2d78d9;--pink:#b93c88}
+*{box-sizing:border-box}body{margin:0;background:#edf3f9;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.55}
+a{color:#1f69bd}.transcript-page{width:min(1080px,calc(100%% - 32px));margin:28px auto;padding:34px;border:1px solid #d6e1ed;border-radius:24px;background:var(--paper);box-shadow:0 24px 65px rgba(20,43,75,.14)}
+.transcript-brand{display:flex;flex-direction:column;align-items:center;gap:8px;margin:0 auto 20px;text-decoration:none;width:max-content;max-width:100%%}.transcript-brand img:first-child{width:min(330px,75vw);height:auto}.transcript-brand img:last-child{width:min(265px,62vw);height:auto}
+.transcript-heading{text-align:center;margin:0 0 24px}.transcript-heading h1{margin:0;font-size:clamp(1.45rem,3vw,2.2rem);color:#18355d}.transcript-model-meta{margin-top:7px;color:#405a7d;font-size:.94rem;font-weight:700}.transcript-meta{margin-top:5px;color:var(--muted);font-size:.9rem}
+.transcript-messages{display:grid;gap:16px}.transcript-message{padding:18px 20px;border:1px solid var(--line);border-radius:18px;background:#f8fbfe;color:var(--ink);overflow-wrap:anywhere}.transcript-message.user{margin-left:min(8%%,72px);background:#eef6ff;border-color:#bfd7f3}.transcript-message.ai{margin-right:min(8%%,72px);background:#fff}.transcript-message.agentgo{background:#fff8e8;border-color:#eed494}.transcript-role{margin-bottom:8px;color:#526a89;font-size:.76rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.transcript-message h1,.transcript-message h2,.transcript-message h3,.transcript-message h4{color:#234e82;line-height:1.25}.transcript-message p:first-child{margin-top:0}.transcript-message p:last-child{margin-bottom:0}.transcript-message ul,.transcript-message ol{padding-left:1.4rem}.transcript-message blockquote{margin:12px 0;padding:8px 14px;border-left:4px solid #8ab8e5;background:#f2f7fc}.transcript-message table{width:100%%;border-collapse:collapse}.transcript-message th,.transcript-message td{padding:8px 10px;border:1px solid #dbe5f0;text-align:left;vertical-align:top}
+pre{max-width:100%%;overflow:auto;margin:12px 0;padding:14px;border-radius:12px;background:#101a29;color:#f4f7fb;white-space:pre}code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace}pre code .agentgo-code-change{color:#FFE27C}p code,li code,td code{padding:2px 5px;border-radius:6px;background:#eaf0f6;color:#17355f}.work-mode-code-toolbar,.work-mode-message-actions,.work-mode-message-collapse-btn,.work-mode-ai-file-toggle,.work-mode-agent-details-toggle,.work-mode-repair-toggle{display:none!important}
+.work-mode-sent-attachments,.work-mode-webshot-list,.work-mode-inline-files{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 12px}.work-mode-sent-attachment,.work-mode-webshot-item,.work-mode-inline-image-item{min-width:180px;max-width:100%%;padding:10px;border:1px solid #d7e2ed;border-radius:12px;background:#fff}.work-mode-sent-attachment img,.work-mode-webshot-item img,.work-mode-inline-image-item img,.transcript-message img{display:block;max-width:100%%;height:auto;border-radius:10px}.work-mode-sent-attachment-head{display:flex;gap:7px;margin-top:7px;font-weight:800}.work-mode-sent-attachment-badge{color:#9a3976;font-size:.72rem}.work-mode-sent-attachment-meta,.work-mode-webshot-caption,.work-mode-inline-image-caption{color:var(--muted);font-size:.8rem;margin-top:5px}
+.work-mode-ai-warnings,.work-mode-file-outputs,.work-mode-agent-details,.work-mode-repair-details,.transcript-review-section{display:grid;gap:10px;margin-top:12px}.work-mode-ai-warning,.work-mode-file-output,.work-mode-agent-details-section,.work-mode-repair-section{padding:11px 12px;border-radius:11px;background:#fff7dc;border:1px solid #efd68c}.work-mode-file-output{background:#f3f8fd;border-color:#d3e2f1}.work-mode-file-output-head{display:flex;justify-content:space-between;gap:12px;font-weight:800}.work-mode-file-output-pre,.work-mode-agent-details-pre,.work-mode-repair-pre{margin:8px 0 0}.work-mode-repair-label,.work-mode-agent-details-label{font-weight:900;color:#6d4c13}.transcript-review-section{padding-top:16px;border-top:1px solid var(--line)}.transcript-review-section h2{margin:0;color:#18355d}.transcript-empty{padding:28px;text-align:center;color:var(--muted)}
+.transcript-yeti{display:block;width:min(180px,45vw);height:auto;margin:20px auto 0}.transcript-footer{text-align:center;color:var(--muted);font-size:.78rem;margin-top:8px}@media(max-width:720px){.transcript-page{width:100%%;margin:0;border:0;border-radius:0;padding:22px 14px}.transcript-message.user,.transcript-message.ai{margin-left:0;margin-right:0}}
+</style>
+</head>
+<body>
+<main class="transcript-page">
+<a class="transcript-brand" href="https://agentgo.frostcandy.com" target="_blank" rel="noopener noreferrer" aria-label="Open FrostCandy AgentGO">
+<img src="assets/frostcandy_logo_font.png" alt="FrostCandy">
+<img src="assets/agentgo_logo.png" alt="AgentGO">
+</a>
+<header class="transcript-heading"><h1>%s</h1><div class="transcript-model-meta">%s</div><div class="transcript-meta">%s</div></header>
+<div class="transcript-messages">%s</div>
+<img class="transcript-yeti" src="assets/fc_agentgo_yetti.png" alt="AgentGO Yeti mascot">
+<div class="transcript-footer">Offline transcript exported by FrostCandy AgentGO</div>
+</main>
+</body>
+</html>`, template.HTMLEscapeString(title), template.HTMLEscapeString(title), template.HTMLEscapeString(modelMeta), template.HTMLEscapeString(projectMeta), req.BodyHTML)
+}
+
+func buildWorkModeTranscriptZIP(req workModeTranscriptExportRequest, assetsDir string) ([]byte, string, error) {
+	if err := validateWorkModeTranscriptHTML(req.BodyHTML); err != nil {
+		return nil, "", err
+	}
+	if len(req.Assets) > workModeTranscriptMaxAssets {
+		return nil, "", errors.New("too many transcript assets")
+	}
+	transcriptJSON := bytes.TrimSpace(req.TranscriptJSON)
+	if len(transcriptJSON) == 0 {
+		transcriptJSON = []byte(`{"messages":[]}`)
+	}
+	if !json.Valid(transcriptJSON) {
+		return nil, "", errors.New("transcript JSON is invalid")
+	}
+
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	if err := writeWorkModeTranscriptZipFile(zw, "index.html", []byte(buildWorkModeTranscriptIndex(req))); err != nil {
+		return nil, "", err
+	}
+	var prettyJSON bytes.Buffer
+	if err := json.Indent(&prettyJSON, transcriptJSON, "", "  "); err != nil {
+		return nil, "", err
+	}
+	prettyJSON.WriteByte('\n')
+	if err := writeWorkModeTranscriptZipFile(zw, "transcript.json", prettyJSON.Bytes()); err != nil {
+		return nil, "", err
+	}
+
+	seen := map[string]bool{}
+	for _, name := range []string{"frostcandy_logo_font.png", "agentgo_logo.png", "fc_agentgo_yetti.png"} {
+		data, err := os.ReadFile(filepath.Join(assetsDir, name))
+		if err != nil {
+			return nil, "", fmt.Errorf("read transcript branding asset %s: %w", name, err)
+		}
+		zipPath := "assets/" + name
+		seen[zipPath] = true
+		if err := writeWorkModeTranscriptZipFile(zw, zipPath, data); err != nil {
+			return nil, "", err
+		}
+	}
+
+	totalAssetBytes := 0
+	for _, asset := range req.Assets {
+		zipPath, err := normalizeWorkModeTranscriptAssetPath(asset.Path)
+		if err != nil {
+			return nil, "", err
+		}
+		if seen[zipPath] {
+			return nil, "", fmt.Errorf("duplicate transcript asset %q", zipPath)
+		}
+		data, err := base64.StdEncoding.DecodeString(strings.TrimSpace(asset.Data))
+		if err != nil {
+			return nil, "", fmt.Errorf("decode transcript asset %q: %w", zipPath, err)
+		}
+		totalAssetBytes += len(data)
+		if totalAssetBytes > workModeTranscriptMaxAssetBytes {
+			return nil, "", errors.New("transcript assets are too large")
+		}
+		seen[zipPath] = true
+		if err := writeWorkModeTranscriptZipFile(zw, zipPath, data); err != nil {
+			return nil, "", err
+		}
+	}
+	if err := zw.Close(); err != nil {
+		return nil, "", err
+	}
+
+	slug := workModeTranscriptSlug(req.ProjectName)
+	if slug == "" {
+		slug = "work-mode"
+	}
+	stamp := time.Now().Format("20060102-150405")
+	return buf.Bytes(), fmt.Sprintf("AgentGO-transcript-%s-%s.zip", slug, stamp), nil
+}
+
+func (a *App) handleWorkModeTranscriptExport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, workModeTranscriptMaxRequestBytes)
+	defer r.Body.Close()
+	var req workModeTranscriptExportRequest
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&req); err != nil {
+		http.Error(w, "invalid transcript export request", http.StatusBadRequest)
+		return
+	}
+	archive, filename, err := buildWorkModeTranscriptZIP(req, "assets")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Length", strconv.Itoa(len(archive)))
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(archive)
+}
+
 func (a *App) handleWorkModeSession(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -6305,18 +7243,23 @@ func (a *App) handleWorkModeObserverReviewSend(w http.ResponseWriter, req workMo
 		workerUserContext, _ = os.ReadFile(filepath.Join(workerMetaRoot, "user_context.json"))
 		observerUserContext, _ = os.ReadFile(filepath.Join(observerMetaRoot, "user_context.json"))
 	}
-	memoryPath := filepath.Join(workerMetaRoot, chatMemoryFileName)
-	chatMemory := []byte("")
-	if req.UseMemory {
-		chatMemory, _ = os.ReadFile(memoryPath)
+	continuedMemoryPath, err := a.workModeContinuedMemoryPath(projectName)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	chatMemory, memoryName, memoryWritePath, memoryPersist, err := resolveWorkModeRequestMemory(workerMetaRoot, continuedMemoryPath, req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 	limits, err := a.loadProjectLimits(projectName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	workerTransport := adapters.ResolveTransportProfile(toAdapterModelConfig(worker))
-	observerTransport := adapters.ResolveTransportProfile(toAdapterModelConfig(observer))
+	workerTransport := adapters.ResolveTransportProfile(a.adapterModelConfig(worker))
+	observerTransport := adapters.ResolveTransportProfile(a.adapterModelConfig(observer))
 	maxPasses := normalizeWorkModeMaxPasses(req.MaxPasses)
 	agentGOStyling := a.loadAgentGOStylingPrompt(req.UseAgentGOStyling)
 	executionID := "workmode-observer-" + strconv.FormatInt(time.Now().UnixNano(), 10)
@@ -6346,6 +7289,7 @@ func (a *App) handleWorkModeObserverReviewSend(w http.ResponseWriter, req workMo
 	allDiffs := []workModeDiffFile{}
 	allInline := []workModeInlineFileOutput{}
 	allBuilderWarnings := []string{}
+	repairDetails := []workModeJSONRepairDetail{}
 	seenBuilderWarnings := map[string]bool{}
 	seenChanged := map[string]bool{}
 	latestWorkerReply := ""
@@ -6400,7 +7344,7 @@ func (a *App) handleWorkModeObserverReviewSend(w http.ResponseWriter, req workMo
 			urlCaptureWarnings = nil
 		}
 		msg := strings.TrimSpace(strings.Join(uniqueNonEmptyStrings(agentMessages), "\n\n"))
-		writeJSON(w, http.StatusOK, workModeResponse{Reply: reply, Warnings: allBuilderWarnings, ChangedFiles: allChanged, SkippedFiles: allSkipped, BlockedFiles: allBlocked, InlineFiles: allInline, DiffFiles: allDiffs, AgentMessage: msg, MemoryUpdated: memoryUpdated, MemoryWarning: memoryWarning, State: &state, ReviewMessages: reviewMessages})
+		writeJSON(w, http.StatusOK, workModeResponse{Reply: reply, Memory: strings.TrimSpace(string(chatMemory)), MemoryName: memoryName, Warnings: allBuilderWarnings, RepairDetails: repairDetails, ChangedFiles: allChanged, SkippedFiles: allSkipped, BlockedFiles: allBlocked, InlineFiles: allInline, DiffFiles: allDiffs, AgentMessage: msg, MemoryUpdated: memoryUpdated, MemoryWarning: memoryWarning, State: &state, ReviewMessages: reviewMessages})
 	}
 	finalFromCancel := func() bool {
 		state, ok := a.workModeSessionStateForExecution(projectName, executionID)
@@ -6543,6 +7487,12 @@ func (a *App) handleWorkModeObserverReviewSend(w http.ResponseWriter, req workMo
 			return
 		}
 		adapterResp = repairedResp
+		if detail, ok := labeledWorkModeRepairDetail(parsed.RepairDetail, workModeCallOwnerWorker, pass); ok {
+			repairDetails = append(repairDetails, detail)
+		}
+		if parsed.MemoryIssue != "" {
+			a.logf(workerModelID, "warn", "%s", parsed.MemoryIssue)
+		}
 		if err := requireWorkModeJSONBoolField(adapterResp.Text, "review_complete"); err != nil {
 			a.logf(workerModelID, "warn", "Observer Review Worker response missing required review_complete boolean: %v", err)
 			writeWorkModeJSONError(w, err, adapterResp.Text)
@@ -6567,9 +7517,9 @@ func (a *App) handleWorkModeObserverReviewSend(w http.ResponseWriter, req workMo
 		if req.UseMemory {
 			memoryText := strings.TrimSpace(parsed.Memory)
 			if memoryText != "" {
-				if err := os.WriteFile(memoryPath, []byte(memoryText), 0o644); err != nil {
-					memoryWarning = "Could not save memory.md."
-					a.logf(workerModelID, "warn", "Could not save Observer Review memory.md: %v", err)
+				if err := writeWorkModeRequestMemory(memoryWritePath, memoryPersist, memoryText); err != nil {
+					memoryWarning = "Could not save Work Mode memory."
+					a.logf(workerModelID, "warn", "Could not save Observer Review memory: %v", err)
 				} else {
 					chatMemory = []byte(memoryText)
 					memoryUpdated = true
@@ -6578,7 +7528,7 @@ func (a *App) handleWorkModeObserverReviewSend(w http.ResponseWriter, req workMo
 				memoryWarning = "Memory is on, but the Worker did not return a memory update for this pass. Previous memory was preserved."
 			}
 		}
-		if warning := workModeOutputLimitWarning(worker, adapterResp); warning != "" {
+		if warning := a.workModeOutputLimitWarning(worker, adapterResp); warning != "" {
 			agentMessages = append(agentMessages, warning)
 		}
 		for _, warning := range normalizeWorkModeWarnings(parsed.Warnings) {
@@ -6663,10 +7613,13 @@ func (a *App) handleWorkModeObserverReviewSend(w http.ResponseWriter, req workMo
 			return
 		}
 		observerResp = repairedObserverResp
+		if detail, ok := labeledWorkModeRepairDetail(observerParsed.RepairDetail, workModeCallOwnerObserver, pass); ok {
+			repairDetails = append(repairDetails, detail)
+		}
 		for _, warning := range normalizeWorkModeWarnings(observerParsed.Warnings) {
 			a.logAIResponseWarning(observer, warning)
 		}
-		if warning := workModeOutputLimitWarning(observer, observerResp); warning != "" {
+		if warning := a.workModeOutputLimitWarning(observer, observerResp); warning != "" {
 			agentMessages = append(agentMessages, warning)
 		}
 		reviewMessages = append(reviewMessages, workModeReviewMessage{Owner: workModeCallOwnerObserver, Pass: pass, Reply: strings.TrimSpace(observerParsed.Reply), HasInput: workModeMaybeJSONBoolPtr(observerParsed.HasInput), Recommendations: observerParsed.Recommendations})
@@ -6690,6 +7643,9 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	if !a.requireActiveSessionMatch(w, r) {
+		return
+	}
 	var req workModeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
@@ -6698,6 +7654,16 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 	req.ModelID = strings.TrimSpace(req.ModelID)
 	req.Prompt = strings.TrimSpace(req.Prompt)
 	req.ResponseMode = normalizeChatResponseMode(req.ResponseMode)
+	agenticRequest, err := normalizeWorkModeAgenticRequest(req.Agentic)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	req.Agentic = agenticRequest
+	if err := validateWorkModeAgenticRequestCompatibility(req, agenticRequest); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	if req.Prompt == "" {
 		http.Error(w, "Enter a Work Mode prompt first.", http.StatusBadRequest)
 		return
@@ -6717,15 +7683,80 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	model := roles.Worker
+	enforceWorkModeAgenticContextIsolation(&req, &model)
 	projectworkRoot, err := a.projectWorkRoot(projectName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	agenticEnvironment := []workModeAgenticEnvironmentDescriptor{}
+	if req.Agentic.Enabled {
+		environmentFile, loadErr := a.loadTerminalEnvironment(projectName)
+		if loadErr != nil {
+			http.Error(w, "Could not load project terminal environment: "+loadErr.Error(), http.StatusInternalServerError)
+			return
+		}
+		agenticEnvironment = terminalEnvironmentAgenticDescriptors(environmentFile)
+	}
 	selectedFiles, selectedSet, err := normalizeWorkModeSelectedFiles(req.SelectedFiles, projectName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
+	}
+	agenticTaskID := ""
+	agenticTaskRunNumber := 0
+	agenticTaskMaxRuns := 0
+	agenticContinuityMessage := adapters.Message{}
+	agenticTurnFinished := false
+	if req.Agentic.Enabled {
+		task, stagedRoot, startedNew, startErr := a.startOrLoadAgenticWorkspaceTask(projectName, req.Agentic)
+		if startErr != nil {
+			statusCode := http.StatusInternalServerError
+			if errors.Is(startErr, errAgenticMaximumRunsReached) || errors.Is(startErr, errAgenticUnresolvedTaskExists) {
+				statusCode = http.StatusConflict
+			}
+			http.Error(w, "Could not prepare staged agentic workspace: "+startErr.Error(), statusCode)
+			return
+		}
+		if !startedNew {
+			task, startErr = a.reactivateAgenticWorkspaceTask(projectName, task.SessionID)
+			if startErr != nil {
+				statusCode := http.StatusInternalServerError
+				if errors.Is(startErr, errAgenticMaximumRunsReached) {
+					statusCode = http.StatusConflict
+				}
+				http.Error(w, "Could not reactivate staged agentic workspace: "+startErr.Error(), statusCode)
+				return
+			}
+		}
+		task, startErr = a.prepareAgenticTaskContinuity(projectName, task.SessionID, req.Prompt, req.Agentic.Continuation)
+		if startErr != nil {
+			http.Error(w, "Could not preserve agentic task continuity: "+startErr.Error(), http.StatusInternalServerError)
+			return
+		}
+		review, reviewErr := a.buildAgenticWorkspaceReview(projectName, task.SessionID)
+		if reviewErr != nil {
+			http.Error(w, "Could not inspect staged agentic continuity: "+reviewErr.Error(), http.StatusInternalServerError)
+			return
+		}
+		agenticContinuityMessage = adapters.Message{Role: "user", Text: buildAgenticTaskContinuityMessage(task, review)}
+		agenticTaskID = task.SessionID
+		agenticTaskRunNumber = task.RunNumber
+		agenticTaskMaxRuns = task.MaxRuns
+		req.Agentic.TaskID = task.SessionID
+		req.Agentic.MaxRuns = task.MaxRuns
+		projectworkRoot = stagedRoot
+		_, _ = a.appendAgenticAuditRecord(projectName, agenticTaskID, agenticAuditRecord{Kind: agenticAuditKindWorkspace, Status: "turn_started", Message: "Agentic Builder continuation turn started in the staged workspace."})
+		if startedNew {
+			a.logf(modelIDString(model.ID), "info", "Agentic Phase 6 staged workspace created for project %s: %s", projectName, task.SessionID)
+		}
+		defer func() {
+			if agenticTaskID != "" && !agenticTurnFinished {
+				if _, interruptErr := a.interruptAgenticWorkspaceTask(projectName, agenticTaskID, "The agentic turn ended before AgentGO could complete it."); interruptErr != nil {
+					a.logf("system", "warn", "Could not mark agentic workspace interrupted: %v", interruptErr)
+				}
+			}
+		}()
 	}
 	_, metaRoot, err := a.projectPaths(model, projectName)
 	if err != nil {
@@ -6740,12 +7771,17 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 	if includeRoleContext {
 		userContext, _ = os.ReadFile(filepath.Join(metaRoot, "user_context.json"))
 	}
-	memoryPath := filepath.Join(metaRoot, chatMemoryFileName)
-	chatMemory := []byte("")
-	if req.UseMemory {
-		chatMemory, _ = os.ReadFile(memoryPath)
+	continuedMemoryPath, err := a.workModeContinuedMemoryPath(projectName)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-	transportProfile := adapters.ResolveTransportProfile(toAdapterModelConfig(model))
+	chatMemory, memoryName, memoryWritePath, memoryPersist, err := resolveWorkModeRequestMemory(metaRoot, continuedMemoryPath, req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	transportProfile := adapters.ResolveTransportProfile(a.adapterModelConfig(model))
 	extraMessages := []adapters.Message{}
 	if len(selectedFiles) > 0 {
 		contextMessage, _, err := buildMultimodalContextMessage(projectworkRoot, selectedFiles, "SELECTED WORK MODE PROJECTWORK FILES:", transportProfile, true, builderContextMaxTextBytes)
@@ -6787,25 +7823,43 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 		inputParts = append(inputParts, "", "WORK MODE MEMORY:", "(disabled for this message)")
 	}
 	sessionMessage := adapters.Message{Role: "user", Text: strings.Join(inputParts, "\n")}
-	finalUserMessage := adapters.Message{Role: "user", Text: "FINAL USER REQUEST:\n" + req.Prompt}
+	finalRequestText := req.Prompt
+	if req.Agentic.Enabled && req.Agentic.Continuation {
+		finalRequestText = "Continue the same staged agentic task using the AgentGO continuity context above."
+	}
+	finalUserMessage := adapters.Message{Role: "user", Text: "FINAL USER REQUEST:\n" + finalRequestText}
 	agentGOStyling := a.loadAgentGOStylingPrompt(req.UseAgentGOStyling)
 	instructions := buildWorkModeInstructions(model, includeRoleContext, req.UseMemory, req.ResponseMode, selectedFiles, agentGOStyling)
+	responseSchema := workModeJSONSchema()
+	if req.Agentic.Enabled {
+		instructions = buildWorkModeAgenticInstructions(instructions, req.Agentic, agenticEnvironment)
+		responseSchema = workModeAgenticJSONSchema()
+	}
 	requestPayload := adapterRequestPayload{
 		Instructions: strings.TrimSpace(instructions),
 		Messages:     []adapters.Message{},
 		ExpectJSON:   true,
-		JSONSchema:   workModeJSONSchema(),
+		JSONSchema:   responseSchema,
 	}
 	requestPayload.Messages = appendMessageIfPresent(requestPayload.Messages, sessionMessage)
 	for _, message := range extraMessages {
 		requestPayload.Messages = appendMessageIfPresent(requestPayload.Messages, message)
+	}
+	if req.Agentic.Enabled {
+		requestPayload.Messages = appendMessageIfPresent(requestPayload.Messages, agenticContinuityMessage)
 	}
 	requestPayload.Messages = appendMessageIfPresent(requestPayload.Messages, finalUserMessage)
 	ctx, cancel := context.WithCancel(context.Background())
 	executionID := "workmode-" + strconv.FormatInt(time.Now().UnixNano(), 10)
 	a.mu.Lock()
 	a.setActiveCancelLocked(modelIDString(model.ID), projectName, executionID, cancel)
+	if agenticTaskID != "" {
+		a.setActiveCancelLocked(agenticBuilderCancelKey(agenticTaskID), projectName, executionID, cancel)
+	}
 	normalState := newWorkModeSessionState(projectName, roles, false, 3, req.Prompt)
+	if req.Agentic.Enabled {
+		normalState.Mode = workModeModeAgenticStaged
+	}
 	normalState.ExecutionID = executionID
 	normalState.ActiveCallOwner = workModeCallOwnerWorker
 	a.setWorkModeSessionStateLocked(projectName, normalState)
@@ -6813,11 +7867,21 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		a.mu.Lock()
 		a.clearActiveCancelLocked(modelIDString(model.ID), executionID)
+		if agenticTaskID != "" {
+			a.clearActiveCancelLocked(agenticBuilderCancelKey(agenticTaskID), executionID)
+		}
 		a.mu.Unlock()
 		cancel()
 	}()
 	adapterResp, err := a.executeAdapterResponse(ctx, model, requestPayload)
 	if err != nil {
+		if req.Agentic.Enabled && agenticTaskID != "" {
+			agenticManualDecisionMu.Lock()
+			if _, usageErr := a.recordAgenticBuilderCallUsage(projectName, agenticTaskID, requestPayload, nil); usageErr != nil {
+				a.logf("system", "warn", "Could not preserve agentic Builder token estimate after request failure: %v", usageErr)
+			}
+			agenticManualDecisionMu.Unlock()
+		}
 		if errors.Is(err, context.Canceled) {
 			a.mu.Lock()
 			a.updateWorkModeSessionStatusLocked(projectName, workModeStatusEmergencyStopped, workModeCallOwnerNone)
@@ -6828,26 +7892,145 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	parsed, repairedResp, err := a.parseOrRepairWorkModeAdapterResponse(ctx, model, requestPayload, adapterResp, projectworkRoot, projectName)
-	if err != nil {
-		a.logf(modelIDString(model.ID), "warn", "Work Mode response parse failed: %v", err)
-		writeWorkModeJSONError(w, err, repairedResp.Text)
-		return
+	if req.Agentic.Enabled {
+		// Serialize Builder-response application with Stop/disconnect handling so a
+		// late provider response cannot overwrite an interrupted task state.
+		agenticManualDecisionMu.Lock()
+		defer agenticManualDecisionMu.Unlock()
+		if _, usageErr := a.recordAgenticBuilderCallUsage(projectName, agenticTaskID, requestPayload, &adapterResp); usageErr != nil {
+			a.logf("system", "warn", "Could not preserve agentic Builder token usage: %v", usageErr)
+		}
+		currentTask, _, loadErr := a.loadAgenticWorkspaceTask(projectName, agenticTaskID)
+		if loadErr == nil && currentTask.Status == agenticWorkspaceStatusInterrupted {
+			agenticTurnFinished = true
+			http.Error(w, "Agentic task was interrupted before the Builder response completed. Nothing from this response was applied.", http.StatusConflict)
+			return
+		}
 	}
-	adapterResp = repairedResp
+	var parsed workModeAIResponse
+	repairDetails := []workModeJSONRepairDetail{}
+	var agenticResult *workModeAgenticResult
+	if req.Agentic.Enabled {
+		var validationErrors []string
+		parsed, validationErrors, err = parseAndValidateWorkModeAgenticResponse(adapterResp.Text)
+		if err != nil {
+			result := workModeAgenticProtocolErrorResult(req.Agentic, agenticEnvironment, adapterResp.Text, err)
+			if agenticTaskID != "" {
+				_, _ = a.appendAgenticAuditRecord(projectName, agenticTaskID, agenticAuditRecord{Kind: agenticAuditKindProtocolError, Status: workModeAgenticStatusProtocolError, Level: "error", Message: result.Message, Detail: previewForLog(strings.TrimSpace(adapterResp.Text), agenticCommandAIExcerptLimit)})
+				if review, reviewErr := a.interruptAgenticWorkspaceTask(projectName, agenticTaskID, result.Message); reviewErr == nil {
+					result.Workspace = &review
+				} else {
+					a.logf("system", "warn", "Could not review interrupted agentic workspace: %v", reviewErr)
+				}
+			}
+			agenticResult = &result
+			agenticTurnFinished = true
+			a.mu.Lock()
+			completedState := a.updateWorkModeSessionStatusLocked(projectName, workModeStatusFinalized, workModeCallOwnerNone)
+			completedState.LatestWorkerMessage = result.Message
+			completedState.CurrentPass = 1
+			completedState.ExecutionID = executionID
+			completedState = a.setWorkModeSessionStateLocked(projectName, completedState)
+			a.mu.Unlock()
+			a.logf(modelIDString(model.ID), "warn", "Agentic Phase 6 protocol parse interrupted for project %s: %v", projectName, err)
+			reply := strings.TrimSpace(adapterResp.Text)
+			if reply == "" {
+				reply = "(The AI returned no readable agentic response.)"
+			}
+			writeJSON(w, http.StatusOK, workModeResponse{Reply: reply, AgentMessage: result.Message, State: &completedState, Agentic: agenticResult})
+			return
+		}
+		if len(validationErrors) > 0 {
+			validationErrs := make([]error, 0, len(validationErrors))
+			for _, message := range validationErrors {
+				validationErrs = append(validationErrs, errors.New(message))
+			}
+			result := workModeAgenticProtocolErrorResult(req.Agentic, agenticEnvironment, adapterResp.Text, validationErrs...)
+			if agenticTaskID != "" {
+				_, _ = a.appendAgenticAuditRecord(projectName, agenticTaskID, agenticAuditRecord{Kind: agenticAuditKindProtocolError, Status: workModeAgenticStatusProtocolError, Level: "error", Message: result.Message, Detail: strings.Join(validationErrors, "; ")})
+				if review, reviewErr := a.interruptAgenticWorkspaceTask(projectName, agenticTaskID, result.Message); reviewErr == nil {
+					result.Workspace = &review
+				} else {
+					a.logf("system", "warn", "Could not review interrupted agentic workspace: %v", reviewErr)
+				}
+			}
+			agenticResult = &result
+			agenticTurnFinished = true
+			a.mu.Lock()
+			completedState := a.updateWorkModeSessionStatusLocked(projectName, workModeStatusFinalized, workModeCallOwnerNone)
+			completedState.LatestWorkerMessage = strings.TrimSpace(parsed.Reply)
+			completedState.CurrentPass = 1
+			completedState.ExecutionID = executionID
+			completedState = a.setWorkModeSessionStateLocked(projectName, completedState)
+			a.mu.Unlock()
+			a.logf(modelIDString(model.ID), "warn", "Agentic Phase 6 protocol validation interrupted for project %s: %s", projectName, strings.Join(validationErrors, "; "))
+			reply := strings.TrimSpace(parsed.Reply)
+			if reply == "" {
+				reply = result.Message
+			}
+			writeJSON(w, http.StatusOK, workModeResponse{Reply: reply, AgentMessage: result.Message, State: &completedState, Agentic: agenticResult})
+			return
+		}
+		result := workModeAgenticDryRunResult(req.Agentic, parsed, agenticEnvironment)
+		agenticResult = &result
+		auditRecord := agenticAuditRecord{Kind: agenticAuditKindAIRequest, Status: result.Status, Message: result.Message, Detail: strings.TrimSpace(result.Summary + "\n" + result.Question)}
+		if result.Command != nil {
+			auditRecord.Command = cloneWorkModeAgenticCommand(result.Command)
+		}
+		_, _ = a.appendAgenticAuditRecord(projectName, agenticTaskID, auditRecord)
+	} else {
+		var repairedResp adapters.Response
+		parsed, repairedResp, err = a.parseOrRepairWorkModeAdapterResponse(ctx, model, requestPayload, adapterResp, projectworkRoot, projectName)
+		if err != nil {
+			a.logf(modelIDString(model.ID), "warn", "Work Mode response parse failed: %v", err)
+			writeWorkModeJSONError(w, err, repairedResp.Text)
+			return
+		}
+		adapterResp = repairedResp
+		if detail, ok := labeledWorkModeRepairDetail(parsed.RepairDetail, workModeCallOwnerWorker, 1); ok {
+			repairDetails = append(repairDetails, detail)
+		}
+	}
+	if parsed.MemoryIssue != "" {
+		a.logf(modelIDString(model.ID), "warn", "%s", parsed.MemoryIssue)
+	}
 	limits, err := a.loadProjectLimits(projectName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	changed, skipped, blocked, diffFiles, err := workModeApplyFileOps(projectworkRoot, projectName, parsed.Files, parsed.Artifacts, limits, selectedSet)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if len(changed) > 0 {
-		if _, err := a.syncActiveBuilderProjectsFromProjectwork(projectName); err != nil {
-			a.logf(modelIDString(model.ID), "warn", "Could not sync Work Mode projectwork changes into active Builder workspace: %v", err)
+	changed := []string{}
+	agenticChangedCount := 0
+	skipped := []string{}
+	blocked := []workModeBlockedFileOutput{}
+	diffFiles := []workModeDiffFile{}
+	if req.Agentic.Enabled {
+		updateable, manifestErr := agenticWorkspaceAllUpdateable(projectworkRoot)
+		if manifestErr != nil {
+			http.Error(w, "Could not inspect staged agentic workspace: "+manifestErr.Error(), http.StatusInternalServerError)
+			return
+		}
+		for rel := range selectedSet {
+			updateable[rel] = true
+		}
+		filteredOps, reservedSkipped, reservedBlocked := filterAgenticWorkspaceFileOps(parsed.Files, projectName)
+		changed, skipped, blocked, diffFiles, err = workModeApplyFileOps(projectworkRoot, projectName, filteredOps, parsed.Artifacts, limits, updateable, true)
+		skipped = append(reservedSkipped, skipped...)
+		blocked = append(reservedBlocked, blocked...)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	} else {
+		changed, skipped, blocked, diffFiles, err = workModeApplyFileOps(projectworkRoot, projectName, parsed.Files, parsed.Artifacts, limits, selectedSet, false)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if len(changed) > 0 {
+			if _, err := a.syncActiveBuilderProjectsFromProjectwork(projectName); err != nil {
+				a.logf(modelIDString(model.ID), "warn", "Could not sync Work Mode projectwork changes into active Builder workspace: %v", err)
+			}
 		}
 	}
 	memoryUpdated := false
@@ -6855,10 +8038,11 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 	if req.UseMemory {
 		memoryText := strings.TrimSpace(parsed.Memory)
 		if memoryText != "" {
-			if err := os.WriteFile(memoryPath, []byte(memoryText), 0o644); err != nil {
-				memoryWarning = "Could not save memory.md."
-				a.logf(modelIDString(model.ID), "warn", "Could not save Work Mode memory.md: %v", err)
+			if err := writeWorkModeRequestMemory(memoryWritePath, memoryPersist, memoryText); err != nil {
+				memoryWarning = "Could not save Work Mode memory."
+				a.logf(modelIDString(model.ID), "warn", "Could not save Work Mode memory: %v", err)
 			} else {
+				chatMemory = []byte(memoryText)
 				memoryUpdated = true
 			}
 		} else {
@@ -6870,9 +8054,94 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 		a.logAIResponseWarning(model, warning)
 	}
 	inlineFiles := workModeInlineFilesForChanged(projectworkRoot, projectName, changed)
+	if req.Agentic.Enabled {
+		inlineFiles = nil
+		status := agenticWorkspaceStatusActive
+		incomplete := true
+		summary := ""
+		switch agenticResult.Status {
+		case workModeAgenticStatusRunCommand:
+			status = agenticWorkspaceStatusAwaitingCommand
+			switch req.Agentic.Mode {
+			case workModeAgenticModeFull:
+				summary = "A structured command request is ready for automatic Full-mode execution."
+			case workModeAgenticModeSemi:
+				summary = "A structured command request is awaiting Semi-mode authorization."
+			default:
+				summary = "A structured command request is awaiting Manual approval."
+			}
+		case workModeAgenticStatusNeedsUserInput:
+			status = agenticWorkspaceStatusNeedsUserInput
+			summary = agenticResult.Question
+		case workModeAgenticStatusComplete:
+			status = agenticWorkspaceStatusAwaitingReview
+			incomplete = false
+			summary = agenticResult.Summary
+			if req.Agentic.Mode == workModeAgenticModeSemi {
+				a.clearAgenticSemiSessionAllowances(projectName, agenticTaskID)
+			}
+		}
+		if _, updateErr := a.updateAgenticWorkspaceTask(projectName, agenticTaskID, status, incomplete, summary, agenticResult.Summary, parsed.AgenticWorkspace); updateErr != nil {
+			http.Error(w, "Could not update staged agentic workspace: "+updateErr.Error(), http.StatusInternalServerError)
+			return
+		}
+		if agenticResult.Status == workModeAgenticStatusRunCommand && agenticResult.Command != nil {
+			if _, pendingErr := a.saveAgenticPendingCommand(projectName, agenticTaskID, *agenticResult.Command); pendingErr != nil {
+				http.Error(w, "Could not store command authorization request: "+pendingErr.Error(), http.StatusInternalServerError)
+				return
+			}
+			if req.Agentic.Mode == workModeAgenticModeSemi {
+				authorization, authorizationErr := a.authorizeAgenticSemiCommand(projectName, agenticTaskID, *agenticResult.Command)
+				if authorizationErr != nil {
+					http.Error(w, "Could not evaluate Semi-mode authorization: "+authorizationErr.Error(), http.StatusInternalServerError)
+					return
+				}
+				agenticResult.Authorization = authorization.Source
+				if authorization.Allowed {
+					agenticResult.ApprovalRequired = false
+					agenticResult.Paused = false
+					agenticResult.AutoExecute = true
+					agenticResult.Message = "Semi mode authorized the command automatically using " + authorization.Source + ". AgentGO will start it without a user approval click."
+					if authorization.Rule != "" {
+						agenticResult.Message += " Matched: " + authorization.Rule + "."
+					}
+				} else {
+					agenticResult.ApprovalRequired = true
+					agenticResult.Paused = true
+					agenticResult.ApprovalOptions = []string{agenticSemiDecisionAllowOnce, agenticSemiDecisionAllowSession, agenticSemiDecisionAddWhitelist, agenticSemiDecisionDeny}
+					agenticResult.Message = "The command is not covered by a conservative built-in rule, this task's session allowances, or the active project whitelist. Semi mode is paused for a user decision."
+				}
+			} else if req.Agentic.Mode == workModeAgenticModeFull {
+				agenticResult.Authorization = agenticFullAuthorization
+				agenticResult.ApprovalRequired = false
+				agenticResult.Paused = false
+				agenticResult.AutoExecute = true
+				agenticResult.Message = fmt.Sprintf("Full mode automatically authorized the structured command for run %d of %d. AgentGO will start it without a user approval click.", agenticTaskRunNumber, agenticTaskMaxRuns)
+			}
+		}
+		review, reviewErr := a.buildAgenticWorkspaceReview(projectName, agenticTaskID)
+		if reviewErr != nil {
+			http.Error(w, "Could not compare staged agentic workspace: "+reviewErr.Error(), http.StatusInternalServerError)
+			return
+		}
+		if review, reviewErr = a.cleanupAgenticWorkspaceWhenNoChanges(projectName, agenticTaskID, review); reviewErr != nil {
+			http.Error(w, "Could not finalize clean staged workspace: "+reviewErr.Error(), http.StatusInternalServerError)
+			return
+		}
+		agenticResult.Workspace = &review
+		agenticChangedCount = len(changed)
+		changed = nil
+		diffFiles = nil
+		agenticTurnFinished = true
+	}
+	agenticMessage := ""
+	if agenticResult != nil {
+		agenticMessage = agenticResult.Message
+	}
 	agentMessage := strings.TrimSpace(strings.Join(uniqueNonEmptyStrings([]string{
-		workModeOutputLimitWarning(model, adapterResp),
+		a.workModeOutputLimitWarning(model, adapterResp),
 		workModeURLCaptureWarningMessage(urlCaptureWarnings),
+		agenticMessage,
 	}), "\n\n"))
 	a.mu.Lock()
 	completedState := a.updateWorkModeSessionStatusLocked(projectName, workModeStatusFinalized, workModeCallOwnerNone)
@@ -6882,22 +8151,37 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 	completedState.ExecutionID = executionID
 	completedState = a.setWorkModeSessionStateLocked(projectName, completedState)
 	a.mu.Unlock()
-	a.logf(modelIDString(model.ID), "info", "Work Mode prompt completed for project %s; changed=%d skipped=%d", projectName, len(changed), len(skipped))
-	writeJSON(w, http.StatusOK, workModeResponse{Reply: parsed.Reply, Warnings: warnings, ChangedFiles: changed, SkippedFiles: skipped, BlockedFiles: blocked, InlineFiles: inlineFiles, DiffFiles: diffFiles, AgentMessage: agentMessage, MemoryUpdated: memoryUpdated, MemoryWarning: memoryWarning, State: &completedState})
+	if req.Agentic.Enabled {
+		a.logf(modelIDString(model.ID), "info", "Agentic Phase 6 staged turn completed for project %s; status=%s changed=%d skipped_files=%d", projectName, agenticResult.Status, agenticChangedCount, len(skipped))
+	} else {
+		a.logf(modelIDString(model.ID), "info", "Work Mode prompt completed for project %s; changed=%d skipped=%d", projectName, len(changed), len(skipped))
+	}
+	writeJSON(w, http.StatusOK, workModeResponse{Reply: parsed.Reply, Memory: strings.TrimSpace(string(chatMemory)), MemoryName: memoryName, Warnings: warnings, RepairDetails: repairDetails, ChangedFiles: changed, SkippedFiles: skipped, BlockedFiles: blocked, InlineFiles: inlineFiles, DiffFiles: diffFiles, AgentMessage: agentMessage, MemoryUpdated: memoryUpdated, MemoryWarning: memoryWarning, State: &completedState, Agentic: agenticResult})
 }
 
 func writeWorkModeJSONError(w http.ResponseWriter, parseErr error, rawResponse string) {
-	message := "AgentGO could not read the AI's Work Mode JSON response. Expand details to inspect the parse error and raw AI response."
+	message := "AgentGO could not read the AI's Work Mode JSON response. Expand details to inspect the original response and automatic repair attempt."
 	parseText := "unknown JSON parse error"
 	if parseErr != nil {
 		parseText = parseErr.Error()
 	}
-	writeJSON(w, http.StatusBadGateway, workModeJSONErrorResponse{
+	response := workModeJSONErrorResponse{
 		Error:       "work_mode_json_parse_failed",
 		Message:     message,
 		ParseError:  parseText,
 		RawResponse: rawResponse,
-	})
+	}
+	var repairErr *workModeJSONRepairError
+	if errors.As(parseErr, &repairErr) && repairErr != nil {
+		response.OriginalParseError = strings.TrimSpace(repairErr.OriginalParseError)
+		response.OriginalResponse = strings.TrimSpace(repairErr.OriginalResponse)
+		response.RepairParseError = strings.TrimSpace(repairErr.RepairParseError)
+		response.RepairResponse = strings.TrimSpace(repairErr.RepairResponse)
+		if response.RawResponse == "" {
+			response.RawResponse = response.RepairResponse
+		}
+	}
+	writeJSON(w, http.StatusBadGateway, response)
 }
 
 func (a *App) savePromptHelperRawResponse(model ModelConfig, projectName, responseText string) string {
@@ -8319,7 +9603,7 @@ func (a *App) runModelRequest(model ModelConfig, projectName, executionID, promp
 	aiContextPath := filepath.Join(metaRoot, "ai_context.json")
 	userContext, _ := os.ReadFile(userContextPath)
 	aiContext, _ := os.ReadFile(aiContextPath)
-	transportProfile := adapters.ResolveTransportProfile(toAdapterModelConfig(model))
+	transportProfile := adapters.ResolveTransportProfile(a.adapterModelConfig(model))
 	extraMessages, contextReport, err := buildSelectedContextAndTemporaryAttachmentMessages(projectworkRoot, contextFiles, temporaryAttachments, transportProfile, "SELECTED PROJECTWORK CONTEXT FILES:", true)
 	if err != nil {
 		result.Err = fmt.Errorf("context assembly error: %w", err)
@@ -9333,7 +10617,7 @@ func (a *App) buildReviewerPayload(projectName, prompt string, contextFiles []st
 	reviewerTransportProfile := adapters.ResolveTransportProfile(adapters.ModelConfig{})
 	if reviewerID != "" {
 		if reviewer, ok := a.findModel(reviewerID); ok {
-			reviewerTransportProfile = adapters.ResolveTransportProfile(toAdapterModelConfig(reviewer))
+			reviewerTransportProfile = adapters.ResolveTransportProfile(a.adapterModelConfig(reviewer))
 			if reviewerContextPath := filepath.ToSlash(filepath.Join(a.relativeMetaPath(reviewer, projectName), "reviewer_context.json")); reviewerContextPath != "" {
 				if data, err := os.ReadFile(filepath.Join(a.cfg.WorkRoot, reviewerContextPath)); err == nil {
 					trimmed := bytes.TrimSpace(data)
@@ -9908,7 +11192,7 @@ type adapterRequestPayload struct {
 
 // executeAdapterText sends one assembled AgentGO request through the selected backend adapter.
 func (a *App) executeAdapterResponse(ctx context.Context, model ModelConfig, payload adapterRequestPayload) (adapters.Response, error) {
-	resp, err := adapters.Execute(ctx, toAdapterModelConfig(model), adapters.Request{
+	resp, err := adapters.Execute(ctx, a.adapterModelConfig(model), adapters.Request{
 		Instructions: payload.Instructions,
 		Messages:     payload.Messages,
 		ExpectJSON:   payload.ExpectJSON,
@@ -10239,6 +11523,12 @@ func toAdapterModelConfig(model ModelConfig) adapters.ModelConfig {
 			SupportsBinaryOut: model.Capabilities.SupportsBinaryOut,
 		},
 	}
+}
+
+func (a *App) adapterModelConfig(model ModelConfig) adapters.ModelConfig {
+	config := toAdapterModelConfig(model)
+	config.MaxOutputTokens = resolveModelMaxOutputTokens(model, a.knownModelMaxOutputCatalog).EffectiveTokens
+	return config
 }
 
 // cloneStringMap copies a string map so adapter calls cannot mutate saved config state.
@@ -10580,6 +11870,9 @@ func (a *App) handleStop(w http.ResponseWriter, r *http.Request) {
 		} else {
 			resetCount = cleared
 		}
+	}
+	if err := a.syncActiveSessionFromRuntime(); err != nil {
+		a.logf("system", "warn", "Could not persist active session after Emergency Stop: %v", err)
 	}
 	a.logf("system", "warn", "Emergency stop triggered. Canceled %d request(s). Risk mode active=%v reset_runtime_contexts=%d active_models_deactivated=true", count, wasRisk, resetCount)
 	if wasRisk {
@@ -12678,7 +13971,7 @@ func (a *App) runDeadDropModelStep(model ModelConfig, projectName, executionID, 
 		a.logf(result.ModelID, "warn", "DeadDrop could not seed ai_context.json before wave %d loop %d: %v", waveNumber, cycleNumber, err)
 	}
 	userContext, _ := os.ReadFile(filepath.Join(metaRoot, "user_context.json"))
-	transportProfile := adapters.ResolveTransportProfile(toAdapterModelConfig(model))
+	transportProfile := adapters.ResolveTransportProfile(a.adapterModelConfig(model))
 	contextMessage, _, err := buildMultimodalContextMessage(a.cfg.WorkRoot, []string{sourceRel}, "CURRENT DEADDROP FILE\nThis is the current source file for this DeadDrop pass. All edits must be made only to this uploaded DeadDrop file.", transportProfile, true, builderContextMaxTextBytes)
 	if err != nil {
 		result.Err = err
@@ -12893,7 +14186,7 @@ func sanitizeImportedFilename(name string) string {
 	return name
 }
 
-func unzipArchiveInto(zipPath, dstRoot string) (int, error) {
+func unzipArchiveInto(zipPath, dstRoot string, includeGitMetadata bool) (int, error) {
 	zr, err := zip.OpenReader(zipPath)
 	if err != nil {
 		return 0, err
@@ -12904,6 +14197,19 @@ func unzipArchiveInto(zipPath, dstRoot string) (int, error) {
 		name := filepath.Clean(filepath.FromSlash(f.Name))
 		if name == "" || name == "." || strings.HasPrefix(name, "..") || f.FileInfo().IsDir() || isZipSymlink(f) {
 			continue
+		}
+		if !includeGitMetadata {
+			parts := strings.Split(filepath.ToSlash(name), "/")
+			skipGit := false
+			for _, part := range parts {
+				if part == ".git" {
+					skipGit = true
+					break
+				}
+			}
+			if skipGit {
+				continue
+			}
 		}
 		target, err := safeJoin(dstRoot, name)
 		if err != nil {
@@ -12926,7 +14232,7 @@ func unzipArchiveInto(zipPath, dstRoot string) (int, error) {
 	return count, nil
 }
 
-func copyWorkingTreeInto(srcRoot, dstRoot string) (int, error) {
+func copyWorkingTreeInto(srcRoot, dstRoot string, includeGitMetadata bool) (int, error) {
 	files, err := collectWorkspaceFiles(srcRoot)
 	if err != nil {
 		return 0, err
@@ -12941,7 +14247,7 @@ func copyWorkingTreeInto(srcRoot, dstRoot string) (int, error) {
 				break
 			}
 		}
-		if skip {
+		if skip && !includeGitMetadata {
 			continue
 		}
 		target, err := safeJoin(dstRoot, rel)
@@ -13209,7 +14515,7 @@ func workModeApplyFileOpsToTmpWork(projectworkRoot, projectName string, ops []bu
 		return nil, draftSkipped, draftBlocked, nil, err
 	}
 	updateable := workModeExistingTmpWorkUpdateable(tmpWorkRoot, filteredOps, projectName)
-	changed, skipped, blocked, diffs, err := workModeApplyFileOps(tmpWorkRoot, projectName, filteredOps, artifacts, limits, updateable)
+	changed, skipped, blocked, diffs, err := workModeApplyFileOps(tmpWorkRoot, projectName, filteredOps, artifacts, limits, updateable, false)
 	skipped = append(draftSkipped, skipped...)
 	blocked = append(draftBlocked, blocked...)
 	if err != nil {
@@ -13439,6 +14745,7 @@ func (a *App) handleProjectImportUpload(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	defer src.Close()
+	includeGitMetadata, _ := strconv.ParseBool(strings.TrimSpace(r.FormValue("includeGitMetadata")))
 	name := sanitizeImportedFilename(header.Filename)
 	if strings.HasSuffix(strings.ToLower(name), ".zip") {
 		tmp, err := os.CreateTemp("", "agentgo-upload-*.zip")
@@ -13455,7 +14762,7 @@ func (a *App) handleProjectImportUpload(w http.ResponseWriter, r *http.Request) 
 		}
 		tmp.Close()
 		defer os.Remove(tmpPath)
-		count, err := unzipArchiveInto(tmpPath, projectRoot)
+		count, err := unzipArchiveInto(tmpPath, projectRoot, includeGitMetadata)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -13529,7 +14836,7 @@ func (a *App) handleProjectImportGit(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, message, http.StatusBadGateway)
 		return
 	}
-	count, err := copyWorkingTreeInto(cloneDir, projectRoot)
+	count, err := copyWorkingTreeInto(cloneDir, projectRoot, req.IncludeGitMetadata)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -15846,6 +17153,11 @@ func (a *App) deactivateUnselectedActiveBuilders(keep map[string]bool) {
 	if projectName != "" {
 		for _, modelID := range deactivated {
 			a.clearPendingMergeCount(projectName, modelID)
+		}
+	}
+	if len(deactivated) > 0 {
+		if err := a.syncActiveSessionFromRuntime(); err != nil {
+			a.logf("system", "warn", "Could not persist active session after Cypher Builder selection: %v", err)
 		}
 	}
 }
@@ -19788,6 +21100,9 @@ func (a *App) handleCreateProject(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	if !a.requireActiveSessionMatch(w, r) {
+		return
+	}
 	var req projectCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
@@ -19823,14 +21138,22 @@ func (a *App) handleCreateProject(w http.ResponseWriter, r *http.Request) {
 	} else if clearedReviewerReports > 0 {
 		a.logf("system", "info", "Cleared %d Observer report(s) after creating project %s", clearedReviewerReports, name)
 	}
-	a.logf("system", "info", "Created project %s", name)
+	session, err := a.rotateActiveSession(name)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	a.logf("system", "info", "Created project %s with active session %s", name, session.SessionID)
 	projects, _ := a.listProjects()
-	writeJSON(w, http.StatusOK, projectListResponse{ActiveProject: a.activeProject(), Projects: projects})
+	writeJSON(w, http.StatusOK, projectListResponse{ActiveProject: a.activeProject(), Projects: projects, SessionID: session.SessionID})
 }
 
 func (a *App) handleSelectProject(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !a.requireActiveSessionMatch(w, r) {
 		return
 	}
 	var req projectSelectRequest
@@ -19878,9 +21201,26 @@ func (a *App) handleSelectProject(w http.ResponseWriter, r *http.Request) {
 	} else if clearedReviewerReports > 0 {
 		a.logf("system", "info", "Cleared %d stale Observer report(s) for project %s after project switch", clearedReviewerReports, name)
 	}
-	a.logf("system", "info", "Selected active project %s", name)
+	var session activeSessionFile
+	if current, ok := a.activeSessionSnapshot(); !ok || previousProject != name {
+		session, err = a.rotateActiveSession(name)
+	} else {
+		if syncErr := a.syncActiveSessionFromRuntime(); syncErr != nil {
+			err = syncErr
+		} else {
+			session, _ = a.activeSessionSnapshot()
+			if session.SessionID == "" {
+				session = current
+			}
+		}
+	}
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	a.logf("system", "info", "Selected active project %s with active session %s", name, session.SessionID)
 	projects, _ = a.listProjects()
-	writeJSON(w, http.StatusOK, projectListResponse{ActiveProject: a.activeProject(), Projects: projects})
+	writeJSON(w, http.StatusOK, projectListResponse{ActiveProject: a.activeProject(), Projects: projects, SessionID: session.SessionID})
 }
 
 func (a *App) handleSessionUsage(w http.ResponseWriter, r *http.Request) {
@@ -20037,7 +21377,21 @@ func (a *App) handleSessionReset(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	if !a.requireActiveSessionMatch(w, r) {
+		return
+	}
 	diag := sessionResetDiagnosticsFromRequest(r)
+	_, projects, err := a.resetBrowserSession(diag, false)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, projectListResponse{ActiveProject: a.activeProject(), Projects: projects})
+}
+
+func (a *App) resetBrowserSession(diag sessionResetDiagnostics, establishNewSession bool) (activeSessionFile, []projectInfo, error) {
+	a.sessionResetMu.Lock()
+	defer a.sessionResetMu.Unlock()
 	activeProjectBefore := a.activeProject()
 	a.clearLogs()
 	if diag.Reason == "" {
@@ -20058,10 +21412,21 @@ func (a *App) handleSessionReset(w http.ResponseWriter, r *http.Request) {
 	a.resetProjectSessionState()
 	a.clearAllLastMergedFiles()
 	a.resetSessionTokenUsage()
+	var session activeSessionFile
+	var sessionErr error
+	if establishNewSession {
+		session, sessionErr = a.rotateActiveSession("")
+	} else {
+		sessionErr = a.clearActiveSession()
+	}
+	if sessionErr != nil {
+		a.logf("system", "warn", "Could not update active session file during session reset: %v", sessionErr)
+		return activeSessionFile{}, nil, sessionErr
+	}
 	activeProjectAfter := a.activeProject()
-	a.logf("system", "info", "Reset session state, cleared active project, cleared saved builder response cards plus observer reports, cleared session-scoped context selections, and reset estimated session token usage; reason=%q source=%q remote=%s activeProjectBefore=%q activeProjectAfter=%q clientActiveProject=%q clientPath=%q visibility=%q", diag.Reason, diag.Source, diag.RemoteAddr, activeProjectBefore, activeProjectAfter, diag.ClientActiveProject, diag.ClientPath, diag.VisibilityState)
+	a.logf("system", "info", "Reset session state, cleared active project, cleared saved builder response cards plus observer reports, cleared session-scoped context selections, and reset estimated session token usage; reason=%q source=%q remote=%s activeProjectBefore=%q activeProjectAfter=%q clientActiveProject=%q clientPath=%q visibility=%q newSession=%t", diag.Reason, diag.Source, diag.RemoteAddr, activeProjectBefore, activeProjectAfter, diag.ClientActiveProject, diag.ClientPath, diag.VisibilityState, establishNewSession)
 	projects, _ := a.listProjects()
-	writeJSON(w, http.StatusOK, projectListResponse{ActiveProject: a.activeProject(), Projects: projects})
+	return session, projects, nil
 }
 
 func (a *App) handleInitializeSkipLog(w http.ResponseWriter, r *http.Request) {
@@ -20092,6 +21457,9 @@ func (a *App) handleInitializeSkipLog(w http.ResponseWriter, r *http.Request) {
 func (a *App) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !a.requireActiveSessionMatch(w, r) {
 		return
 	}
 	var req projectUpdateRequest
@@ -20138,6 +21506,9 @@ func (a *App) handleDeleteProject(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	if !a.requireActiveSessionMatch(w, r) {
+		return
+	}
 	var req projectDeleteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
@@ -20170,6 +21541,10 @@ func (a *App) handleDeleteProject(w http.ResponseWriter, r *http.Request) {
 	}
 	if a.activeProject() == name {
 		if err := a.setActiveProject(""); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if err := a.clearActiveSession(); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -22728,6 +24103,16 @@ Use <strong> sparingly for inline labels and important terms. Use <em> for light
 
 Use <code> for paths, commands, filenames, JSON keys, and identifiers. Use <pre><code> for copy/paste blocks.
 
+CodeChange Rule - Code change highlighting is required when the reply shows edits, fixes, or additions to code supplied by the user. Keep the normal <pre><code> block, and inside that block wrap every changed or newly inserted line individually with exactly <span class="agentgo-code-change">...</span>. Leave unchanged lines unwrapped.
+
+The span belongs inside <pre><code> and does not replace the code block. Use one span per changed or newly inserted line. Do not wrap multiple lines in one span, the entire code block, unchanged lines, or surrounding prose.
+
+CodeChange Rule Example:
+<pre><code>const enabled = false;
+<span class="agentgo-code-change">const timeoutMs = 15000;</span>
+startAgentGO();
+</code></pre>
+
 When a reply has more than 3 distinct options, ideas, decisions, risks, or instructions, break them into labeled items such as <strong>aGO-01:</strong>, <strong>aGO-02:</strong>, and <strong>aGO-03:</strong> so the user, Builder, or Observer can reference them easily.
 
 Use aGO labels as temporary reply anchors only. Do not treat them as permanent approval IDs unless the user explicitly locks them.
@@ -23069,54 +24454,59 @@ type modelDefinitionResponse struct {
 }
 
 type modelDefinitionView struct {
-	ID                     int               `json:"id"`
-	Label                  string            `json:"label"`
-	StrictStructuredOutput *bool             `json:"strict_structured_output,omitempty"`
-	PromptMode             string            `json:"prompt_mode,omitempty"`
-	UseLowWeightPrompts    bool              `json:"use_low_weight_prompts,omitempty"`
-	UseUggPrompt           bool              `json:"use_ugg_prompt"`
-	VideoGeneration        bool              `json:"video_generation,omitempty"`
-	VideoPromptOnly        bool              `json:"video_prompt_only,omitempty"`
-	VideoStartFrame        bool              `json:"video_start_frame,omitempty"`
-	VideoEndFrame          bool              `json:"video_end_frame,omitempty"`
-	VideoIngredients       bool              `json:"video_ingredients,omitempty"`
-	VideoDuration          string            `json:"video_duration,omitempty"`
-	VideoAspectRatio       string            `json:"video_aspect_ratio,omitempty"`
-	VideoResolution        string            `json:"video_resolution,omitempty"`
-	VideoOutputFormat      string            `json:"video_output_format,omitempty"`
-	VideoFPS               string            `json:"video_fps,omitempty"`
-	VideoQuality           string            `json:"video_quality,omitempty"`
-	MeshGeneration         bool              `json:"mesh_generation,omitempty"`
-	MeshPromptOnly         bool              `json:"mesh_prompt_only,omitempty"`
-	MeshImageInput         bool              `json:"mesh_image_input,omitempty"`
-	MeshMultiImage         bool              `json:"mesh_multi_image,omitempty"`
-	MeshQuality            string            `json:"mesh_quality,omitempty"`
-	MeshOutputFormat       string            `json:"mesh_output_format,omitempty"`
-	Provider               string            `json:"provider"`
-	Adapter                string            `json:"adapter"`
-	WorkDir                string            `json:"work_dir"`
-	APIUser                string            `json:"api_user"`
-	APIKeyEnv              string            `json:"api_key_env,omitempty"`
-	AuthType               string            `json:"auth_type"`
-	AuthHeader             string            `json:"auth_header"`
-	BaseURL                string            `json:"base_url"`
-	APIPath                string            `json:"api_path"`
-	ModelName              string            `json:"model_name"`
-	MaxOutputTokens        int               `json:"max_output_tokens,omitempty"`
-	TimeoutSeconds         int               `json:"timeout_seconds,omitempty"`
-	RequestDefaults        RequestDefaults   `json:"request_defaults"`
-	ProviderOptions        map[string]any    `json:"provider_options"`
-	CapabilityMode         string            `json:"capability_mode,omitempty"`
-	Capabilities           ModelCapabilities `json:"capabilities"`
-	RunOrder               int               `json:"run_order,omitempty"`
-	MasterMindMemory       string            `json:"mastermind_memory,omitempty"`
-	MasterMindIdentity     string            `json:"mastermind_identity,omitempty"`
-	Notes                  string            `json:"notes"`
-	CreatedAt              string            `json:"created_at"`
-	UpdatedAt              string            `json:"updated_at"`
-	HasAPIPass             bool              `json:"has_api_pass"`
-	HasAPIKey              bool              `json:"has_api_key"`
-	HasHeaders             bool              `json:"has_headers"`
+	ID                       int               `json:"id"`
+	Label                    string            `json:"label"`
+	StrictStructuredOutput   *bool             `json:"strict_structured_output,omitempty"`
+	PromptMode               string            `json:"prompt_mode,omitempty"`
+	UseLowWeightPrompts      bool              `json:"use_low_weight_prompts,omitempty"`
+	UseUggPrompt             bool              `json:"use_ugg_prompt"`
+	VideoGeneration          bool              `json:"video_generation,omitempty"`
+	VideoPromptOnly          bool              `json:"video_prompt_only,omitempty"`
+	VideoStartFrame          bool              `json:"video_start_frame,omitempty"`
+	VideoEndFrame            bool              `json:"video_end_frame,omitempty"`
+	VideoIngredients         bool              `json:"video_ingredients,omitempty"`
+	VideoDuration            string            `json:"video_duration,omitempty"`
+	VideoAspectRatio         string            `json:"video_aspect_ratio,omitempty"`
+	VideoResolution          string            `json:"video_resolution,omitempty"`
+	VideoOutputFormat        string            `json:"video_output_format,omitempty"`
+	VideoFPS                 string            `json:"video_fps,omitempty"`
+	VideoQuality             string            `json:"video_quality,omitempty"`
+	MeshGeneration           bool              `json:"mesh_generation,omitempty"`
+	MeshPromptOnly           bool              `json:"mesh_prompt_only,omitempty"`
+	MeshImageInput           bool              `json:"mesh_image_input,omitempty"`
+	MeshMultiImage           bool              `json:"mesh_multi_image,omitempty"`
+	MeshQuality              string            `json:"mesh_quality,omitempty"`
+	MeshOutputFormat         string            `json:"mesh_output_format,omitempty"`
+	Provider                 string            `json:"provider"`
+	Adapter                  string            `json:"adapter"`
+	WorkDir                  string            `json:"work_dir"`
+	APIUser                  string            `json:"api_user"`
+	APIKeyEnv                string            `json:"api_key_env,omitempty"`
+	AuthType                 string            `json:"auth_type"`
+	AuthHeader               string            `json:"auth_header"`
+	BaseURL                  string            `json:"base_url"`
+	APIPath                  string            `json:"api_path"`
+	ModelName                string            `json:"model_name"`
+	MaxOutputTokens          int               `json:"max_output_tokens,omitempty"`
+	MaxOutputMode            string            `json:"max_output_mode"`
+	KnownMaxOutputTokens     int               `json:"known_max_output_tokens,omitempty"`
+	EffectiveMaxOutputTokens int               `json:"effective_max_output_tokens,omitempty"`
+	MaxOutputSource          string            `json:"max_output_source"`
+	SupportsMaxOutputTokens  bool              `json:"supports_max_output_tokens"`
+	TimeoutSeconds           int               `json:"timeout_seconds,omitempty"`
+	RequestDefaults          RequestDefaults   `json:"request_defaults"`
+	ProviderOptions          map[string]any    `json:"provider_options"`
+	CapabilityMode           string            `json:"capability_mode,omitempty"`
+	Capabilities             ModelCapabilities `json:"capabilities"`
+	RunOrder                 int               `json:"run_order,omitempty"`
+	MasterMindMemory         string            `json:"mastermind_memory,omitempty"`
+	MasterMindIdentity       string            `json:"mastermind_identity,omitempty"`
+	Notes                    string            `json:"notes"`
+	CreatedAt                string            `json:"created_at"`
+	UpdatedAt                string            `json:"updated_at"`
+	HasAPIPass               bool              `json:"has_api_pass"`
+	HasAPIKey                bool              `json:"has_api_key"`
+	HasHeaders               bool              `json:"has_headers"`
 }
 
 type modelMutationRequest struct {
@@ -23166,6 +24556,15 @@ type modelMutationRequest struct {
 	Capabilities           ModelCapabilities `json:"capabilities"`
 	RunOrder               *int              `json:"run_order,omitempty"`
 	Notes                  string            `json:"notes"`
+}
+
+type modelMaxOutputTokensUpdate struct {
+	ModelID         string `json:"modelId"`
+	MaxOutputTokens int    `json:"maxOutputTokens"`
+}
+
+type modelMaxOutputTokensRequest struct {
+	Models []modelMaxOutputTokensUpdate `json:"models"`
 }
 
 var slugCleaner = regexp.MustCompile(`[^a-z0-9_]+`)
@@ -23245,6 +24644,10 @@ func normalizeModelMutation(req modelMutationRequest) modelMutationRequest {
 		}
 		req.Headers[key] = value
 	}
+	probe := ModelConfig{Provider: req.Provider, Adapter: req.Adapter, ModelName: req.ModelName, VideoGeneration: req.VideoGeneration, MeshGeneration: req.MeshGeneration}
+	if !supportsSharedMaxOutputTokens(probe) {
+		req.MaxOutputTokens = 0
+	}
 	return req
 }
 
@@ -23271,6 +24674,9 @@ func validateModelMutation(req modelMutationRequest) error {
 	meshMode := req.MeshGeneration || normalizedMeshAdapterName(req.Adapter) != ""
 	if videoMode && meshMode {
 		return errors.New("choose either Video Generation or 3D Mesh Generation, not both. Create a separate model card for the other mode")
+	}
+	if req.MaxOutputTokens < 0 || req.MaxOutputTokens > 2000000 {
+		return errors.New("max output tokens must be between 0 and 2000000")
 	}
 	switch req.AuthType {
 	case "none", "bearer", "basic", "header_key", "fal_key", "google_adc":
@@ -23849,66 +25255,72 @@ func (a *App) duplicateModelDefinitionLocked(provider, adapter, modelName string
 	return false
 }
 
-func sanitizeModelDefinition(model ModelConfig) modelDefinitionView {
+func (a *App) sanitizeModelDefinition(model ModelConfig) modelDefinitionView {
+	resolution := resolveModelMaxOutputTokens(model, a.knownModelMaxOutputCatalog)
 	return modelDefinitionView{
-		ID:                     model.ID,
-		Label:                  model.Label,
-		StrictStructuredOutput: cloneBoolPointer(model.StrictStructuredOutput),
-		PromptMode:             model.PromptMode,
-		UseLowWeightPrompts:    model.UseLowWeightPrompts,
-		UseUggPrompt:           model.UseUggPrompt,
-		VideoGeneration:        model.VideoGeneration,
-		VideoPromptOnly:        model.VideoPromptOnly,
-		VideoStartFrame:        model.VideoStartFrame,
-		VideoEndFrame:          model.VideoEndFrame,
-		VideoIngredients:       model.VideoIngredients,
-		VideoDuration:          model.VideoDuration,
-		VideoAspectRatio:       model.VideoAspectRatio,
-		VideoResolution:        model.VideoResolution,
-		VideoOutputFormat:      model.VideoOutputFormat,
-		VideoFPS:               model.VideoFPS,
-		VideoQuality:           model.VideoQuality,
-		MeshGeneration:         model.MeshGeneration,
-		MeshPromptOnly:         model.MeshPromptOnly,
-		MeshImageInput:         model.MeshImageInput,
-		MeshMultiImage:         model.MeshMultiImage,
-		MeshQuality:            model.MeshQuality,
-		MeshOutputFormat:       model.MeshOutputFormat,
-		Provider:               model.Provider,
-		Adapter:                model.Adapter,
-		WorkDir:                model.WorkDir,
-		APIUser:                model.APIUser,
-		APIKeyEnv:              model.APIKeyEnv,
-		AuthType:               model.AuthType,
-		AuthHeader:             model.AuthHeader,
-		BaseURL:                model.BaseURL,
-		APIPath:                model.APIPath,
-		ModelName:              model.ModelName,
-		MaxOutputTokens:        model.MaxOutputTokens,
-		TimeoutSeconds:         model.TimeoutSeconds,
-		RequestDefaults:        model.RequestDefaults,
-		ProviderOptions:        model.ProviderOptions,
-		CapabilityMode:         model.CapabilityMode,
-		Capabilities:           model.Capabilities,
-		RunOrder:               model.RunOrder,
-		MasterMindMemory:       model.MasterMindMemory,
-		MasterMindIdentity:     model.MasterMindIdentity,
-		Notes:                  model.Notes,
-		CreatedAt:              model.CreatedAt,
-		UpdatedAt:              model.UpdatedAt,
-		HasAPIPass:             strings.TrimSpace(model.APIPass) != "",
-		HasAPIKey:              strings.TrimSpace(model.APIKey) != "",
-		HasHeaders:             len(model.Headers) > 0,
+		ID:                       model.ID,
+		Label:                    model.Label,
+		StrictStructuredOutput:   cloneBoolPointer(model.StrictStructuredOutput),
+		PromptMode:               model.PromptMode,
+		UseLowWeightPrompts:      model.UseLowWeightPrompts,
+		UseUggPrompt:             model.UseUggPrompt,
+		VideoGeneration:          model.VideoGeneration,
+		VideoPromptOnly:          model.VideoPromptOnly,
+		VideoStartFrame:          model.VideoStartFrame,
+		VideoEndFrame:            model.VideoEndFrame,
+		VideoIngredients:         model.VideoIngredients,
+		VideoDuration:            model.VideoDuration,
+		VideoAspectRatio:         model.VideoAspectRatio,
+		VideoResolution:          model.VideoResolution,
+		VideoOutputFormat:        model.VideoOutputFormat,
+		VideoFPS:                 model.VideoFPS,
+		VideoQuality:             model.VideoQuality,
+		MeshGeneration:           model.MeshGeneration,
+		MeshPromptOnly:           model.MeshPromptOnly,
+		MeshImageInput:           model.MeshImageInput,
+		MeshMultiImage:           model.MeshMultiImage,
+		MeshQuality:              model.MeshQuality,
+		MeshOutputFormat:         model.MeshOutputFormat,
+		Provider:                 model.Provider,
+		Adapter:                  model.Adapter,
+		WorkDir:                  model.WorkDir,
+		APIUser:                  model.APIUser,
+		APIKeyEnv:                model.APIKeyEnv,
+		AuthType:                 model.AuthType,
+		AuthHeader:               model.AuthHeader,
+		BaseURL:                  model.BaseURL,
+		APIPath:                  model.APIPath,
+		ModelName:                model.ModelName,
+		MaxOutputTokens:          model.MaxOutputTokens,
+		MaxOutputMode:            resolution.Mode,
+		KnownMaxOutputTokens:     resolution.KnownTokens,
+		EffectiveMaxOutputTokens: resolution.EffectiveTokens,
+		MaxOutputSource:          resolution.Source,
+		SupportsMaxOutputTokens:  resolution.Supported,
+		TimeoutSeconds:           model.TimeoutSeconds,
+		RequestDefaults:          model.RequestDefaults,
+		ProviderOptions:          model.ProviderOptions,
+		CapabilityMode:           model.CapabilityMode,
+		Capabilities:             model.Capabilities,
+		RunOrder:                 model.RunOrder,
+		MasterMindMemory:         model.MasterMindMemory,
+		MasterMindIdentity:       model.MasterMindIdentity,
+		Notes:                    model.Notes,
+		CreatedAt:                model.CreatedAt,
+		UpdatedAt:                model.UpdatedAt,
+		HasAPIPass:               strings.TrimSpace(model.APIPass) != "",
+		HasAPIKey:                strings.TrimSpace(model.APIKey) != "",
+		HasHeaders:               len(model.Headers) > 0,
 	}
 }
 
-func cloneModelDefinitions(models []ModelConfig) []modelDefinitionView {
+func (a *App) cloneModelDefinitions(models []ModelConfig) []modelDefinitionView {
 	if len(models) == 0 {
 		return []modelDefinitionView{}
 	}
 	out := make([]modelDefinitionView, 0, len(models))
 	for _, model := range models {
-		out = append(out, sanitizeModelDefinition(model))
+		out = append(out, a.sanitizeModelDefinition(model))
 	}
 	return out
 }
@@ -23920,7 +25332,7 @@ func (a *App) handleModelDefinitions(w http.ResponseWriter, r *http.Request) {
 	}
 	a.mu.RLock()
 	defer a.mu.RUnlock()
-	models := cloneModelDefinitions(a.cfg.Models)
+	models := a.cloneModelDefinitions(a.cfg.Models)
 	writeJSON(w, http.StatusOK, modelDefinitionResponse{SchemaVersion: a.modelSchemaVersion, TopID: a.modelTopID, Models: models})
 }
 
@@ -24520,6 +25932,75 @@ func (a *App) handleUpdateModel(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "unknown model", http.StatusNotFound)
 }
 
+func (a *App) handleModelMaxOutputTokens(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var req modelMaxOutputTokensRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	if len(req.Models) == 0 {
+		http.Error(w, "at least one model update is required", http.StatusBadRequest)
+		return
+	}
+	if len(req.Models) > 10 {
+		http.Error(w, "too many model updates", http.StatusBadRequest)
+		return
+	}
+	updates := map[string]int{}
+	for _, item := range req.Models {
+		modelID := strings.TrimSpace(item.ModelID)
+		if modelID == "" {
+			http.Error(w, "modelId is required", http.StatusBadRequest)
+			return
+		}
+		if item.MaxOutputTokens < 0 || item.MaxOutputTokens > 2000000 {
+			http.Error(w, "maxOutputTokens must be between 0 and 2000000", http.StatusBadRequest)
+			return
+		}
+		updates[modelID] = item.MaxOutputTokens
+	}
+
+	a.mu.Lock()
+	indexes := map[string]int{}
+	for i := range a.cfg.Models {
+		modelID := modelIDString(a.cfg.Models[i].ID)
+		if _, ok := updates[modelID]; ok {
+			indexes[modelID] = i
+		}
+	}
+	for modelID, value := range updates {
+		idx, ok := indexes[modelID]
+		if !ok {
+			a.mu.Unlock()
+			http.Error(w, "unknown model: "+modelID, http.StatusNotFound)
+			return
+		}
+		if value > 0 && !supportsSharedMaxOutputTokens(a.cfg.Models[idx]) {
+			a.mu.Unlock()
+			http.Error(w, "model does not support text Max Output: "+modelID, http.StatusBadRequest)
+			return
+		}
+	}
+	now := time.Now().UTC().Format(time.RFC3339)
+	for modelID, value := range updates {
+		idx := indexes[modelID]
+		a.cfg.Models[idx].MaxOutputTokens = value
+		a.cfg.Models[idx].UpdatedAt = now
+	}
+	if err := a.persistModelsLocked(); err != nil {
+		a.mu.Unlock()
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	a.mu.Unlock()
+	a.logf("system", "info", "Updated max output tokens for %d model(s)", len(updates))
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "updated": len(updates)})
+}
+
 func (a *App) handleModelRunOrder(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -24571,6 +26052,9 @@ func (a *App) handleModelRunOrder(w http.ResponseWriter, r *http.Request) {
 func (a *App) handleDeleteModel(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !a.requireActiveSessionMatch(w, r) {
 		return
 	}
 	var req struct {
@@ -24634,6 +26118,9 @@ func (a *App) handleDeleteModel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.mu.Unlock()
+	if err := a.syncActiveSessionFromRuntime(); err != nil {
+		a.logf("system", "warn", "Could not persist active session after model deletion: %v", err)
+	}
 	a.logf("system", "warn", "Deleted model %s (%s)", modelID, model.Label)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }

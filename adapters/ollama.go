@@ -31,7 +31,10 @@ func ollamaRequestOptions(model ModelConfig) map[string]any {
 			options[key] = value
 		}
 	}
-	for _, key := range []string{"num_ctx", "temperature", "top_k", "top_p", "repeat_penalty", "repeat_last_n", "num_predict", "seed", "min_p", "tfs_z", "num_gpu"} {
+	// num_predict is controlled by AgentGO's shared Max Output setting so the
+	// advanced provider-options JSON cannot silently override the official control.
+	delete(options, "num_predict")
+	for _, key := range []string{"num_ctx", "temperature", "top_k", "top_p", "repeat_penalty", "repeat_last_n", "seed", "min_p", "tfs_z", "num_gpu"} {
 		if _, exists := options[key]; exists {
 			continue
 		}
@@ -41,6 +44,9 @@ func ollamaRequestOptions(model ModelConfig) map[string]any {
 	}
 	if _, exists := options["temperature"]; !exists && model.RequestDefaults.Temperature > 0 {
 		options["temperature"] = model.RequestDefaults.Temperature
+	}
+	if model.MaxOutputTokens > 0 {
+		options["num_predict"] = model.MaxOutputTokens
 	}
 	if len(options) == 0 {
 		return nil

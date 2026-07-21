@@ -46,13 +46,14 @@ type openAIImageGenerationTool struct {
 }
 
 type openAIResponsesRequest struct {
-	Model        string                      `json:"model"`
-	Instructions string                      `json:"instructions,omitempty"`
-	Input        []openAIInputMessage        `json:"input,omitempty"`
-	Store        bool                        `json:"store"`
-	Text         map[string]any              `json:"text,omitempty"`
-	Tools        []openAIImageGenerationTool `json:"tools,omitempty"`
-	ToolChoice   *openAIResponsesToolChoice  `json:"tool_choice,omitempty"`
+	Model           string                      `json:"model"`
+	Instructions    string                      `json:"instructions,omitempty"`
+	Input           []openAIInputMessage        `json:"input,omitempty"`
+	Store           bool                        `json:"store"`
+	MaxOutputTokens int                         `json:"max_output_tokens,omitempty"`
+	Text            map[string]any              `json:"text,omitempty"`
+	Tools           []openAIImageGenerationTool `json:"tools,omitempty"`
+	ToolChoice      *openAIResponsesToolChoice  `json:"tool_choice,omitempty"`
 }
 
 type openAIResponsesResponse struct {
@@ -131,6 +132,7 @@ func buildOpenAIResponsesRequest(model ModelConfig, req Request, apiModel string
 		payload.ToolChoice = &openAIResponsesToolChoice{Type: "image_generation"}
 		return payload
 	}
+	payload.MaxOutputTokens = model.MaxOutputTokens
 	payload.Text = buildOpenAIResponsesTextFormat(model, req)
 	return payload
 }

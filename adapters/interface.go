@@ -91,6 +91,15 @@ type Request struct {
 	JSONSchema   map[string]any
 }
 
+// TokenUsage carries provider-reported token counts when an endpoint returns them.
+// Reported flags distinguish a genuine zero count from an unavailable count.
+type TokenUsage struct {
+	InputTokens    int
+	OutputTokens   int
+	InputReported  bool
+	OutputReported bool
+}
+
 // Response is the provider-neutral result returned by an adapter.
 type Response struct {
 	Text         string
@@ -100,6 +109,7 @@ type Response struct {
 	FileData     []byte
 	FileName     string
 	FileMIMEType string
+	TokenUsage   TokenUsage
 }
 
 // Adapter defines the one execution entry point every provider implementation must support.
@@ -113,5 +123,20 @@ func Execute(ctx context.Context, model ModelConfig, req Request) (Response, err
 	if err != nil {
 		return Response{}, err
 	}
-	return adapter.Execute(ctx, model, req)
+	response, err := adapter.Execute(ctx, model, req)
+	if err != nil {
+		return Response{}, err
+	}
+	if !response.TokenUsage.InputReported || !response.TokenUsage.OutputReported {
+		reported := extractReportedTokenUsage([]byte(response.RawBody))
+		if !response.TokenUsage.InputReported && reported.InputReported {
+			response.TokenUsage.InputTokens = reported.InputTokens
+			response.TokenUsage.InputReported = true
+		}
+		if !response.TokenUsage.OutputReported && reported.OutputReported {
+			response.TokenUsage.OutputTokens = reported.OutputTokens
+			response.TokenUsage.OutputReported = true
+		}
+	}
+	return response, nil
 }

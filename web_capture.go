@@ -17,6 +17,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"os"
 	"os/exec"
@@ -42,7 +43,7 @@ const (
 	workModeURLCaptureMaxTotalImage = 5_400_000
 	workModeURLCaptureTimeout       = 30 * time.Second
 	workModeURLBrowserTimeout       = 35 * time.Second
-	workModeURLCaptureUserAgent     = "AgentGO/0.1 URL Capture"
+	workModeURLCaptureUserAgent     = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 	workModeWebshotRootDir          = "tmp/webshots"
 )
 
@@ -195,76 +196,158 @@ func captureWorkModeURLWithWorkspace(ctx context.Context, req workModeURLCapture
 	if isYouTubeURL(req.URL) {
 		capture.Kind = "youtube"
 	}
+
 	needPage := req.IncludeMetadata || req.IncludeText || req.IncludeTranscript || req.IncludeVisualSamples
 	var resource fetchedWebResource
 	var doc htmlCaptureDocument
 	browserFallbackTried := false
-	if needPage {
-		fetched, err := fetchWorkModeURL(ctx, req.URL, workModeURLCaptureMaxHTMLBytes)
+	browserContentUsed := false
+
+	useRenderedDOM := func(rendered []byte, reason, contentType string) bool {
+		if len(rendered) == 0 {
+			return false
+		}
+		if blockReason := detectWorkModeURLBlockPage(rendered); blockReason != "" {
+			capture.Errors = append(capture.Errors, workModeURLBlockPageError(blockReason))
+			return false
+		}
+		renderedDoc, err := parseHTMLCaptureDocument(rendered, capture.FinalURL, contentType)
 		if err != nil {
-			capture.Errors = append(capture.Errors, "Could not retrieve the webpage: "+err.Error())
+			capture.Warnings = append(capture.Warnings, "AgentGO rendered a browser copy, but could not parse it: "+shortError(err))
+			return false
+		}
+		doc = renderedDoc
+		resource = fetchedWebResource{
+			RequestedURL: capture.RequestedURL,
+			FinalURL:     capture.FinalURL,
+			ContentType:  firstNonEmpty(contentType, "text/html"),
+			Body:         rendered,
+			Status:       http.StatusOK,
+		}
+		capture.PageText = ""
+		browserContentUsed = true
+		if strings.TrimSpace(reason) != "" {
+			capture.Warnings = append(capture.Warnings, "AgentGO used browser rendering because "+strings.TrimSpace(reason)+".")
+		}
+		return true
+	}
+
+	tryBrowserFallback := func(reason string) bool {
+		if browserFallbackTried {
+			return false
+		}
+		browserFallbackTried = true
+		rendered, err := renderWorkModeURLDOM(ctx, capture.FinalURL)
+		if err != nil {
+			capture.Warnings = append(capture.Warnings, "AgentGO could not render a browser fallback: "+shortError(err))
+			return false
+		}
+		return useRenderedDOM(rendered, reason, resource.ContentType)
+	}
+
+	if req.IncludeScreenshot {
+		browserFallbackTried = true
+		browserPass, err := captureWorkModeURLBrowserPass(ctx, capture.RequestedURL, workspace)
+		if err != nil {
+			capture.Errors = append(capture.Errors, "Could not capture the webpage in Chromium: "+shortError(err))
+		} else if browserPass.BlockReason != "" {
+			capture.Errors = append(capture.Errors, workModeURLBlockPageError(browserPass.BlockReason))
 		} else {
-			resource = fetched
-			capture.FinalURL = fetched.FinalURL
-			if warning := redirectHostWarning(req.URL, fetched.FinalURL); warning != "" {
+			capture.FinalURL = firstNonEmpty(browserPass.FinalURL, capture.RequestedURL)
+			if warning := redirectHostWarning(req.URL, capture.FinalURL); warning != "" {
 				capture.Warnings = append(capture.Warnings, warning)
 			}
-			if looksLikeHTML(fetched.ContentType, fetched.Body) {
-				doc, err = parseHTMLCaptureDocument(fetched.Body, fetched.FinalURL, fetched.ContentType)
-				if err != nil && (req.IncludeMetadata || req.IncludeText) {
-					browserFallbackTried = true
-					rendered, renderErr := renderWorkModeURLDOM(ctx, fetched.FinalURL)
-					if renderErr == nil && len(rendered) > 0 {
-						renderedDoc, renderedParseErr := parseHTMLCaptureDocument(rendered, fetched.FinalURL, fetched.ContentType)
-						if renderedParseErr == nil {
-							doc = renderedDoc
-							err = nil
-						} else {
-							capture.Errors = append(capture.Errors, "Could not parse the webpage HTML: "+err.Error())
-							capture.Warnings = append(capture.Warnings, "AgentGO rendered a browser copy, but could not parse it: "+shortError(renderedParseErr))
-						}
-					} else {
-						capture.Errors = append(capture.Errors, "Could not parse the webpage HTML: "+err.Error())
-						if renderErr != nil {
-							capture.Warnings = append(capture.Warnings, "AgentGO could not render a browser fallback: "+shortError(renderErr))
-						}
-					}
-				} else if err != nil {
-					capture.Errors = append(capture.Errors, "Could not parse the webpage HTML: "+err.Error())
+			if needPage {
+				useRenderedDOM(browserPass.DOM, "the selected screenshot requires a rendered page", "text/html")
+			}
+			if browserPass.Image != nil {
+				capture.Images = append(capture.Images, *browserPass.Image)
+			}
+		}
+	} else if needPage {
+		fetched, fetchErr := fetchWorkModeURL(ctx, req.URL, workModeURLCaptureMaxHTMLBytes)
+		resource = fetched
+		capture.FinalURL = firstNonEmpty(fetched.FinalURL, capture.RequestedURL)
+		if warning := redirectHostWarning(req.URL, capture.FinalURL); warning != "" {
+			capture.Warnings = append(capture.Warnings, warning)
+		}
+
+		fetchIssue := ""
+		if blockReason := detectWorkModeURLBlockPage(fetched.Body); blockReason != "" {
+			fetchIssue = "the lightweight request received a " + blockReason
+		} else if fetchErr != nil {
+			fetchIssue = "the lightweight request failed: " + shortError(fetchErr)
+		} else if looksLikeHTML(fetched.ContentType, fetched.Body) {
+			parsedDoc, parseErr := parseHTMLCaptureDocument(fetched.Body, capture.FinalURL, fetched.ContentType)
+			if parseErr != nil {
+				fetchIssue = "the fetched HTML could not be parsed: " + shortError(parseErr)
+			} else {
+				doc = parsedDoc
+			}
+		} else if req.IncludeText {
+			capture.PageText = truncateUTF8Bytes(strings.TrimSpace(string(fetched.Body)), workModeURLCaptureMaxTextBytes)
+		}
+
+		if fetchIssue != "" {
+			if !tryBrowserFallback(fetchIssue) {
+				if blockReason := detectWorkModeURLBlockPage(fetched.Body); blockReason != "" {
+					capture.Errors = append(capture.Errors, workModeURLBlockPageError(blockReason))
+				} else if fetchErr != nil {
+					capture.Errors = append(capture.Errors, "Could not retrieve the webpage: "+shortError(fetchErr))
+				} else {
+					capture.Errors = append(capture.Errors, "Could not use the webpage response: "+fetchIssue)
 				}
-			} else if req.IncludeText {
-				text := strings.TrimSpace(string(fetched.Body))
-				capture.PageText = truncateUTF8Bytes(text, workModeURLCaptureMaxTextBytes)
 			}
 		}
 	}
+
 	if capture.FinalURL == "" {
 		capture.FinalURL = capture.RequestedURL
 	}
-	if req.IncludeMetadata {
-		capture.Metadata = doc.Metadata
-		capture.Metadata.ContentType = firstNonEmpty(capture.Metadata.ContentType, resource.ContentType)
-		capture.Metadata.RetrievedAt = time.Now().UTC().Format(time.RFC3339)
+
+	applyRequestedDocumentData := func() {
+		if req.IncludeMetadata {
+			capture.Metadata = doc.Metadata
+			capture.Metadata.ContentType = firstNonEmpty(capture.Metadata.ContentType, resource.ContentType)
+			capture.Metadata.RetrievedAt = time.Now().UTC().Format(time.RFC3339)
+		}
+		if req.IncludeText && capture.PageText == "" && doc.Root != nil {
+			capture.PageText = extractReadableHTMLText(doc.Root, capture.FinalURL, workModeURLCaptureMaxTextBytes)
+		}
 	}
-	if req.IncludeText && capture.PageText == "" && doc.Root != nil {
-		capture.PageText = extractReadableHTMLText(doc.Root, capture.FinalURL, workModeURLCaptureMaxTextBytes)
-		if len(strings.TrimSpace(capture.PageText)) < 180 && !browserFallbackTried {
-			if rendered, err := renderWorkModeURLDOM(ctx, capture.FinalURL); err == nil && len(rendered) > 0 {
-				if renderedDoc, parseErr := parseHTMLCaptureDocument(rendered, capture.FinalURL, resource.ContentType); parseErr == nil {
-					if text := extractReadableHTMLText(renderedDoc.Root, capture.FinalURL, workModeURLCaptureMaxTextBytes); len(strings.TrimSpace(text)) > len(strings.TrimSpace(capture.PageText)) {
-						capture.PageText = text
-						if req.IncludeMetadata {
-							capture.Metadata = mergeURLCaptureMetadata(capture.Metadata, renderedDoc.Metadata)
-						}
-					}
-				}
-			} else if err != nil {
-				capture.Warnings = append(capture.Warnings, "The page exposed little readable text and AgentGO could not render a browser copy: "+shortError(err))
+	applyRequestedDocumentData()
+
+	if !req.IncludeScreenshot && !browserContentUsed && !browserFallbackTried {
+		needsRenderedFallback := false
+		reason := ""
+		if req.IncludeText && len(strings.TrimSpace(capture.PageText)) < 180 {
+			needsRenderedFallback = true
+			reason = "the lightweight response exposed little readable text"
+		}
+		if req.IncludeMetadata && !hasMeaningfulURLCaptureMetadata(capture.Metadata) {
+			needsRenderedFallback = true
+			if reason == "" {
+				reason = "the lightweight response exposed no useful page metadata"
 			}
 		}
-		if strings.TrimSpace(capture.PageText) == "" {
-			capture.Errors = append(capture.Errors, "AgentGO could not find readable page text.")
+		if needsRenderedFallback {
+			originalDoc := doc
+			originalResource := resource
+			originalText := capture.PageText
+			originalMetadata := capture.Metadata
+			if tryBrowserFallback(reason) {
+				applyRequestedDocumentData()
+			} else {
+				doc = originalDoc
+				resource = originalResource
+				capture.PageText = originalText
+				capture.Metadata = originalMetadata
+			}
 		}
+	}
+
+	if req.IncludeText && strings.TrimSpace(capture.PageText) == "" {
+		capture.Errors = append(capture.Errors, "AgentGO could not find readable page text.")
 	}
 	if req.IncludeTranscript && capture.Kind == "youtube" {
 		if len(resource.Body) == 0 {
@@ -273,20 +356,6 @@ func captureWorkModeURLWithWorkspace(ctx context.Context, req workModeURLCapture
 			capture.Errors = append(capture.Errors, "Could not collect the YouTube transcript: "+shortError(err))
 		} else {
 			capture.Transcript = truncateUTF8Bytes(transcript, workModeURLCaptureMaxTextBytes)
-		}
-	}
-	if req.IncludeScreenshot {
-		var imageData workModeURLCaptureImage
-		var err error
-		if workspace != nil {
-			imageData, err = captureWorkModeURLScreenshotInWorkspace(ctx, capture.FinalURL, *workspace)
-		} else {
-			imageData, err = captureWorkModeURLScreenshot(ctx, capture.FinalURL)
-		}
-		if err != nil {
-			capture.Errors = append(capture.Errors, "Could not capture a webpage screenshot: "+shortError(err))
-		} else {
-			capture.Images = append(capture.Images, imageData)
 		}
 	}
 	if req.IncludeVisualSamples && capture.Kind == "youtube" {
@@ -303,6 +372,52 @@ func captureWorkModeURLWithWorkspace(ctx context.Context, req workModeURLCapture
 	return capture
 }
 
+func hasMeaningfulURLCaptureMetadata(meta workModeURLCaptureMetadata) bool {
+	return strings.TrimSpace(firstNonEmpty(meta.Title, meta.Description, meta.SiteName, meta.Author, meta.Published, meta.Language)) != ""
+}
+
+func workModeURLBlockPageError(reason string) string {
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		reason = "website security block page"
+	}
+	return "Website preview was blocked by the website's security service (" + reason + "). AgentGO did not send the block page as website content."
+}
+
+func detectWorkModeURLBlockPage(body []byte) string {
+	if len(body) == 0 {
+		return ""
+	}
+	text := strings.ToLower(string(body[:minInt(len(body), 2_000_000)]))
+	text = compactWhitespace(html.UnescapeString(text))
+	contains := func(parts ...string) bool {
+		for _, part := range parts {
+			if !strings.Contains(text, part) {
+				return false
+			}
+		}
+		return true
+	}
+	switch {
+	case contains("sorry, you have been blocked", "cloudflare ray id"):
+		return "Cloudflare block page"
+	case contains("you are unable to access", "cloudflare ray id"):
+		return "Cloudflare block page"
+	case contains("attention required", "cloudflare"):
+		return "Cloudflare challenge page"
+	case contains("just a moment", "cf-chl-") || contains("checking your browser", "cloudflare"):
+		return "Cloudflare browser challenge"
+	case contains("enable javascript and cookies to continue", "cloudflare"):
+		return "Cloudflare browser challenge"
+	case contains("access denied", "reference #"):
+		return "access-denied page"
+	case contains("request unsuccessful", "incapsula incident id"):
+		return "Imperva security block page"
+	default:
+		return ""
+	}
+}
+
 func mergeURLCaptureMetadata(primary, secondary workModeURLCaptureMetadata) workModeURLCaptureMetadata {
 	primary.Title = firstNonEmpty(primary.Title, secondary.Title)
 	primary.Description = firstNonEmpty(primary.Description, secondary.Description)
@@ -317,8 +432,10 @@ func mergeURLCaptureMetadata(primary, secondary workModeURLCaptureMetadata) work
 }
 
 func fetchWorkModeURL(ctx context.Context, rawURL string, maxBytes int64) (fetchedWebResource, error) {
+	jar, _ := cookiejar.New(nil)
 	client := &http.Client{
 		Timeout: workModeURLCaptureTimeout,
+		Jar:     jar,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= 10 {
 				return errors.New("too many redirects")
@@ -332,14 +449,13 @@ func fetchWorkModeURL(ctx context.Context, rawURL string, maxBytes int64) (fetch
 	}
 	req.Header.Set("User-Agent", workModeURLCaptureUserAgent)
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/json,text/plain;q=0.9,*/*;q=0.7")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+	req.Header.Set("Cache-Control", "no-cache")
 	resp, err := client.Do(req)
 	if err != nil {
 		return fetchedWebResource{}, err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
-		return fetchedWebResource{}, fmt.Errorf("HTTP %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
-	}
 	data, err := io.ReadAll(io.LimitReader(resp.Body, maxBytes+1))
 	if err != nil {
 		return fetchedWebResource{}, err
@@ -351,13 +467,17 @@ func fetchWorkModeURL(ctx context.Context, rawURL string, maxBytes int64) (fetch
 	if resp.Request != nil && resp.Request.URL != nil {
 		finalURL = resp.Request.URL.String()
 	}
-	return fetchedWebResource{
+	resource := fetchedWebResource{
 		RequestedURL: rawURL,
 		FinalURL:     finalURL,
 		ContentType:  strings.TrimSpace(strings.Split(resp.Header.Get("Content-Type"), ";")[0]),
 		Body:         data,
 		Status:       resp.StatusCode,
-	}, nil
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
+		return resource, fmt.Errorf("HTTP %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
+	}
+	return resource, nil
 }
 
 func looksLikeHTML(contentType string, body []byte) bool {
@@ -658,8 +778,8 @@ func renderWorkModeURLDOM(ctx context.Context, rawURL string) ([]byte, error) {
 	defer os.RemoveAll(tmpDir)
 	browserCtx, cancel := context.WithTimeout(ctx, workModeURLBrowserTimeout)
 	defer cancel()
-	args := browserCommonArgs(tmpDir)
-	args = append(args, "--dump-dom", rawURL)
+	args := browserCommonArgsForExecutable(browser, tmpDir)
+	args = append(args, "--window-size=1440,1200", "--timeout=6000", "--dump-dom", rawURL)
 	outputPath := filepath.Join(tmpDir, "rendered.html")
 	logPath := filepath.Join(tmpDir, "browser.log")
 	outputFile, err := os.Create(outputPath)
@@ -696,6 +816,199 @@ func renderWorkModeURLDOM(ctx context.Context, rawURL string) ([]byte, error) {
 		return nil, errors.New("rendered DOM exceeded the capture limit")
 	}
 	return output, nil
+}
+
+type workModeURLBrowserPassResult struct {
+	DOM         []byte
+	FinalURL    string
+	Image       *workModeURLCaptureImage
+	BlockReason string
+}
+
+type workModeURLBrowserPassAttempt struct {
+	Mode          string
+	RunErr        error
+	ScreenshotErr error
+	Log           string
+	DOM           []byte
+	ProducedDOM   bool
+	ProducedImage bool
+}
+
+func captureWorkModeURLBrowserPass(ctx context.Context, rawURL string, workspace *workModeWebshotWorkspace) (workModeURLBrowserPassResult, error) {
+	browser, err := findAgentGOBrowserExecutable()
+	if err != nil {
+		return workModeURLBrowserPassResult{}, err
+	}
+
+	var resolved workModeWebshotWorkspace
+	var cleanupDirectory string
+	if workspace == nil {
+		cleanupDirectory, err = os.MkdirTemp("", "agentgo-browser-pass-")
+		if err != nil {
+			return workModeURLBrowserPassResult{}, err
+		}
+		defer os.RemoveAll(cleanupDirectory)
+		resolved = workModeWebshotWorkspace{Directory: cleanupDirectory}
+	} else {
+		resolved = *workspace
+	}
+	resolved.Directory = strings.TrimSpace(resolved.Directory)
+	if resolved.Directory == "" {
+		return workModeURLBrowserPassResult{}, errors.New("webpage browser workspace is not configured")
+	}
+	resolved.Directory, err = filepath.Abs(resolved.Directory)
+	if err != nil {
+		return workModeURLBrowserPassResult{}, err
+	}
+	if err := os.MkdirAll(resolved.Directory, 0o755); err != nil {
+		return workModeURLBrowserPassResult{}, err
+	}
+
+	workModeWebshotCaptureMu.Lock()
+	defer workModeWebshotCaptureMu.Unlock()
+
+	storedName, outputPath, err := nextWorkModeWebshotPath(resolved.Directory, resolved.Timestamp, resolved.Index, time.Now())
+	if err != nil {
+		return workModeURLBrowserPassResult{}, err
+	}
+	workDir, err := os.MkdirTemp(resolved.Directory, "browser-pass-work-")
+	if err != nil {
+		return workModeURLBrowserPassResult{}, err
+	}
+	defer os.RemoveAll(workDir)
+
+	retainOutput := false
+	defer func() {
+		if !retainOutput {
+			_ = os.Remove(outputPath)
+		}
+	}()
+	if resolved.Logf != nil {
+		resolved.Logf("Capturing Work Mode webpage once with browser %s using AgentGO work/tmp workspace %s", browser, outputPath)
+	}
+
+	newModeResult := runWorkModeURLBrowserPassAttempt(ctx, browser, rawURL, workDir, outputPath, "--headless=new", "new")
+	selected := newModeResult
+	if (!newModeResult.ProducedDOM || !newModeResult.ProducedImage) && ctx.Err() == nil {
+		_ = os.Remove(outputPath)
+		legacyResult := runWorkModeURLBrowserPassAttempt(ctx, browser, rawURL, workDir, outputPath, "--headless", "legacy")
+		selected = legacyResult
+		if !legacyResult.ProducedDOM || !legacyResult.ProducedImage {
+			_ = os.Remove(outputPath)
+			return workModeURLBrowserPassResult{}, browserPassAttemptFailure(newModeResult, legacyResult)
+		}
+	} else if !newModeResult.ProducedDOM || !newModeResult.ProducedImage {
+		_ = os.Remove(outputPath)
+		return workModeURLBrowserPassResult{}, browserPassAttemptFailure(newModeResult)
+	}
+
+	result := workModeURLBrowserPassResult{
+		DOM:      selected.DOM,
+		FinalURL: rawURL,
+	}
+	if blockReason := detectWorkModeURLBlockPage(selected.DOM); blockReason != "" {
+		result.BlockReason = blockReason
+		return result, nil
+	}
+
+	data, err := os.ReadFile(outputPath)
+	if err != nil {
+		return workModeURLBrowserPassResult{}, fmt.Errorf("browser produced a screenshot path that could not be read: %w", err)
+	}
+	compressed, err := compressCapturedImage(data, workModeURLCaptureMaxImageBytes)
+	if err != nil {
+		return workModeURLBrowserPassResult{}, err
+	}
+	host := safeCaptureFilePart(hostnameFromURL(rawURL))
+	if host == "" {
+		host = "webpage"
+	}
+	imageData := workModeURLCaptureImage{
+		Name:      host + "-screenshot.jpg",
+		Label:     "Webpage screenshot",
+		MIMEType:  "image/jpeg",
+		Data:      base64.StdEncoding.EncodeToString(compressed),
+		SizeBytes: int64(len(compressed)),
+	}
+	if resolved.Persistent {
+		imageData.StoredName = storedName
+		imageData.StoredPath = filepath.ToSlash(filepath.Join(filepath.FromSlash(resolved.WorkPathPrefix), storedName))
+		retainOutput = true
+	}
+	result.Image = &imageData
+	return result, nil
+}
+
+func runWorkModeURLBrowserPassAttempt(ctx context.Context, browser, rawURL, tmpDir, outputPath, headlessArg, modeLabel string) workModeURLBrowserPassAttempt {
+	result := workModeURLBrowserPassAttempt{Mode: modeLabel}
+	browserCtx, cancel := context.WithTimeout(ctx, workModeURLBrowserTimeout)
+	defer cancel()
+
+	profileDir := filepath.Join(tmpDir, "profile-"+modeLabel)
+	args := browserCommonArgsWithHeadlessForExecutable(browser, profileDir, headlessArg)
+	args = append(args,
+		"--window-size=1440,1200",
+		"--hide-scrollbars",
+		"--timeout=6000",
+		"--run-all-compositor-stages-before-draw",
+		"--dump-dom",
+		"--screenshot="+outputPath,
+		rawURL,
+	)
+	domPath := filepath.Join(tmpDir, "rendered-"+modeLabel+".html")
+	logPath := filepath.Join(tmpDir, "browser-pass-"+modeLabel+".log")
+	domFile, err := os.Create(domPath)
+	if err != nil {
+		result.RunErr = err
+		return result
+	}
+	logFile, err := os.Create(logPath)
+	if err != nil {
+		_ = domFile.Close()
+		result.RunErr = err
+		return result
+	}
+	cmd := exec.Command(browser, args...)
+	cmd.Stdout = domFile
+	cmd.Stderr = logFile
+	result.RunErr = runBrowserCommand(browserCtx, cmd)
+	_ = domFile.Close()
+	_ = logFile.Close()
+
+	detailBytes, _ := os.ReadFile(logPath)
+	result.Log = strings.TrimSpace(string(detailBytes))
+	if domBytes, readErr := os.ReadFile(domPath); readErr == nil && len(domBytes) > 0 && len(domBytes) <= workModeURLCaptureMaxHTMLBytes {
+		result.DOM = domBytes
+		result.ProducedDOM = true
+	}
+	result.ScreenshotErr = waitForStableNonEmptyFile(ctx, outputPath, workModeURLScreenshotFileWait, workModeURLScreenshotPollInterval)
+	result.ProducedImage = result.ScreenshotErr == nil
+	return result
+}
+
+func browserPassAttemptFailure(attempts ...workModeURLBrowserPassAttempt) error {
+	parts := make([]string, 0, len(attempts))
+	for _, attempt := range attempts {
+		details := make([]string, 0, 4)
+		if attempt.RunErr != nil {
+			details = append(details, "process error: "+attempt.RunErr.Error())
+		}
+		if !attempt.ProducedDOM {
+			details = append(details, "browser did not return rendered DOM")
+		}
+		if attempt.ScreenshotErr != nil {
+			details = append(details, "screenshot check: "+attempt.ScreenshotErr.Error())
+		}
+		if attempt.Log != "" {
+			details = append(details, "browser output: "+attempt.Log)
+		}
+		if len(details) == 0 {
+			details = append(details, "browser did not complete the combined DOM and screenshot capture")
+		}
+		parts = append(parts, attempt.Mode+" headless attempt: "+strings.Join(details, "; "))
+	}
+	return errors.New("browser exited without completing a single-pass webpage capture. " + strings.Join(parts, " | "))
 }
 
 func (a *App) workModeWebshotWorkspace(projectName string) (workModeWebshotWorkspace, error) {
@@ -981,7 +1294,15 @@ func browserCommonArgs(profileDir string) []string {
 	return browserCommonArgsWithHeadless(profileDir, "--headless=new")
 }
 
+func browserCommonArgsForExecutable(browser, profileDir string) []string {
+	return browserCommonArgsWithHeadlessForExecutable(browser, profileDir, "--headless=new")
+}
+
 func browserCommonArgsWithHeadless(profileDir, headlessArg string) []string {
+	return browserCommonArgsWithHeadlessForExecutable("", profileDir, headlessArg)
+}
+
+func browserCommonArgsWithHeadlessForExecutable(browser, profileDir, headlessArg string) []string {
 	if strings.TrimSpace(headlessArg) == "" {
 		headlessArg = "--headless=new"
 	}
@@ -991,17 +1312,49 @@ func browserCommonArgsWithHeadless(profileDir, headlessArg string) []string {
 		"--disable-dev-shm-usage",
 		"--disable-crash-reporter",
 		"--disable-breakpad",
-		"--disable-extensions",
 		"--no-first-run",
 		"--no-default-browser-check",
-		"--disable-background-networking",
-		"--disable-component-update",
+		"--lang=en-US",
 		"--user-data-dir=" + profileDir,
+	}
+	if userAgent := versionMatchedBrowserUserAgent(browser); userAgent != "" {
+		args = append(args, "--user-agent="+userAgent)
 	}
 	if runtime.GOOS != "windows" && os.Geteuid() == 0 {
 		args = append(args, "--no-sandbox")
 	}
 	return args
+}
+
+func versionMatchedBrowserUserAgent(browser string) string {
+	browser = strings.TrimSpace(browser)
+	if browser == "" {
+		return ""
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	output, err := exec.CommandContext(ctx, browser, "--version").CombinedOutput()
+	if err != nil || len(output) == 0 {
+		return ""
+	}
+	versionMatch := regexp.MustCompile(`(?i)(?:chrome|chromium|edge)[^0-9]*([0-9]+)(?:\.[0-9]+){0,3}`).FindStringSubmatch(string(output))
+	if len(versionMatch) < 2 {
+		return ""
+	}
+	major := versionMatch[1]
+	platform := "X11; Linux x86_64"
+	switch runtime.GOOS {
+	case "windows":
+		platform = "Windows NT 10.0; Win64; x64"
+	case "darwin":
+		platform = "Macintosh; Intel Mac OS X 10_15_7"
+	}
+	userAgent := "Mozilla/5.0 (" + platform + ") AppleWebKit/537.36 (KHTML, like Gecko) Chrome/" + major + ".0.0.0 Safari/537.36"
+	browserIdentity := strings.ToLower(browser + " " + string(output))
+	if strings.Contains(browserIdentity, "edge") || strings.Contains(browserIdentity, "msedge") {
+		userAgent += " Edg/" + major + ".0.0.0"
+	}
+	return userAgent
 }
 
 func findAgentGOBrowserExecutable() (string, error) {

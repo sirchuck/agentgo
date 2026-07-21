@@ -193,6 +193,7 @@ type outfitApplyResponse struct {
 	Outfit             OutfitView `json:"outfit"`
 	ActiveProject      string     `json:"activeProject"`
 	MissingProjectName string     `json:"missingProjectName,omitempty"`
+	SessionID          string     `json:"sessionId,omitempty"`
 }
 
 func normalizeOutfitRecord(in OutfitRecord) OutfitRecord {
@@ -889,6 +890,7 @@ func (a *App) clearExecutionStateForOutfitLoad() {
 }
 
 func (a *App) applyOutfitState(outfit OutfitRecord) (string, string, error) {
+	previousProject := a.activeProject()
 	outfit = a.prepareOutfitRecord(outfit)
 	if err := a.validateOutfitForApply(outfit); err != nil {
 		return "", "", err
@@ -955,6 +957,21 @@ func (a *App) applyOutfitState(outfit OutfitRecord) (string, string, error) {
 			return "", missingProjectName, err
 		}
 		a.logf("system", "info", "Reset ai_context.json to strict empty memory and reviewer_context.json to {} for %d Outfit-activated model(s) in project %s", resetCount, projectName)
+	}
+
+	if projectName == "" {
+		if err := a.clearActiveSession(); err != nil {
+			return "", missingProjectName, err
+		}
+	} else if _, ok := a.activeSessionSnapshot(); !ok || previousProject != projectName {
+		if _, err := a.rotateActiveSession(projectName); err != nil {
+			return "", missingProjectName, err
+		}
+		if err := a.syncActiveSessionFromRuntime(); err != nil {
+			return "", missingProjectName, err
+		}
+	} else if err := a.syncActiveSessionFromRuntime(); err != nil {
+		return "", missingProjectName, err
 	}
 	return projectName, missingProjectName, nil
 }
@@ -1261,6 +1278,9 @@ func (a *App) handleApplyOutfit(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	if !a.requireActiveSessionMatch(w, r) {
+		return
+	}
 	var req outfitIDRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
@@ -1277,5 +1297,6 @@ func (a *App) handleApplyOutfit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.logf("system", "info", "Loaded outfit %s (%s)", outfit.ID, outfit.Name)
-	writeJSON(w, http.StatusOK, outfitApplyResponse{Outfit: a.outfitView(outfit), ActiveProject: activeProject, MissingProjectName: missingProjectName})
+	session, _ := a.activeSessionSnapshot()
+	writeJSON(w, http.StatusOK, outfitApplyResponse{Outfit: a.outfitView(outfit), ActiveProject: activeProject, MissingProjectName: missingProjectName, SessionID: session.SessionID})
 }

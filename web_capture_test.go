@@ -173,6 +173,202 @@ func TestCaptureWorkModeURLFromHTMLServer(t *testing.T) {
 	}
 }
 
+func TestCaptureWorkModeURLUsesSingleBrowserPassWhenScreenshotSelected(t *testing.T) {
+	withFastScreenshotPolling(t)
+	pngData, err := base64.StdEncoding.DecodeString("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=")
+	if err != nil {
+		t.Fatalf("decode PNG fixture: %v", err)
+	}
+	fixture := filepath.Join(t.TempDir(), "fixture.png")
+	if err := os.WriteFile(fixture, pngData, 0o644); err != nil {
+		t.Fatalf("write PNG fixture: %v", err)
+	}
+	calls := filepath.Join(t.TempDir(), "browser-calls.txt")
+	browser := writeFakeBrowserScript(t, `
+if [ "${1:-}" = "--version" ]; then
+  echo "Chromium 150.0.0.0"
+  exit 0
+fi
+output=""
+target=""
+for arg in "$@"; do
+  case "$arg" in
+    --screenshot=*) output="${arg#--screenshot=}" ;;
+    http://*|https://*) target="$arg" ;;
+  esac
+done
+printf '%s\n' "$target" >> "$FAKE_BROWSER_CALLS"
+cp "$FAKE_BROWSER_PNG" "$output"
+cat <<'EOF'
+<!doctype html><html lang="en"><head><title>Rendered Product</title><meta name="description" content="Rendered product metadata"><link rel="canonical" href="https://example.com/products/rendered"></head><body><main><h1>Rendered Product</h1><p>This rendered product page contains enough useful visible text for AgentGO to send to the AI from the same Chromium navigation that produced the screenshot. The browser pass should be used exactly once and the lightweight HTTP fetch should not run first.</p></main></body></html>
+EOF
+exit 0`)
+	t.Setenv("AGENTGO_BROWSER_PATH", browser)
+	t.Setenv("FAKE_BROWSER_CALLS", calls)
+	t.Setenv("FAKE_BROWSER_PNG", fixture)
+
+	hits := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits++
+		_, _ = w.Write([]byte("unexpected lightweight fetch"))
+	}))
+	defer server.Close()
+
+	capture := captureWorkModeURL(context.Background(), workModeURLCaptureRequest{
+		URL:               server.URL + "/products/rendered",
+		IncludeMetadata:   true,
+		IncludeText:       true,
+		IncludeScreenshot: true,
+	})
+	if hits != 0 {
+		t.Fatalf("lightweight fetch count = %d, want 0 when screenshot is selected", hits)
+	}
+	if len(capture.Errors) != 0 {
+		t.Fatalf("capture errors: %v", capture.Errors)
+	}
+	if capture.Metadata.Title != "Rendered Product" || !strings.Contains(capture.PageText, "same Chromium navigation") {
+		t.Fatalf("browser DOM was not used for metadata/text: %#v\n%s", capture.Metadata, capture.PageText)
+	}
+	if len(capture.Images) != 1 || capture.Images[0].Data == "" {
+		t.Fatalf("browser screenshot missing: %#v", capture.Images)
+	}
+	callData, err := os.ReadFile(calls)
+	if err != nil {
+		t.Fatalf("read browser calls: %v", err)
+	}
+	if got := strings.Fields(string(callData)); len(got) != 1 || got[0] != server.URL+"/products/rendered" {
+		t.Fatalf("browser page navigations = %q, want one", string(callData))
+	}
+}
+
+func TestCaptureWorkModeURLUsesLightweightFetchForMetadataAndText(t *testing.T) {
+	hits := 0
+	userAgent := ""
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits++
+		userAgent = r.Header.Get("User-Agent")
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<!doctype html><html><head><title>Fetch Product</title><meta name="description" content="Fetched product metadata"></head><body><main><h1>Fetch Product</h1><p>This ordinary server-rendered page contains enough useful readable text for AgentGO to complete metadata and text collection using one lightweight HTTP request without starting Chromium or requesting a screenshot.</p></main></body></html>`))
+	}))
+	defer server.Close()
+
+	capture := captureWorkModeURL(context.Background(), workModeURLCaptureRequest{
+		URL:             server.URL + "/product",
+		IncludeMetadata: true,
+		IncludeText:     true,
+	})
+	if hits != 1 {
+		t.Fatalf("lightweight fetch count = %d, want 1", hits)
+	}
+	if len(capture.Errors) != 0 {
+		t.Fatalf("capture errors: %v", capture.Errors)
+	}
+	if !strings.HasPrefix(userAgent, "Mozilla/5.0") {
+		t.Fatalf("lightweight fetch did not use a browser-shaped user agent: %q", userAgent)
+	}
+	if capture.Metadata.Title != "Fetch Product" || !strings.Contains(capture.PageText, "lightweight HTTP request") {
+		t.Fatalf("unexpected capture: %#v\n%s", capture.Metadata, capture.PageText)
+	}
+	if len(capture.Images) != 0 {
+		t.Fatalf("metadata/text-only capture unexpectedly included images: %#v", capture.Images)
+	}
+}
+
+func TestCaptureWorkModeURLFallsBackToBrowserAfterBlockedFetch(t *testing.T) {
+	browserCalls := filepath.Join(t.TempDir(), "browser-calls.txt")
+	browser := writeFakeBrowserScript(t, `
+if [ "${1:-}" = "--version" ]; then
+  echo "Chromium 150.0.0.0"
+  exit 0
+fi
+target=""
+for arg in "$@"; do
+  case "$arg" in http://*|https://*) target="$arg" ;; esac
+done
+printf '%s\n' "$target" >> "$FAKE_BROWSER_CALLS"
+cat <<'EOF'
+<!doctype html><html><head><title>Browser Fallback Product</title><meta name="description" content="Browser-rendered fallback metadata"></head><body><main><h1>Browser Fallback Product</h1><p>The lightweight request received a security block page, so AgentGO retried once in Chromium and collected this useful rendered page text instead of sending the block response to the AI.</p></main></body></html>
+EOF
+exit 0`)
+	t.Setenv("AGENTGO_BROWSER_PATH", browser)
+	t.Setenv("FAKE_BROWSER_CALLS", browserCalls)
+
+	hits := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits++
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`<!doctype html><html><head><title>Sorry, you have been blocked</title></head><body>You are unable to access this website. Cloudflare Ray ID: test123</body></html>`))
+	}))
+	defer server.Close()
+
+	capture := captureWorkModeURL(context.Background(), workModeURLCaptureRequest{
+		URL:             server.URL + "/blocked",
+		IncludeMetadata: true,
+		IncludeText:     true,
+	})
+	if hits != 1 {
+		t.Fatalf("lightweight fetch count = %d, want 1", hits)
+	}
+	if len(capture.Errors) != 0 {
+		t.Fatalf("browser fallback should recover without errors: %v", capture.Errors)
+	}
+	if capture.Metadata.Title != "Browser Fallback Product" || !strings.Contains(capture.PageText, "retried once in Chromium") {
+		t.Fatalf("browser fallback content missing: %#v\n%s", capture.Metadata, capture.PageText)
+	}
+	if !strings.Contains(strings.Join(capture.Warnings, " "), "used browser rendering") {
+		t.Fatalf("browser fallback warning missing: %v", capture.Warnings)
+	}
+	callData, err := os.ReadFile(browserCalls)
+	if err != nil {
+		t.Fatalf("read browser calls: %v", err)
+	}
+	if got := strings.Fields(string(callData)); len(got) != 1 || got[0] != server.URL+"/blocked" {
+		t.Fatalf("browser fallback navigations = %q, want one", string(callData))
+	}
+}
+
+func TestCaptureWorkModeURLRejectsBrowserBlockPage(t *testing.T) {
+	withFastScreenshotPolling(t)
+	pngData, err := base64.StdEncoding.DecodeString("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=")
+	if err != nil {
+		t.Fatalf("decode PNG fixture: %v", err)
+	}
+	fixture := filepath.Join(t.TempDir(), "fixture.png")
+	if err := os.WriteFile(fixture, pngData, 0o644); err != nil {
+		t.Fatalf("write PNG fixture: %v", err)
+	}
+	browser := writeFakeBrowserScript(t, `
+if [ "${1:-}" = "--version" ]; then
+  echo "Chromium 150.0.0.0"
+  exit 0
+fi
+output=""
+for arg in "$@"; do
+  case "$arg" in --screenshot=*) output="${arg#--screenshot=}" ;; esac
+done
+cp "$FAKE_BROWSER_PNG" "$output"
+cat <<'EOF'
+<!doctype html><html><head><title>Sorry, you have been blocked</title></head><body><h1>Sorry, you have been blocked</h1><p>You are unable to access superhivemarket.com</p><footer>Cloudflare Ray ID: test123</footer></body></html>
+EOF
+exit 0`)
+	t.Setenv("AGENTGO_BROWSER_PATH", browser)
+	t.Setenv("FAKE_BROWSER_PNG", fixture)
+
+	capture := captureWorkModeURL(context.Background(), workModeURLCaptureRequest{
+		URL:               "https://superhivemarket.com/products/auto-rig-pro",
+		IncludeMetadata:   true,
+		IncludeText:       true,
+		IncludeScreenshot: true,
+	})
+	if len(capture.Errors) == 0 || !strings.Contains(strings.Join(capture.Errors, " "), "Cloudflare block page") {
+		t.Fatalf("expected clear Cloudflare block error, got %v", capture.Errors)
+	}
+	if capture.PageText != "" || hasMeaningfulURLCaptureMetadata(capture.Metadata) || len(capture.Images) != 0 {
+		t.Fatalf("block page was treated as valid content: metadata=%#v text=%q images=%d", capture.Metadata, capture.PageText, len(capture.Images))
+	}
+}
+
 func TestHTMLCaptureToleratesBrowserHTMLThatIsNotXML(t *testing.T) {
 	htmlDoc := `<!doctype html><html lang=en><head><title>Loose &amp; Valid HTML</title>
 <meta name=description content="A browser-valid page with loose markup">
@@ -205,9 +401,18 @@ func TestWorkModeCodeBlocksDecodeEntitiesBeforeDisplayAndCopy(t *testing.T) {
 	templateText := string(raw)
 	for _, required := range []string{
 		"function decodeAgentGOCodeText(node)",
+		"function isAgentGOCodeChangeMarker(node)",
+		"String(node.getAttribute('class') || '').trim() !== 'agentgo-code-change'",
+		"Array.from(node.attributes || []).every(attr => String(attr.name || '').toLowerCase() === 'class')",
+		"function appendSanitizedAgentGOCodeContent(target, source)",
+		"marker.className = 'agentgo-code-change'",
+		"marker.textContent = child.textContent || ''",
 		"decoder.innerHTML = source.replace(/<\\/textarea/gi, '&lt;/textarea')",
-		"el.textContent = decodeAgentGOCodeText(node)",
+		"if (hasChangeMarker) appendSanitizedAgentGOCodeContent(el, node)",
+		"else el.textContent = decodeAgentGOCodeText(node)",
+		".work-mode-message.ai pre code .agentgo-code-change{color:#FFE27C}",
 		"const text = pre ? String(pre.textContent || '') : ''",
+		"const preview = content ? `<pre class=\"work-mode-file-output-pre\">${escapeHtml(content)}</pre>` : ''",
 	} {
 		if !strings.Contains(templateText, required) {
 			t.Fatalf("Work Mode code rendering regression guard missing %q", required)
@@ -216,6 +421,8 @@ func TestWorkModeCodeBlocksDecodeEntitiesBeforeDisplayAndCopy(t *testing.T) {
 	for _, forbidden := range []string{
 		"hasElementChild ? (node.innerHTML || '') : (node.textContent || '')",
 		"const text = pre ? String(pre.innerHTML || '') : ''",
+		"marker.innerHTML",
+		"sanitizeAgentGOReplyHTML(content)",
 	} {
 		if strings.Contains(templateText, forbidden) {
 			t.Fatalf("Work Mode code rendering still contains unsafe entity-preserving path %q", forbidden)
@@ -665,6 +872,62 @@ func TestWorkModeTemporaryAttachmentStorePreservesOriginalAndPayload(t *testing.
 	}
 }
 
+func TestToastPositionContrastAndKnowledgeToggleLayering(t *testing.T) {
+	templateBytes, err := os.ReadFile("templates/index.html")
+	if err != nil {
+		t.Fatalf("read template: %v", err)
+	}
+	templateText := string(templateBytes)
+
+	toastStart := strings.Index(templateText, ".toast {")
+	if toastStart < 0 {
+		t.Fatal("toast CSS block not found")
+	}
+	toastEnd := strings.Index(templateText[toastStart:], ".token-usage-display {")
+	if toastEnd < 0 {
+		t.Fatal("toast CSS block end not found")
+	}
+	toastCSS := templateText[toastStart : toastStart+toastEnd]
+	for _, required := range []string{
+		"top: 20px;",
+		"transform: translateX(-50%) translateY(-24px);",
+		"pointer-events: none;",
+		"background: rgba(17, 24, 39, 0.98);",
+		"border-left: 4px solid #f5a6d7;",
+		"border-left-color: #ffe27c;",
+		"color: #fff7dc;",
+	} {
+		if !strings.Contains(toastCSS, required) {
+			t.Fatalf("toast CSS missing %q", required)
+		}
+	}
+	for _, forbidden := range []string{
+		"bottom: 24px;",
+		"translateY(20px)",
+		"background: rgba(16, 32, 58, 0.94);",
+	} {
+		if strings.Contains(toastCSS, forbidden) {
+			t.Fatalf("toast CSS still contains old styling %q", forbidden)
+		}
+	}
+
+	knowledgeStart := strings.Index(templateText, ".knowledge-toggle-btn {")
+	if knowledgeStart < 0 {
+		t.Fatal("knowledge toggle CSS block not found")
+	}
+	knowledgeEnd := strings.Index(templateText[knowledgeStart:], ".knowledge-toggle-btn:hover")
+	if knowledgeEnd < 0 {
+		t.Fatal("knowledge toggle CSS block end not found")
+	}
+	knowledgeCSS := templateText[knowledgeStart : knowledgeStart+knowledgeEnd]
+	if !strings.Contains(knowledgeCSS, "z-index: 1600;") {
+		t.Fatal("knowledge toggle must use z-index 1600")
+	}
+	if strings.Contains(knowledgeCSS, "z-index: 2600;") {
+		t.Fatal("knowledge toggle still uses z-index 2600")
+	}
+}
+
 func TestAgentGOStylingPaletteAndWorkModeWebshotUI(t *testing.T) {
 	promptBytes, err := os.ReadFile("system_prompts/agentgo_styling.txt")
 	if err != nil {
@@ -674,7 +937,7 @@ func TestAgentGOStylingPaletteAndWorkModeWebshotUI(t *testing.T) {
 	if prompt != strings.TrimSpace(defaultAgentGOStylingPrompt) {
 		t.Fatal("built-in styling prompt and system_prompts/agentgo_styling.txt are out of sync")
 	}
-	for _, required := range []string{"green #7EE7A8", "yellow #FFE27C", "orange #FF9900", "red #FF9696", `<span style="color:#RRGGBB">`} {
+	for _, required := range []string{"green #7EE7A8", "yellow #FFE27C", "orange #FF9900", "red #FF9696", `<span style="color:#RRGGBB">`, `CodeChange Rule - Code change highlighting is required`, `Keep the normal <pre><code> block`, `<span class="agentgo-code-change">...</span>`, `The span belongs inside <pre><code>`, `Use one span per changed or newly inserted line.`, `CodeChange Rule Example:`, `<span class="agentgo-code-change">const timeoutMs = 15000;</span>`} {
 		if !strings.Contains(prompt, required) {
 			t.Fatalf("styling prompt missing %q", required)
 		}
@@ -692,13 +955,29 @@ func TestAgentGOStylingPaletteAndWorkModeWebshotUI(t *testing.T) {
 		"appendWorkModeMessage('user', prompt, { urlCaptures: suppliedURLCaptures, attachments: tempAttachmentSnapshots })",
 		"AgentGO auto-compress image uploads",
 		"renderWorkModeMessageAttachments(msg.attachments)",
-		"ImgCompress: On",
+		"ImgPress: On",
+		"Image compression can be toggled on or off in settings",
+		"RMode: ${mode.label}",
+		"Response mode defines how AI will respond to you, set this in settings",
 		"work-mode-status-memory-toggle.is-off",
 		"work-mode-settings-status-line",
 		".work-mode-message-actions{display:inline-flex;align-items:center;gap:7px;margin-top:8px;vertical-align:middle}",
 		".work-mode-message-collapse-btn{margin-top:8px;margin-right:7px;",
 		"height:30px;line-height:1;padding:0 10px;cursor:pointer;transform-origin:center;vertical-align:middle",
-		"(&nbsp;<span class=\"work-mode-input-size\">${escapeHtml(sizeCompact)}</span>&nbsp;/&nbsp;~${escapeHtml(tokenCompact)}&nbsp;,&nbsp;${summary.files}&nbsp;)",
+		"const totalFiles = summary.selectedFiles + summary.temporaryFiles",
+		"(&nbsp;<span class=\"work-mode-input-size\">${escapeHtml(sizeCompact)}</span>&nbsp;/&nbsp;~${escapeHtml(tokenCompact)}&nbsp;/&nbsp;${totalFiles})",
+		"Total files: ${totalFiles}",
+		"data-work-max-return",
+		"MaxOutput: ${escapeHtml(builderMaxText)}",
+		"/api/models/max-output-tokens",
+		"Automatic Maximum — Recommended",
+		"Custom guardrail",
+		`max-output-token-unit">TOKENS`,
+		"max_output_mode",
+		"provider-managed automatic maximum",
+		"AgentGO repaired the AI response",
+		"Original AI response",
+		"Automatic repair response",
 		"work-mode-code-toolbar",
 		".work-mode-message.ai .work-mode-code-block pre{max-width:100%;min-width:0;box-sizing:border-box;white-space:pre;overflow-x:auto;overflow-y:auto;overflow-wrap:normal;word-break:normal",
 		"data-work-code-copy",
@@ -713,6 +992,156 @@ func TestAgentGOStylingPaletteAndWorkModeWebshotUI(t *testing.T) {
 	} {
 		if !strings.Contains(templateText, required) {
 			t.Fatalf("Work Mode template missing %q", required)
+		}
+	}
+	if !strings.Contains(templateText, "#workModeMaxTokensModal{z-index:2210}") {
+		t.Fatal("Work Mode max-return modal must render above the Work Mode overlay")
+	}
+	if !strings.Contains(templateText, ".work-mode-max-token-card{width:min(580px,calc(100vw - 36px));height:auto;max-height:min(82vh,720px)}") {
+		t.Fatal("Work Mode max-return modal must use a compact, content-driven height")
+	}
+	if !strings.Contains(templateText, ".work-mode-max-token-body{display:grid;gap:14px;padding:18px 20px 20px;min-height:0;overflow-y:auto;color:#12233e}") {
+		t.Fatal("Work Mode max-return modal body must use padded, scroll-safe spacing")
+	}
+	if strings.Contains(templateText, ".work-mode-max-token-body{display:grid;gap:14px;padding:4px 0}") {
+		t.Fatal("Work Mode max-return modal still uses the unpadded body layout")
+	}
+	if strings.Contains(templateText, "ImgCompress:") || strings.Contains(templateText, "Resp Mode:") || strings.Contains(templateText, ">Max return:") {
+		t.Fatal("Work Mode footer still contains the previous long labels")
+	}
+
+	for _, forbidden := range []string{
+		"AgentGO automatically repaired the provider's Work Mode JSON envelope",
+		"Loaded that message into the prompt box.",
+		"A blank or 0 value restores",
+		"AgentGO fallback",
+	} {
+		if strings.Contains(templateText, forbidden) {
+			t.Fatalf("Work Mode template still contains obsolete message %q", forbidden)
+		}
+	}
+}
+
+func TestWorkModeTranscriptExportAndReconnectUI(t *testing.T) {
+	templateBytes, err := os.ReadFile("templates/index.html")
+	if err != nil {
+		t.Fatalf("read template: %v", err)
+	}
+	templateText := string(templateBytes)
+	for _, required := range []string{
+		`id="workModeTranscriptDownloadBtn"`,
+		`title="Download Full Transcript"`,
+		`downloadWorkModeTranscript()`,
+		`/api/work-mode/transcript/export`,
+		`observerReviewMessages: workModeReviewMessages`,
+		`builder: { id: builderId, label: builderLabel }`,
+		`observer: observerId ? { id: observerId, label: observerLabel } : null`,
+		`title: 'AgentGO Work-Mode Transcript'`,
+		`builderLabel,`,
+		`observerLabel,`,
+		`msg.modelLabel = String(options.modelLabel || getActiveBuilderLabel() || 'AI')`,
+		`const aiLabel = String((msg && msg.modelLabel) || getActiveBuilderLabel() || 'AI')`,
+		`normalizeWorkModeTranscriptLightText(host);`,
+		`node.style.setProperty('color', '#172033'`,
+		`if (node.closest('pre,code')) return;`,
+		`localizeWorkModeTranscriptImages(host)`,
+		`id="agentGOConnectionModal"`,
+		`.agentgo-connection-modal{position:fixed;inset:0;z-index:2147483000`,
+		`AgentGO will not resend any interrupted prompt or file-changing request.`,
+		`Your current browser-side Work Mode progress has not been refreshed or reset.`,
+		`id="agentGOConnectionDismissBtn"`,
+		`stopWorkModeObserverSessionPolling();`,
+		`workModeURLReviewState.controller.abort()`,
+		`if (agentGOConnectionState.disconnected) return null;`,
+		`if (!(err && err.name === 'AbortError')) noteAgentGOConnectionFailure(url);`,
+		`agentGOConnectionState.disconnected = false;`,
+		`closeAgentGOConnectionModal();`,
+		`dismissAgentGOConnectionLost`,
+		`nativeAgentGOFetch('/api/healthz'`,
+		`AgentGO request temporarily blocked`,
+		`The health check succeeded.`,
+		`The health check failed.`,
+		`const INITIALIZATION_READ_TIMEOUT_MS = 15000;`,
+		`const initializationReadOptions = { timeoutMs: INITIALIZATION_READ_TIMEOUT_MS };`,
+		`await loadWaveState(initializationReadOptions).catch(() => {});`,
+	} {
+		if !strings.Contains(templateText, required) {
+			t.Fatalf("Work Mode transcript/reconnect template missing %q", required)
+		}
+	}
+	if strings.Contains(templateText, `z-index:2210;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(5,10,18,.72)`) {
+		t.Fatal("connection modal reused a normal Work Mode modal z-index")
+	}
+	for _, forbidden := range []string{
+		`id="agentGOConnectionRetryBtn"`,
+		`Try Reconnecting`,
+		`startAgentGOConnectionChecks`,
+		`tryAgentGOReconnect`,
+		`refreshAgentGOStateAfterReconnect`,
+		`Connected to AgentGO. State refreshed.`,
+		`agentGOConnectionState.retryTimer`,
+	} {
+		if strings.Contains(templateText, forbidden) {
+			t.Fatalf("warning-only connection UI still contains reconnect behavior %q", forbidden)
+		}
+	}
+}
+
+func TestWorkModeMemoryDefaultsAndActiveSessionTemplateHooks(t *testing.T) {
+	templateBytes, err := os.ReadFile("templates/index.html")
+	if err != nil {
+		t.Fatalf("read template: %v", err)
+	}
+	templateText := string(templateBytes)
+	for _, required := range []string{
+		`AgentGO Memory Default`,
+		`id="workModeMemoryDefaultSelect"`,
+		`New Memory`,
+		`Continue Last Memory`,
+		`/api/work-mode/settings`,
+		`/api/work-mode/memory/new`,
+		`syncContinuedWorkModeMemory`,
+		`workModeSettings.useMemory = true;`,
+		`let agentGOActiveSessionId = '';`,
+		`headers['X-AgentGO-Session-ID'] = agentGOActiveSessionId`,
+		`headers.set('X-AgentGO-Session-ID', agentGOActiveSessionId)`,
+		`/api/session/claim`,
+		`Make This Tab Active`,
+		`claimAgentGOSession('fresh')`,
+		`claimAgentGOSession('takeover')`,
+	} {
+		if !strings.Contains(templateText, required) {
+			t.Fatalf("B-series template missing %q", required)
+		}
+	}
+	for _, forbidden := range []string{
+		`The session memory remains available until the tab closes.`,
+		`memoryContent: memoryEnabled && !memoryName ? memoryContent : undefined`,
+		`window.sessionStorage.getItem(AGENTGO_SESSION_STORAGE_KEY)`,
+		`window.sessionStorage.setItem(AGENTGO_SESSION_STORAGE_KEY`,
+	} {
+		if strings.Contains(templateText, forbidden) {
+			t.Fatalf("B-series template still contains obsolete behavior %q", forbidden)
+		}
+	}
+}
+
+func TestImportRepositoryChoiceUsesReadableCalloutStyling(t *testing.T) {
+	templateBytes, err := os.ReadFile(filepath.Join("templates", "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	templateText := string(templateBytes)
+	for _, required := range []string{
+		"#importModal .import-repository-choice {",
+		"background: linear-gradient(180deg, rgba(232,244,255,0.98), rgba(217,235,252,0.96));",
+		"#importModal .import-repository-choice-title {",
+		"color: #17355f;",
+		"#importModal .import-repository-choice label {",
+		"color: #405b78;",
+	} {
+		if !strings.Contains(templateText, required) {
+			t.Fatalf("import repository callout styling missing %q", required)
 		}
 	}
 }

@@ -576,7 +576,7 @@ func (a *App) snapshotProjectworkForRun(record *outfitRunRecord) error {
 	if err := os.MkdirAll(dst, 0o755); err != nil {
 		return err
 	}
-	_, err = copyWorkingTreeInto(src, dst)
+	_, err = copyWorkingTreeInto(src, dst, false)
 	return err
 }
 
@@ -599,7 +599,7 @@ func (a *App) snapshotDeadDropForRun(record *outfitRunRecord) error {
 	if err := os.MkdirAll(dst, 0o755); err != nil {
 		return err
 	}
-	_, err = copyWorkingTreeInto(src, dst)
+	_, err = copyWorkingTreeInto(src, dst, false)
 	return err
 }
 

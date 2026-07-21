@@ -19,7 +19,8 @@
         "structured_outputs",
         "reasoning"
       ],
-      "notes": "Legacy/stable GPT-4.1 family option retained for projects that still use it."
+      "notes": "Legacy/stable GPT-4.1 family option retained for projects that still use it.",
+      "max_output_tokens": 32768
     },
     {
       "provider": "openai",
@@ -39,7 +40,8 @@
         "structured_outputs",
         "reasoning"
       ],
-      "notes": "Smaller GPT-4.1 family option retained for lower-cost projects."
+      "notes": "Smaller GPT-4.1 family option retained for lower-cost projects.",
+      "max_output_tokens": 32768
     },
     {
       "provider": "openai",
@@ -59,7 +61,8 @@
         "structured_outputs",
         "reasoning"
       ],
-      "notes": "Older low-cost multimodal OpenAI option retained for compatibility."
+      "notes": "Older low-cost multimodal OpenAI option retained for compatibility.",
+      "max_output_tokens": 16384
     },
     {
       "provider": "openai",
@@ -79,7 +82,8 @@
         "structured_outputs",
         "reasoning"
       ],
-      "notes": "General OpenAI model for coding and professional work through the Responses API."
+      "notes": "General OpenAI model for coding and professional work through the Responses API.",
+      "max_output_tokens": 128000
     },
     {
       "provider": "openai",
@@ -99,7 +103,8 @@
         "structured_outputs",
         "reasoning"
       ],
-      "notes": "Lower-latency, lower-cost OpenAI model through the Responses API."
+      "notes": "Lower-latency, lower-cost OpenAI model through the Responses API.",
+      "max_output_tokens": 128000
     },
     {
       "provider": "openai",
@@ -119,7 +124,8 @@
         "structured_outputs",
         "reasoning"
       ],
-      "notes": "Smallest/fastest OpenAI model option for lightweight requests through the Responses API."
+      "notes": "Smallest/fastest OpenAI model option for lightweight requests through the Responses API.",
+      "max_output_tokens": 128000
     },
     {
       "provider": "openai",
@@ -139,7 +145,8 @@
         "structured_outputs",
         "reasoning"
       ],
-      "notes": "Flagship OpenAI model for complex reasoning, coding, and professional work through the Responses API."
+      "notes": "Flagship OpenAI model for complex reasoning, coding, and professional work through the Responses API.",
+      "max_output_tokens": 128000
     },
     {
       "provider": "openai",
@@ -244,7 +251,8 @@
         "structured_outputs",
         "reasoning"
       ],
-      "notes": "General-availability Claude Fable 5 model option, when enabled for the account."
+      "notes": "General-availability Claude Fable 5 model option, when enabled for the account.",
+      "max_output_tokens": 128000
     },
     {
       "provider": "claude",
@@ -264,7 +272,8 @@
         "structured_outputs",
         "reasoning"
       ],
-      "notes": "Current Haiku-tier Claude API alias for fast, lower-cost work."
+      "notes": "Current Haiku-tier Claude API alias for fast, lower-cost work.",
+      "max_output_tokens": 64000
     },
     {
       "provider": "claude",
@@ -284,7 +293,8 @@
         "structured_outputs",
         "reasoning"
       ],
-      "notes": "Pinned Haiku 4.5 snapshot ID."
+      "notes": "Pinned Haiku 4.5 snapshot ID.",
+      "max_output_tokens": 64000
     },
     {
       "provider": "claude",
@@ -304,7 +314,8 @@
         "structured_outputs",
         "reasoning"
       ],
-      "notes": "Current Opus-tier Claude API model alias for complex reasoning and agentic coding."
+      "notes": "Current Opus-tier Claude API model alias for complex reasoning and agentic coding.",
+      "max_output_tokens": 128000
     },
     {
       "provider": "claude",
@@ -324,7 +335,8 @@
         "structured_outputs",
         "reasoning"
       ],
-      "notes": "Current Sonnet-tier Claude API model alias with balanced speed and intelligence."
+      "notes": "Current Sonnet-tier Claude API model alias with balanced speed and intelligence.",
+      "max_output_tokens": 128000
     },
     {
       "provider": "google",
@@ -348,7 +360,8 @@
         "search_grounding",
         "code_execution"
       ],
-      "notes": "Stable Gemini 2.5 Flash model for general multimodal chat, agent, and tool-use workflows."
+      "notes": "Stable Gemini 2.5 Flash model for general multimodal chat, agent, and tool-use workflows.",
+      "max_output_tokens": 65536
     },
     {
       "provider": "google",
@@ -390,7 +403,8 @@
         "structured_outputs",
         "thinking"
       ],
-      "notes": "Stable Gemini 2.5 Flash-Lite model for lighter, lower-cost requests."
+      "notes": "Stable Gemini 2.5 Flash-Lite model for lighter, lower-cost requests.",
+      "max_output_tokens": 65536
     },
     {
       "provider": "google",
@@ -414,7 +428,8 @@
         "search_grounding",
         "code_execution"
       ],
-      "notes": "Stable Gemini 2.5 Pro model for stronger reasoning and coding tasks."
+      "notes": "Stable Gemini 2.5 Pro model for stronger reasoning and coding tasks.",
+      "max_output_tokens": 65536
     },
     {
       "provider": "google",
@@ -438,7 +453,8 @@
         "search_grounding",
         "code_execution"
       ],
-      "notes": "Preview Gemini 3 Flash model for fast multimodal generation and agent tasks."
+      "notes": "Preview Gemini 3 Flash model for fast multimodal generation and agent tasks.",
+      "max_output_tokens": 65536
     },
     {
       "provider": "google",
@@ -526,7 +542,8 @@
         "search_grounding",
         "code_execution"
       ],
-      "notes": "Preview Gemini 3.1 Pro model for advanced reasoning, coding, and agentic workflows."
+      "notes": "Preview Gemini 3.1 Pro model for advanced reasoning, coding, and agentic workflows.",
+      "max_output_tokens": 65536
     },
     {
       "provider": "google",
@@ -550,7 +567,8 @@
         "custom_tools",
         "code_execution"
       ],
-      "notes": "Preview Gemini 3.1 Pro variant optimized for custom tools, bash-style tools, and agent loops."
+      "notes": "Preview Gemini 3.1 Pro variant optimized for custom tools, bash-style tools, and agent loops.",
+      "max_output_tokens": 65536
     },
     {
       "provider": "google",
@@ -574,7 +592,8 @@
         "search_grounding",
         "code_execution"
       ],
-      "notes": "Stable Gemini 3.5 Flash model for fast multimodal agent, chat, coding, and tool-use workflows."
+      "notes": "Stable Gemini 3.5 Flash model for fast multimodal agent, chat, coding, and tool-use workflows.",
+      "max_output_tokens": 65536
     },
     {
       "provider": "google",

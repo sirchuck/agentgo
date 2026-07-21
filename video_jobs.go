@@ -868,7 +868,7 @@ func (a *App) executeVideoJobAsync(projectName string, model ModelConfig, jobID 
 		applyVideoProgressToRecord(&record, progress)
 		_ = writeVideoJobRecord(videoJobMetaPath(jobRoot), record)
 	}
-	result, err := adapters.ExecuteVideo(ctx, toAdapterModelConfig(model), req)
+	result, err := adapters.ExecuteVideo(ctx, a.adapterModelConfig(model), req)
 	applyVideoResultToRecord(&record, result)
 	if err != nil {
 		if ctx.Err() != nil {
@@ -1064,7 +1064,7 @@ func (a *App) runVideoModelRequest(model ModelConfig, projectName, executionID, 
 		applyVideoProgressToRecord(&record, progress)
 		_ = writeVideoJobRecord(videoJobMetaPath(jobRoot), record)
 	}
-	videoResult, err := adapters.ExecuteVideo(ctx, toAdapterModelConfig(model), videoReq)
+	videoResult, err := adapters.ExecuteVideo(ctx, a.adapterModelConfig(model), videoReq)
 	applyVideoResultToRecord(&record, videoResult)
 	if err != nil {
 		if ctx.Err() != nil {
