@@ -1,6 +1,7 @@
 package main
 
 import (
+	"agentgo/adapters"
 	"archive/zip"
 	"bytes"
 	"context"
@@ -29,6 +30,67 @@ func TestSlowHTTPRequestWarningThresholdUsesWorkModeAllowance(t *testing.T) {
 	}
 	if got := slowHTTPRequestWarningThreshold("/api/projects", http.MethodPost); got != 2*time.Second {
 		t.Fatalf("normal route slow threshold = %s, want 2s", got)
+	}
+}
+
+func TestAgentGOHighlighterIsSingleFinalWorkModeReplyCheck(t *testing.T) {
+	instructions := buildWorkModeInstructions(
+		ModelConfig{UseUggPrompt: true},
+		false,
+		false,
+		"auto",
+		nil,
+		defaultAgentGOStylingPrompt,
+	)
+	if count := strings.Count(instructions, agentGOHighlighterMarker); count != 1 {
+		t.Fatalf("AgentGO Highlighter count = %d, want 1\n%s", count, instructions)
+	}
+	highlighterIndex := strings.Index(instructions, agentGOHighlighterMarker)
+	uggIndex := strings.Index(instructions, "SYSTEM INSTRUCTION: UGG PROTOCOL")
+	if uggIndex < 0 || highlighterIndex <= uggIndex {
+		t.Fatalf("AgentGO Highlighter must follow Ugg protocol: ugg=%d highlighter=%d", uggIndex, highlighterIndex)
+	}
+	for _, required := range []string{
+		"Help the user quickly identify changes you make to user-provided code or",
+		`sentence in its own <span class="agentgo-code-change">...</span>. Leave`,
+		"Render prose as normal prose, never inside <pre><code>.",
+		"Use <pre><code>",
+	} {
+		if !strings.Contains(instructions, required) {
+			t.Fatalf("final AgentGO Highlighter missing %q", required)
+		}
+	}
+	if !strings.HasSuffix(strings.TrimSpace(instructions), "only for code.") {
+		t.Fatalf("AgentGO Highlighter is not the final Work Mode reply check:\n%s", instructions)
+	}
+}
+
+func TestAgentGOHighlighterIsSingleFinalObserverWorkerReplyCheck(t *testing.T) {
+	instructions := workModeObserverReviewWorkerInstructions(
+		ModelConfig{UseUggPrompt: true},
+		false,
+		true,
+		"auto",
+		nil,
+		defaultAgentGOStylingPrompt,
+	)
+	if count := strings.Count(instructions, agentGOHighlighterMarker); count != 1 {
+		t.Fatalf("Observer Worker AgentGO Highlighter count = %d, want 1\n%s", count, instructions)
+	}
+	highlighterIndex := strings.Index(instructions, agentGOHighlighterMarker)
+	observerIndex := strings.Index(instructions, "OBSERVER REVIEW MEMORY OWNERSHIP")
+	if observerIndex < 0 || highlighterIndex <= observerIndex {
+		t.Fatalf("AgentGO Highlighter must follow Observer Worker instructions: observer=%d highlighter=%d", observerIndex, highlighterIndex)
+	}
+	if !strings.HasSuffix(strings.TrimSpace(instructions), "only for code.") {
+		t.Fatalf("AgentGO Highlighter is not the final Observer Worker reply check:\n%s", instructions)
+	}
+}
+
+func TestAgentGOHighlighterNotAddedWhenStylingDisabled(t *testing.T) {
+	instructions := buildWorkModeInstructions(ModelConfig{UseUggPrompt: true}, false, false, "auto", nil, "")
+	if strings.Contains(instructions, agentGOHighlighterMarker) {
+		t.Fatalf("AgentGO Highlighter was added while styling disabled:\n%s", instructions)
 	}
 }
 
@@ -250,6 +312,136 @@ func TestParseWorkModeObserverResponseRequiresExplicitHasInput(t *testing.T) {
 	}
 }
 
+func TestNormalizeLiteralLineBreaksInJSONStringValues(t *testing.T) {
+	tests := []struct {
+		name        string
+		raw         string
+		want        string
+		wantChanged bool
+	}{
+		{
+			name:        "literal line feed in string",
+			raw:         "{\"reply\":\"line one\nline two\",\"files\":[]}",
+			want:        `{"reply":"line one\nline two","files":[]}`,
+			wantChanged: true,
+		},
+		{
+			name:        "literal CRLF in string",
+			raw:         "{\"reply\":\"line one\r\nline two\",\"files\":[]}",
+			want:        `{"reply":"line one\r\nline two","files":[]}`,
+			wantChanged: true,
+		},
+		{
+			name:        "pretty JSON line breaks remain unchanged",
+			raw:         "{\n  \"reply\": \"ok\",\n  \"files\": []\n}",
+			want:        "{\n  \"reply\": \"ok\",\n  \"files\": []\n}",
+			wantChanged: false,
+		},
+		{
+			name:        "already escaped line break remains unchanged",
+			raw:         `{"reply":"line one\nline two","files":[]}`,
+			want:        `{"reply":"line one\nline two","files":[]}`,
+			wantChanged: false,
+		},
+		{
+			name:        "ambiguous escaped physical line break is not normalized",
+			raw:         "{\"reply\":\"line one\\\nline two\",\"files\":[]}",
+			want:        "{\"reply\":\"line one\\\nline two\",\"files\":[]}",
+			wantChanged: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, changed := normalizeLiteralLineBreaksInJSONStringValues(tt.raw)
+			if got != tt.want {
+				t.Fatalf("normalized = %q, want %q", got, tt.want)
+			}
+			if changed != tt.wantChanged {
+				t.Fatalf("changed = %v, want %v", changed, tt.wantChanged)
+			}
+		})
+	}
+}
+
+func TestLiteralLineBreakNormalizationSilentlyRestoresWorkModeJSON(t *testing.T) {
+	workerRaw := "{\"reply\":\"first line\nsecond line\",\"files\":[],\"artifacts\":[],\"memory\":\"\",\"warnings\":[]}"
+	workerNormalized, changed := normalizeLiteralLineBreaksInJSONStringValues(workerRaw)
+	if !changed {
+		t.Fatal("worker response line break was not normalized")
+	}
+	worker, err := parseWorkModeAIResponse(workerNormalized)
+	if err != nil {
+		t.Fatalf("normalized worker response did not parse: %v", err)
+	}
+	if worker.Reply != "first line\nsecond line" {
+		t.Fatalf("worker reply = %q", worker.Reply)
+	}
+
+	observerRaw := "{\"reply\":\"first line\nsecond line\",\"has_input\":false,\"recommendations\":[],\"warnings\":[]}"
+	observerNormalized, changed := normalizeLiteralLineBreaksInJSONStringValues(observerRaw)
+	if !changed {
+		t.Fatal("observer response line break was not normalized")
+	}
+	observer, err := parseWorkModeObserverResponse(observerNormalized)
+	if err != nil {
+		t.Fatalf("normalized observer response did not parse: %v", err)
+	}
+	if observer.Reply != "first line\nsecond line" {
+		t.Fatalf("observer reply = %q", observer.Reply)
+	}
+}
+
+func TestParseOrRepairSilentlyNormalizesOnlyLiteralLineBreaks(t *testing.T) {
+	app := &App{}
+	workerRaw := "{\"reply\":\"first line\nsecond line\",\"files\":[],\"artifacts\":[],\"memory\":\"\",\"warnings\":[]}"
+	worker, workerResp, err := app.parseOrRepairWorkModeAdapterResponse(
+		context.Background(),
+		ModelConfig{},
+		adapterRequestPayload{},
+		adapters.Response{Text: workerRaw},
+		"",
+		"",
+	)
+	if err != nil {
+		t.Fatalf("worker silent normalization failed: %v", err)
+	}
+	if worker.RepairDetail != nil {
+		t.Fatalf("worker normalization unexpectedly produced repair details: %#v", worker.RepairDetail)
+	}
+	if workerResp.Text == workerRaw || !json.Valid([]byte(workerResp.Text)) {
+		t.Fatalf("worker response was not returned as normalized JSON: %q", workerResp.Text)
+	}
+
+	observerRaw := "{\"reply\":\"first line\nsecond line\",\"has_input\":false,\"recommendations\":[],\"warnings\":[]}"
+	observer, observerResp, err := app.parseOrRepairWorkModeObserverResponse(
+		context.Background(),
+		ModelConfig{},
+		adapterRequestPayload{},
+		adapters.Response{Text: observerRaw},
+	)
+	if err != nil {
+		t.Fatalf("observer silent normalization failed: %v", err)
+	}
+	if observer.RepairDetail != nil {
+		t.Fatalf("observer normalization unexpectedly produced repair details: %#v", observer.RepairDetail)
+	}
+	if observerResp.Text == observerRaw || !json.Valid([]byte(observerResp.Text)) {
+		t.Fatalf("observer response was not returned as normalized JSON: %q", observerResp.Text)
+	}
+}
+
+func TestLiteralLineBreakNormalizationDoesNotHideOtherJSONErrors(t *testing.T) {
+	raw := "{\"reply\":\"first line\nsecond line\",\"files\":[],}"
+	normalized, changed := normalizeLiteralLineBreaksInJSONStringValues(raw)
+	if !changed {
+		t.Fatal("line break was not normalized")
+	}
+	if _, err := parseWorkModeAIResponse(normalized); err == nil {
+		t.Fatal("normalization must not make unrelated malformed JSON silently valid")
+	}
+}
+
 func TestRequireWorkModeJSONBoolFieldForWorkerReviewComplete(t *testing.T) {
 	if err := requireWorkModeJSONBoolField(`{"reply":"draft","files":[],"review_complete":true}`, "review_complete"); err != nil {
 		t.Fatalf("review_complete bool was rejected: %v", err)
@@ -289,6 +481,37 @@ func TestParseWorkModeAIResponsePreservesMemoryForNonStringValues(t *testing.T) 
 			}
 			if tt.wantIssue && parsed.Memory != "" {
 				t.Fatalf("invalid memory should be ignored, got %q", parsed.Memory)
+			}
+		})
+	}
+}
+
+func TestWorkModeMemoryUpdateWarnsOnlyForMalformedValues(t *testing.T) {
+	tests := []struct {
+		name        string
+		raw         string
+		wantMemory  string
+		wantWarning bool
+	}{
+		{name: "missing", raw: `{"reply":"ok","files":[],"artifacts":[],"warnings":[]}`},
+		{name: "null", raw: `{"reply":"ok","files":[],"artifacts":[],"memory":null,"warnings":[]}`},
+		{name: "empty", raw: `{"reply":"ok","files":[],"artifacts":[],"memory":"","warnings":[]}`},
+		{name: "text", raw: `{"reply":"ok","files":[],"artifacts":[],"memory":"# Durable memory","warnings":[]}`, wantMemory: "# Durable memory"},
+		{name: "array", raw: `{"reply":"ok","files":[],"artifacts":[],"memory":[],"warnings":[]}`, wantWarning: true},
+		{name: "object", raw: `{"reply":"ok","files":[],"artifacts":[],"memory":{},"warnings":[]}`, wantWarning: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parsed, err := parseWorkModeAIResponse(tt.raw)
+			if err != nil {
+				t.Fatalf("parseWorkModeAIResponse: %v", err)
+			}
+			memory, warning := workModeMemoryUpdate(parsed)
+			if memory != tt.wantMemory {
+				t.Fatalf("memory = %q, want %q", memory, tt.wantMemory)
+			}
+			if tt.wantWarning != (warning != "") {
+				t.Fatalf("warning = %q, wantWarning=%v", warning, tt.wantWarning)
 			}
 		})
 	}
@@ -441,7 +664,7 @@ func TestBuildWorkModeTranscriptZIPIncludesOfflineBrandingAndAssets(t *testing.T
 		`assets/transcript-image-001.png`,
 		`&lt;script onload="demo()"&gt;`,
 		`<span class="agentgo-code-change">let changed = true;</span>`,
-		`pre code .agentgo-code-change{color:#FFE27C}`,
+		`.agentgo-code-change{color:#FFE27C}`,
 	} {
 		if !strings.Contains(index, required) {
 			t.Fatalf("transcript index missing %q", required)

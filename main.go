@@ -76,6 +76,10 @@ type AppConfig struct {
 	TLSKeyFile                  string        `json:"tls_key_file"`
 	WorkRoot                    string        `json:"work_root"`
 	TTSVoice                    string        `json:"tts_voice"`
+	VoiceStartCommand           string        `json:"voice_start_command"`
+	VoiceSendCommand            string        `json:"voice_send_command"`
+	VoiceRepeatCommand          string        `json:"voice_repeat_command"`
+	VoiceReadCommand            string        `json:"voice_read_command"`
 	MaxResponseHistory          int           `json:"max_response_history"`
 	RiskModeMaxIterations       int           `json:"risk_mode_max_iterations"`
 	OutfitRunRetention          int           `json:"outfit_run_retention"`
@@ -84,6 +88,13 @@ type AppConfig struct {
 	AutoMergeSingleBuilderWaves *bool         `json:"auto_merge_single_builder_waves,omitempty"`
 	Models                      []ModelConfig `json:"-"`
 }
+
+const (
+	defaultVoiceStartCommand  = "AgentGO Start"
+	defaultVoiceSendCommand   = "AgentGO Send"
+	defaultVoiceRepeatCommand = "AgentGO Repeat"
+	defaultVoiceReadCommand   = "AgentGO Read"
+)
 
 type RequestDefaults struct {
 	Temperature float64 `json:"temperature,omitempty"`
@@ -295,6 +306,9 @@ type App struct {
 	mu                          sync.RWMutex
 	activeSessionMu             sync.Mutex
 	sessionResetMu              sync.Mutex
+	sessionMismatchLogMu        sync.Mutex
+	sessionMismatchLogKey       string
+	sessionMismatchSuppressed   uint64
 	activeSession               activeSessionFile
 	httpMu                      sync.Mutex
 	httpActiveRequests          int
@@ -847,10 +861,14 @@ func (a *App) invalidateDeadDropStatusCache(projectName string) {
 }
 
 type homeData struct {
-	Models                []ModelConfig
-	RiskModeMaxIterations int
-	ReleaseLabel          string
-	TTSVoiceJSON          template.JS
+	Models                 []ModelConfig
+	RiskModeMaxIterations  int
+	ReleaseLabel           string
+	TTSVoiceJSON           template.JS
+	VoiceStartCommandJSON  template.JS
+	VoiceSendCommandJSON   template.JS
+	VoiceRepeatCommandJSON template.JS
+	VoiceReadCommandJSON   template.JS
 }
 
 type listDirResponse struct {
@@ -3004,6 +3022,7 @@ func main() {
 	mux.HandleFunc("/api/mesh/jobs/promote", app.handleMeshJobPromote)
 	mux.HandleFunc("/api/chat", app.handleChat)
 	mux.HandleFunc("/api/config/tts", app.handleTTSConfig)
+	mux.HandleFunc("/api/config/voice-commands", app.handleVoiceCommandConfig)
 	mux.HandleFunc("/api/work-mode/send", app.withWorkModeRecovery("/api/work-mode/send", app.handleWorkModeSend))
 	mux.HandleFunc("/api/work-mode/url/capabilities", app.withWorkModeRecovery("/api/work-mode/url/capabilities", app.handleWorkModeURLCapabilities))
 	mux.HandleFunc("/api/work-mode/url/capture", app.withWorkModeRecovery("/api/work-mode/url/capture", app.handleWorkModeURLCapture))
@@ -3257,6 +3276,22 @@ func applyConfigDefaults(cfg *AppConfig) {
 		cfg.WorkRoot = "work"
 	}
 	cfg.TTSVoice = strings.TrimSpace(cfg.TTSVoice)
+	cfg.VoiceStartCommand = strings.TrimSpace(cfg.VoiceStartCommand)
+	if cfg.VoiceStartCommand == "" {
+		cfg.VoiceStartCommand = defaultVoiceStartCommand
+	}
+	cfg.VoiceSendCommand = strings.TrimSpace(cfg.VoiceSendCommand)
+	if cfg.VoiceSendCommand == "" {
+		cfg.VoiceSendCommand = defaultVoiceSendCommand
+	}
+	cfg.VoiceRepeatCommand = strings.TrimSpace(cfg.VoiceRepeatCommand)
+	if cfg.VoiceRepeatCommand == "" {
+		cfg.VoiceRepeatCommand = defaultVoiceRepeatCommand
+	}
+	cfg.VoiceReadCommand = strings.TrimSpace(cfg.VoiceReadCommand)
+	if cfg.VoiceReadCommand == "" {
+		cfg.VoiceReadCommand = defaultVoiceReadCommand
+	}
 	if cfg.MaxResponseHistory <= 0 {
 		cfg.MaxResponseHistory = 50
 	}
@@ -4015,8 +4050,21 @@ func (a *App) handleHome(w http.ResponseWriter, r *http.Request) {
 	}
 	a.mu.RLock()
 	ttsVoice := a.cfg.TTSVoice
+	voiceStartCommand := a.cfg.VoiceStartCommand
+	voiceSendCommand := a.cfg.VoiceSendCommand
+	voiceRepeatCommand := a.cfg.VoiceRepeatCommand
+	voiceReadCommand := a.cfg.VoiceReadCommand
 	a.mu.RUnlock()
-	if err := a.tmpl.Execute(w, homeData{Models: a.cfg.Models, RiskModeMaxIterations: a.cfg.RiskModeMaxIterations, ReleaseLabel: a.release.Label(), TTSVoiceJSON: jsonStringForTemplate(ttsVoice)}); err != nil {
+	if err := a.tmpl.Execute(w, homeData{
+		Models:                 a.cfg.Models,
+		RiskModeMaxIterations:  a.cfg.RiskModeMaxIterations,
+		ReleaseLabel:           a.release.Label(),
+		TTSVoiceJSON:           jsonStringForTemplate(ttsVoice),
+		VoiceStartCommandJSON:  jsonStringForTemplate(voiceStartCommand),
+		VoiceSendCommandJSON:   jsonStringForTemplate(voiceSendCommand),
+		VoiceRepeatCommandJSON: jsonStringForTemplate(voiceRepeatCommand),
+		VoiceReadCommandJSON:   jsonStringForTemplate(voiceReadCommand),
+	}); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -4065,6 +4113,112 @@ func (a *App) handleTTSConfig(w http.ResponseWriter, r *http.Request) {
 		a.cfg.TTSVoice = voice
 		a.mu.Unlock()
 		writeJSON(w, http.StatusOK, ttsConfigResponse{OK: true, TTSVoice: voice})
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func normalizeVoiceCommandForMatch(value string) string {
+	var builder strings.Builder
+	for _, r := range strings.ToLower(strings.TrimSpace(value)) {
+		if unicode.IsLetter(r) || unicode.IsNumber(r) {
+			builder.WriteRune(r)
+		}
+	}
+	return builder.String()
+}
+
+func validateVoiceCommands(startCommand, sendCommand, repeatCommand, readCommand string) (string, string, string, string, error) {
+	startCommand = strings.TrimSpace(startCommand)
+	sendCommand = strings.TrimSpace(sendCommand)
+	repeatCommand = strings.TrimSpace(repeatCommand)
+	readCommand = strings.TrimSpace(readCommand)
+	if startCommand == "" || sendCommand == "" || repeatCommand == "" || readCommand == "" {
+		return "", "", "", "", errors.New("voice commands cannot be empty")
+	}
+	if len(startCommand) > 120 || len(sendCommand) > 120 || len(repeatCommand) > 120 || len(readCommand) > 120 {
+		return "", "", "", "", errors.New("voice commands must be 120 characters or fewer")
+	}
+	normalized := []string{
+		normalizeVoiceCommandForMatch(startCommand),
+		normalizeVoiceCommandForMatch(sendCommand),
+		normalizeVoiceCommandForMatch(repeatCommand),
+		normalizeVoiceCommandForMatch(readCommand),
+	}
+	for _, command := range normalized {
+		if command == "" {
+			return "", "", "", "", errors.New("voice commands must contain at least one letter or number")
+		}
+	}
+	seen := map[string]bool{}
+	for _, command := range normalized {
+		if seen[command] {
+			return "", "", "", "", errors.New("voice commands must be different")
+		}
+		seen[command] = true
+	}
+	return startCommand, sendCommand, repeatCommand, readCommand, nil
+}
+
+func (a *App) handleVoiceCommandConfig(w http.ResponseWriter, r *http.Request) {
+	type voiceCommandConfigResponse struct {
+		OK            bool   `json:"ok"`
+		StartCommand  string `json:"start_command"`
+		SendCommand   string `json:"send_command"`
+		RepeatCommand string `json:"repeat_command"`
+		ReadCommand   string `json:"read_command"`
+	}
+	type voiceCommandConfigRequest struct {
+		StartCommand  string `json:"start_command"`
+		SendCommand   string `json:"send_command"`
+		RepeatCommand string `json:"repeat_command"`
+		ReadCommand   string `json:"read_command"`
+	}
+	switch r.Method {
+	case http.MethodGet:
+		a.mu.RLock()
+		startCommand := a.cfg.VoiceStartCommand
+		sendCommand := a.cfg.VoiceSendCommand
+		repeatCommand := a.cfg.VoiceRepeatCommand
+		readCommand := a.cfg.VoiceReadCommand
+		a.mu.RUnlock()
+		writeJSON(w, http.StatusOK, voiceCommandConfigResponse{OK: true, StartCommand: startCommand, SendCommand: sendCommand, RepeatCommand: repeatCommand, ReadCommand: readCommand})
+	case http.MethodPost:
+		var req voiceCommandConfigRequest
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&req); err != nil {
+			http.Error(w, "invalid json", http.StatusBadRequest)
+			return
+		}
+		startCommand, sendCommand, repeatCommand, readCommand, err := validateVoiceCommands(req.StartCommand, req.SendCommand, req.RepeatCommand, req.ReadCommand)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		a.mu.RLock()
+		cfg := a.cfg
+		a.mu.RUnlock()
+		cfg.VoiceStartCommand = startCommand
+		cfg.VoiceSendCommand = sendCommand
+		cfg.VoiceRepeatCommand = repeatCommand
+		cfg.VoiceReadCommand = readCommand
+		applyConfigDefaults(&cfg)
+		data, err := json.MarshalIndent(cfg, "", "  ")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		data = append(data, '\n')
+		if err := atomicWriteFile(a.configPath, data, 0o644); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		a.mu.Lock()
+		a.cfg.VoiceStartCommand = startCommand
+		a.cfg.VoiceSendCommand = sendCommand
+		a.cfg.VoiceRepeatCommand = repeatCommand
+		a.cfg.VoiceReadCommand = readCommand
+		a.mu.Unlock()
+		writeJSON(w, http.StatusOK, voiceCommandConfigResponse{OK: true, StartCommand: startCommand, SendCommand: sendCommand, RepeatCommand: repeatCommand, ReadCommand: readCommand})
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -5404,6 +5558,13 @@ func parseWorkModeAIResponse(raw string) (workModeAIResponse, error) {
 	return resp, nil
 }
 
+func workModeMemoryUpdate(parsed workModeAIResponse) (string, string) {
+	if warning := strings.TrimSpace(parsed.MemoryIssue); warning != "" {
+		return "", warning
+	}
+	return strings.TrimSpace(parsed.Memory), ""
+}
+
 type workModeJSONRepairError struct {
 	OriginalParseError string
 	OriginalResponse   string
@@ -5490,6 +5651,58 @@ func parseWorkModeObserverResponse(raw string) (workModeObserverResponse, error)
 	return resp, nil
 }
 
+func normalizeLiteralLineBreaksInJSONStringValues(raw string) (string, bool) {
+	if !strings.ContainsAny(raw, "\r\n") {
+		return raw, false
+	}
+
+	var normalized strings.Builder
+	normalized.Grow(len(raw) + 16)
+	inString := false
+	escaped := false
+	changed := false
+
+	for i := 0; i < len(raw); i++ {
+		char := raw[i]
+		if !inString {
+			normalized.WriteByte(char)
+			if char == '"' {
+				inString = true
+				escaped = false
+			}
+			continue
+		}
+
+		if escaped {
+			if char == '\r' || char == '\n' {
+				return raw, false
+			}
+			normalized.WriteByte(char)
+			escaped = false
+			continue
+		}
+
+		switch char {
+		case '\\':
+			normalized.WriteByte(char)
+			escaped = true
+		case '"':
+			normalized.WriteByte(char)
+			inString = false
+		case '\r':
+			normalized.WriteString(`\r`)
+			changed = true
+		case '\n':
+			normalized.WriteString(`\n`)
+			changed = true
+		default:
+			normalized.WriteByte(char)
+		}
+	}
+
+	return normalized.String(), changed
+}
+
 func workModeJSONRepairPayload(original adapterRequestPayload, rawResponse string, parseErr error) adapterRequestPayload {
 	parseText := "unknown parse error"
 	if parseErr != nil {
@@ -5541,6 +5754,13 @@ func (a *App) parseOrRepairWorkModeAdapterResponse(ctx context.Context, model Mo
 	if err == nil {
 		return parsed, resp, nil
 	}
+	if normalizedText, changed := normalizeLiteralLineBreaksInJSONStringValues(resp.Text); changed {
+		normalizedResp := resp
+		normalizedResp.Text = normalizedText
+		if normalizedParsed, normalizedErr := parseWorkModeAdapterResponse(normalizedResp, projectworkRoot, projectName); normalizedErr == nil {
+			return normalizedParsed, normalizedResp, nil
+		}
+	}
 	return a.repairAndParseWorkModeAdapterResponse(ctx, model, payload, resp, err, projectworkRoot, projectName)
 }
 
@@ -5575,6 +5795,13 @@ func (a *App) parseOrRepairWorkModeObserverResponse(ctx context.Context, model M
 	parsed, err := parseWorkModeObserverResponse(resp.Text)
 	if err == nil {
 		return parsed, resp, nil
+	}
+	if normalizedText, changed := normalizeLiteralLineBreaksInJSONStringValues(resp.Text); changed {
+		normalizedResp := resp
+		normalizedResp.Text = normalizedText
+		if normalizedParsed, normalizedErr := parseWorkModeObserverResponse(normalizedResp.Text); normalizedErr == nil {
+			return normalizedParsed, normalizedResp, nil
+		}
 	}
 	return a.repairAndParseWorkModeObserverResponse(ctx, model, payload, resp, err)
 }
@@ -5780,7 +6007,29 @@ func normalizeWorkModeSelectedFiles(input []string, projectName string) ([]strin
 	return out, seen, nil
 }
 
-func buildWorkModeInstructions(model ModelConfig, includeRoleContext, useMemory bool, responseMode string, updateableFiles []string, agentGOStyling string) string {
+const agentGOHighlighterMarker = "Help the user quickly identify changes you make to user-provided code or"
+
+func splitAgentGOStylingPrompt(agentGOStyling string) (string, string) {
+	trimmed := strings.TrimSpace(agentGOStyling)
+	if trimmed == "" {
+		return "", ""
+	}
+	marker := "\n" + agentGOHighlighterMarker
+	index := strings.LastIndex(trimmed, marker)
+	if index < 0 {
+		if strings.HasPrefix(trimmed, agentGOHighlighterMarker) {
+			return "", trimmed
+		}
+		return trimmed, ""
+	}
+	return strings.TrimSpace(trimmed[:index]), strings.TrimSpace(trimmed[index+1:])
+}
+
+func appendAgentGOHighlighter(instructions, highlighter string) string {
+	return joinNonEmptyWithDoubleNewlines(strings.TrimSpace(instructions), strings.TrimSpace(highlighter))
+}
+
+func buildWorkModeInstructionParts(model ModelConfig, includeRoleContext, useMemory bool, responseMode string, updateableFiles []string, agentGOStyling string) (string, string) {
 	fileMode := strings.TrimSpace(`WORK MODE FILE OPERATIONS
 
 CRITICAL JSON CONTRACT
@@ -5859,14 +6108,20 @@ CONTEXT LIMITS
 	if modeInstruction := chatResponseModeInstruction(responseMode); modeInstruction != "" {
 		instructions += "\n\nRESPONSE MODE\n- " + modeInstruction
 	}
-	if styleText := strings.TrimSpace(agentGOStyling); styleText != "" {
+	styleText, highlighter := splitAgentGOStylingPrompt(agentGOStyling)
+	if styleText != "" {
 		instructions += "\n\nAGENTGO STYLING\n" + styleText
 	}
-	return appendModelUggProtocol(instructions, model)
+	return appendModelUggProtocol(instructions, model), highlighter
+}
+
+func buildWorkModeInstructions(model ModelConfig, includeRoleContext, useMemory bool, responseMode string, updateableFiles []string, agentGOStyling string) string {
+	instructions, highlighter := buildWorkModeInstructionParts(model, includeRoleContext, useMemory, responseMode, updateableFiles, agentGOStyling)
+	return appendAgentGOHighlighter(instructions, highlighter)
 }
 
 func workModeObserverReviewWorkerInstructions(model ModelConfig, includeRoleContext, useMemory bool, responseMode string, updateableFiles []string, agentGOStyling string) string {
-	instructions := buildWorkModeInstructions(model, includeRoleContext, useMemory, responseMode, updateableFiles, agentGOStyling)
+	instructions, highlighter := buildWorkModeInstructionParts(model, includeRoleContext, useMemory, responseMode, updateableFiles, agentGOStyling)
 	instructions += strings.TrimSpace(`
 
 OBSERVER REVIEW MODE
@@ -5903,7 +6158,7 @@ OBSERVER REVIEW MEMORY OWNERSHIP
 - Keep durable user/project decisions, final chosen direction, important file/path facts, and next-step context likely needed for follow-up.
 - Return the complete updated compact memory.md content in the JSON memory field on every Worker pass while memory is enabled.`)
 	}
-	return instructions
+	return appendAgentGOHighlighter(instructions, highlighter)
 }
 
 func workModeObserverInstructions(model ModelConfig) string {
@@ -6944,7 +7199,7 @@ a{color:#1f69bd}.transcript-page{width:min(1080px,calc(100%% - 32px));margin:28p
 .transcript-heading{text-align:center;margin:0 0 24px}.transcript-heading h1{margin:0;font-size:clamp(1.45rem,3vw,2.2rem);color:#18355d}.transcript-model-meta{margin-top:7px;color:#405a7d;font-size:.94rem;font-weight:700}.transcript-meta{margin-top:5px;color:var(--muted);font-size:.9rem}
 .transcript-messages{display:grid;gap:16px}.transcript-message{padding:18px 20px;border:1px solid var(--line);border-radius:18px;background:#f8fbfe;color:var(--ink);overflow-wrap:anywhere}.transcript-message.user{margin-left:min(8%%,72px);background:#eef6ff;border-color:#bfd7f3}.transcript-message.ai{margin-right:min(8%%,72px);background:#fff}.transcript-message.agentgo{background:#fff8e8;border-color:#eed494}.transcript-role{margin-bottom:8px;color:#526a89;font-size:.76rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
 .transcript-message h1,.transcript-message h2,.transcript-message h3,.transcript-message h4{color:#234e82;line-height:1.25}.transcript-message p:first-child{margin-top:0}.transcript-message p:last-child{margin-bottom:0}.transcript-message ul,.transcript-message ol{padding-left:1.4rem}.transcript-message blockquote{margin:12px 0;padding:8px 14px;border-left:4px solid #8ab8e5;background:#f2f7fc}.transcript-message table{width:100%%;border-collapse:collapse}.transcript-message th,.transcript-message td{padding:8px 10px;border:1px solid #dbe5f0;text-align:left;vertical-align:top}
-pre{max-width:100%%;overflow:auto;margin:12px 0;padding:14px;border-radius:12px;background:#101a29;color:#f4f7fb;white-space:pre}code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace}pre code .agentgo-code-change{color:#FFE27C}p code,li code,td code{padding:2px 5px;border-radius:6px;background:#eaf0f6;color:#17355f}.work-mode-code-toolbar,.work-mode-message-actions,.work-mode-message-collapse-btn,.work-mode-ai-file-toggle,.work-mode-agent-details-toggle,.work-mode-repair-toggle{display:none!important}
+pre{max-width:100%%;overflow:auto;margin:12px 0;padding:14px;border-radius:12px;background:#101a29;color:#f4f7fb;white-space:pre}code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace}.agentgo-code-change{color:#FFE27C}p code,li code,td code{padding:2px 5px;border-radius:6px;background:#eaf0f6;color:#17355f}.work-mode-code-toolbar,.work-mode-message-actions,.work-mode-message-collapse-btn,.work-mode-ai-file-toggle,.work-mode-agent-details-toggle,.work-mode-repair-toggle{display:none!important}
 .work-mode-sent-attachments,.work-mode-webshot-list,.work-mode-inline-files{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 12px}.work-mode-sent-attachment,.work-mode-webshot-item,.work-mode-inline-image-item{min-width:180px;max-width:100%%;padding:10px;border:1px solid #d7e2ed;border-radius:12px;background:#fff}.work-mode-sent-attachment img,.work-mode-webshot-item img,.work-mode-inline-image-item img,.transcript-message img{display:block;max-width:100%%;height:auto;border-radius:10px}.work-mode-sent-attachment-head{display:flex;gap:7px;margin-top:7px;font-weight:800}.work-mode-sent-attachment-badge{color:#9a3976;font-size:.72rem}.work-mode-sent-attachment-meta,.work-mode-webshot-caption,.work-mode-inline-image-caption{color:var(--muted);font-size:.8rem;margin-top:5px}
 .work-mode-ai-warnings,.work-mode-file-outputs,.work-mode-agent-details,.work-mode-repair-details,.transcript-review-section{display:grid;gap:10px;margin-top:12px}.work-mode-ai-warning,.work-mode-file-output,.work-mode-agent-details-section,.work-mode-repair-section{padding:11px 12px;border-radius:11px;background:#fff7dc;border:1px solid #efd68c}.work-mode-file-output{background:#f3f8fd;border-color:#d3e2f1}.work-mode-file-output-head{display:flex;justify-content:space-between;gap:12px;font-weight:800}.work-mode-file-output-pre,.work-mode-agent-details-pre,.work-mode-repair-pre{margin:8px 0 0}.work-mode-repair-label,.work-mode-agent-details-label{font-weight:900;color:#6d4c13}.transcript-review-section{padding-top:16px;border-top:1px solid var(--line)}.transcript-review-section h2{margin:0;color:#18355d}.transcript-empty{padding:28px;text-align:center;color:var(--muted)}
 .transcript-yeti{display:block;width:min(180px,45vw);height:auto;margin:20px auto 0}.transcript-footer{text-align:center;color:var(--muted);font-size:.78rem;margin-top:8px}@media(max-width:720px){.transcript-page{width:100%%;margin:0;border:0;border-radius:0;padding:22px 14px}.transcript-message.user,.transcript-message.ai{margin-left:0;margin-right:0}}
@@ -7327,9 +7582,6 @@ func (a *App) handleWorkModeObserverReviewSend(w http.ResponseWriter, req workMo
 		if strings.TrimSpace(agentMessage) != "" {
 			agentMessages = append(agentMessages, strings.TrimSpace(agentMessage))
 		}
-		if req.UseMemory && !memoryUpdated && memoryWarning == "" && strings.TrimSpace(latestWorkerReply) != "" {
-			memoryWarning = "Memory was on, but the Worker did not return a memory update."
-		}
 		latestTmpState := currentTmpState()
 		a.mu.Lock()
 		state := a.updateWorkModeSessionStatusLocked(projectName, workModeStatusFinalized, workModeCallOwnerNone)
@@ -7515,8 +7767,12 @@ func (a *App) handleWorkModeObserverReviewSend(w http.ResponseWriter, req workMo
 		latestWorkerReply = strings.TrimSpace(parsed.Reply)
 		latestWorkerFiles = currentTmpState()
 		if req.UseMemory {
-			memoryText := strings.TrimSpace(parsed.Memory)
-			if memoryText != "" {
+			memoryText, memoryParseWarning := workModeMemoryUpdate(parsed)
+			if memoryParseWarning != "" {
+				if memoryWarning == "" {
+					memoryWarning = memoryParseWarning
+				}
+			} else if memoryText != "" {
 				if err := writeWorkModeRequestMemory(memoryWritePath, memoryPersist, memoryText); err != nil {
 					memoryWarning = "Could not save Work Mode memory."
 					a.logf(workerModelID, "warn", "Could not save Observer Review memory: %v", err)
@@ -7524,8 +7780,6 @@ func (a *App) handleWorkModeObserverReviewSend(w http.ResponseWriter, req workMo
 					chatMemory = []byte(memoryText)
 					memoryUpdated = true
 				}
-			} else if memoryWarning == "" {
-				memoryWarning = "Memory is on, but the Worker did not return a memory update for this pass. Previous memory was preserved."
 			}
 		}
 		if warning := a.workModeOutputLimitWarning(worker, adapterResp); warning != "" {
@@ -7833,7 +8087,7 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 	responseSchema := workModeJSONSchema()
 	if req.Agentic.Enabled {
 		instructions = buildWorkModeAgenticInstructions(instructions, req.Agentic, agenticEnvironment)
-		responseSchema = workModeAgenticJSONSchema()
+		responseSchema = workModeAgenticJSONSchema(req.Agentic.ScreenshotEnabled)
 	}
 	requestPayload := adapterRequestPayload{
 		Instructions: strings.TrimSpace(instructions),
@@ -7912,7 +8166,7 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 	var agenticResult *workModeAgenticResult
 	if req.Agentic.Enabled {
 		var validationErrors []string
-		parsed, validationErrors, err = parseAndValidateWorkModeAgenticResponse(adapterResp.Text)
+		parsed, validationErrors, err = parseAndValidateWorkModeAgenticResponse(adapterResp.Text, req.Agentic.ScreenshotEnabled)
 		if err != nil {
 			result := workModeAgenticProtocolErrorResult(req.Agentic, agenticEnvironment, adapterResp.Text, err)
 			if agenticTaskID != "" {
@@ -8036,8 +8290,10 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 	memoryUpdated := false
 	memoryWarning := ""
 	if req.UseMemory {
-		memoryText := strings.TrimSpace(parsed.Memory)
-		if memoryText != "" {
+		memoryText, memoryParseWarning := workModeMemoryUpdate(parsed)
+		if memoryParseWarning != "" {
+			memoryWarning = memoryParseWarning
+		} else if memoryText != "" {
 			if err := writeWorkModeRequestMemory(memoryWritePath, memoryPersist, memoryText); err != nil {
 				memoryWarning = "Could not save Work Mode memory."
 				a.logf(modelIDString(model.ID), "warn", "Could not save Work Mode memory: %v", err)
@@ -8045,8 +8301,6 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 				chatMemory = []byte(memoryText)
 				memoryUpdated = true
 			}
-		} else {
-			memoryWarning = "Memory was on, but the AI did not return a memory update."
 		}
 	}
 	warnings := normalizeWorkModeWarnings(parsed.Warnings)
@@ -8070,6 +8324,9 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 			default:
 				summary = "A structured command request is awaiting Manual approval."
 			}
+		case workModeAgenticStatusScreenshot:
+			status = agenticWorkspaceStatusActive
+			summary = "The AI requested a screenshot from the user-approved source."
 		case workModeAgenticStatusNeedsUserInput:
 			status = agenticWorkspaceStatusNeedsUserInput
 			summary = agenticResult.Question
@@ -24051,7 +24308,9 @@ Core Rules:
 * Example Good: "Bug in auth middleware. Fix:"
 
 Code Integrity Firewall:
-Absolute literal output inside code blocks. Zero changes to syntax, spacing, or comments. Code remains modern and perfect.
+Change code only as required by the user's request. Preserve all unrelated
+syntax, spacing, and comments. AgentGO Highlighter spans are display
+markup, not code changes, and must still be applied when required.
 
 Safeguards & Boundaries:
 * Auto-Clarity Override: Break Ugg Protocol ONLY for security warnings, irreversible actions, or if user expresses confusion. Resume Ugg immediately after issue resolved.
@@ -24103,16 +24362,6 @@ Use <strong> sparingly for inline labels and important terms. Use <em> for light
 
 Use <code> for paths, commands, filenames, JSON keys, and identifiers. Use <pre><code> for copy/paste blocks.
 
-CodeChange Rule - Code change highlighting is required when the reply shows edits, fixes, or additions to code supplied by the user. Keep the normal <pre><code> block, and inside that block wrap every changed or newly inserted line individually with exactly <span class="agentgo-code-change">...</span>. Leave unchanged lines unwrapped.
-
-The span belongs inside <pre><code> and does not replace the code block. Use one span per changed or newly inserted line. Do not wrap multiple lines in one span, the entire code block, unchanged lines, or surrounding prose.
-
-CodeChange Rule Example:
-<pre><code>const enabled = false;
-<span class="agentgo-code-change">const timeoutMs = 15000;</span>
-startAgentGO();
-</code></pre>
-
 When a reply has more than 3 distinct options, ideas, decisions, risks, or instructions, break them into labeled items such as <strong>aGO-01:</strong>, <strong>aGO-02:</strong>, and <strong>aGO-03:</strong> so the user, Builder, or Observer can reference them easily.
 
 Use aGO labels as temporary reply anchors only. Do not treat them as permanent approval IDs unless the user explicitly locks them.
@@ -24121,7 +24370,15 @@ When presenting more than 3 ideas or instructions at once, keep each item brief.
 
 Favor HTML tags over boring markdown symbols like #, or ** inside replies.
 
-Tone: professional, friendly. Avoid unnecessary preambles.`
+Tone: professional, friendly. Avoid unnecessary preambles.
+
+Help the user quickly identify changes you make to user-provided code or
+prose in your reply by wrapping each changed code line and each changed prose
+sentence in its own <span class="agentgo-code-change">...</span>. Leave
+unchanged content unwrapped.
+
+Render prose as normal prose, never inside <pre><code>. Use <pre><code>
+only for code.`
 
 func agentGOStylingPromptPath() string {
 	return filepath.Join(systemPromptsDir, agentGOStylingFile)

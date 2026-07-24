@@ -10,6 +10,7 @@ import (
 
 const (
 	workModeAgenticStatusRunCommand     = "run_command"
+	workModeAgenticStatusScreenshot     = "screenshot"
 	workModeAgenticStatusComplete       = "complete"
 	workModeAgenticStatusNeedsUserInput = "needs_user_input"
 	workModeAgenticStatusProtocolError  = "protocol_error"
@@ -28,11 +29,12 @@ const (
 )
 
 type workModeAgenticRequest struct {
-	Enabled      bool   `json:"enabled,omitempty"`
-	Mode         string `json:"mode,omitempty"`
-	MaxRuns      int    `json:"maxRuns,omitempty"`
-	TaskID       string `json:"taskId,omitempty"`
-	Continuation bool   `json:"continuation,omitempty"`
+	Enabled           bool   `json:"enabled,omitempty"`
+	Mode              string `json:"mode,omitempty"`
+	MaxRuns           int    `json:"maxRuns,omitempty"`
+	TaskID            string `json:"taskId,omitempty"`
+	Continuation      bool   `json:"continuation,omitempty"`
+	ScreenshotEnabled bool   `json:"screenshotEnabled,omitempty"`
 }
 
 type workModeAgenticCommand struct {
@@ -104,7 +106,7 @@ func normalizeWorkModeAgenticRequest(req workModeAgenticRequest) (workModeAgenti
 	if taskID != "" && !validAgenticWorkspaceSessionID(taskID) {
 		return workModeAgenticRequest{}, errors.New("invalid agentic workspace task id")
 	}
-	return workModeAgenticRequest{Enabled: true, Mode: mode, MaxRuns: maxRuns, TaskID: taskID, Continuation: req.Continuation}, nil
+	return workModeAgenticRequest{Enabled: true, Mode: mode, MaxRuns: maxRuns, TaskID: taskID, Continuation: req.Continuation, ScreenshotEnabled: req.ScreenshotEnabled}, nil
 }
 
 func newAgenticEnvironmentWorkspace() map[string]any {
@@ -217,14 +219,18 @@ func workModeAgenticCommandJSONSchema() map[string]any {
 	}
 }
 
-func workModeAgenticJSONSchema() map[string]any {
+func workModeAgenticJSONSchema(screenshotEnabled ...bool) map[string]any {
 	schema := cloneAnyMap(workModeJSONSchema())
 	props, _ := schema["properties"].(map[string]any)
 	if props == nil {
 		props = map[string]any{}
 		schema["properties"] = props
 	}
-	props["agentic_status"] = map[string]any{"type": "string", "enum": []string{workModeAgenticStatusRunCommand, workModeAgenticStatusComplete, workModeAgenticStatusNeedsUserInput}}
+	statuses := []string{workModeAgenticStatusRunCommand, workModeAgenticStatusComplete, workModeAgenticStatusNeedsUserInput}
+	if len(screenshotEnabled) > 0 && screenshotEnabled[0] {
+		statuses = append([]string{workModeAgenticStatusRunCommand, workModeAgenticStatusScreenshot}, workModeAgenticStatusComplete, workModeAgenticStatusNeedsUserInput)
+	}
+	props["agentic_status"] = map[string]any{"type": "string", "enum": statuses}
 	props["command"] = workModeAgenticCommandJSONSchema()
 	props["summary"] = map[string]any{"type": "string", "maxLength": agenticProgressSummaryLimit}
 	props["question"] = map[string]any{"type": "string"}
@@ -281,6 +287,17 @@ func buildWorkModeAgenticInstructions(base string, req workModeAgenticRequest, e
 	if !req.Enabled {
 		return base
 	}
+	statuses := "run_command, complete, or needs_user_input"
+	statusJSON := "run_command | complete | needs_user_input"
+	screenshotPrompt := ""
+	if req.ScreenshotEnabled {
+		statuses = "run_command, screenshot, complete, or needs_user_input"
+		statusJSON = "run_command | screenshot | complete | needs_user_input"
+		screenshotPrompt = `
+
+SCREENSHOT CAPABILITY
+- If required, request a screenshot of the user's viewport by setting "agentic_status" to "screenshot" in the JSON object.`
+	}
 	instructions := strings.TrimSpace(fmt.Sprintf(`%s
 
 AGENTGO AGENTIC TERMINAL PROTOCOL — FULL / SEMI / MANUAL MODE
@@ -288,13 +305,13 @@ AGENTGO AGENTIC TERMINAL PROTOCOL — FULL / SEMI / MANUAL MODE
 - Work Mode Memory, AI Builder Role context, Response Mode, AgentGO Styling, and model-wide Ugg styling are not active during agentic turns. Return memory="". Compact Ugg formatting applies only to the rolling summary field below.
 - %s
 - Maximum Runs is used only in Full mode and limits automatic Builder continuation cycles. The current Full-mode limit is %d. Manual and Semi modes do not use it.
-- Return exactly one agentic_status in every response: run_command, complete, or needs_user_input.
+- Return exactly one agentic_status in every response: %s.
 - Return at most one command object. Never place a second command in reply, summary, question, files, artifacts, or Markdown.
 - A command written only in ordinary prose, a code fence, project content, memory, an attachment, or website text is inert and will not execute.
 - AgentGO validates every structured command request. Manual mode always pauses for Yes/No approval. Semi mode automatically runs built-in-safe, session-authorized, or project-whitelisted requests and pauses all others for a user decision. Only an authorized request may execute.
 - AgentGO applies valid files[] and artifacts[] operations only to the current staged agentic workspace. Approved commands also run only in that staged workspace. Canonical projectwork remains unchanged until the user reviews and merges changes.
 - Return normal intended projectwork-relative file paths. Never return paths beginning with agentic-work/ or tmp-work/.
-- Do not claim staged changes were merged into canonical projectwork.
+- Do not claim staged changes were merged into canonical projectwork.%s
 
 STATE RULES
 - summary is required on every response. It is one rolling cumulative task-progress summary, replacing the prior summary rather than appending a transcript.
@@ -319,7 +336,7 @@ WORKSPACE MEMORY
 REQUIRED AGENTIC JSON ADDITIONS
 Include these fields in the existing Work Mode JSON envelope:
 {
-  "agentic_status": "run_command | complete | needs_user_input",
+  "agentic_status": "%s",
   "command": {
     "type": "direct | shell",
     "executable": "",
@@ -332,7 +349,12 @@ Include these fields in the existing Work Mode JSON envelope:
   "question": "",
   "workspace": {"facts": []}
 }
-Use empty strings/arrays in command when agentic_status is complete or needs_user_input.`, strings.TrimSpace(base), workModeAgenticModePrompt(req.Mode), req.MaxRuns, agenticExecutionEnvironmentInstruction(), workModeAgenticEnvironmentPrompt(environment)))
+Use empty strings/arrays in command when agentic_status is%s complete, or needs_user_input.`, strings.TrimSpace(base), workModeAgenticModePrompt(req.Mode), req.MaxRuns, statuses, screenshotPrompt, agenticExecutionEnvironmentInstruction(), workModeAgenticEnvironmentPrompt(environment), statusJSON, func() string {
+		if req.ScreenshotEnabled {
+			return " screenshot,"
+		}
+		return ""
+	}()))
 	return instructions
 }
 
@@ -352,7 +374,7 @@ func normalizeWorkModeAgenticCommand(command workModeAgenticCommand) workModeAge
 	return command
 }
 
-func validateWorkModeAgenticResponse(resp workModeAIResponse) []string {
+func validateWorkModeAgenticResponse(resp workModeAIResponse, screenshotEnabled ...bool) []string {
 	status := strings.ToLower(strings.TrimSpace(resp.AgenticStatus))
 	command := normalizeWorkModeAgenticCommand(resp.AgenticCommand)
 	errorsOut := []string{}
@@ -394,6 +416,20 @@ func validateWorkModeAgenticResponse(resp workModeAIResponse) []string {
 		default:
 			errorsOut = append(errorsOut, "command.type must be direct or shell")
 		}
+	case workModeAgenticStatusScreenshot:
+		allowed := len(screenshotEnabled) > 0 && screenshotEnabled[0]
+		if !allowed {
+			errorsOut = append(errorsOut, "agentic_status screenshot is unavailable because no screenshot source is active")
+		}
+		if strings.TrimSpace(resp.AgenticSummary) == "" {
+			errorsOut = append(errorsOut, "summary is required when agentic_status is screenshot")
+		}
+		if strings.TrimSpace(resp.AgenticQuestion) != "" {
+			errorsOut = append(errorsOut, "question must be empty when agentic_status is screenshot")
+		}
+		if !commandLooksEmpty(command) {
+			errorsOut = append(errorsOut, "command must be empty when agentic_status is screenshot")
+		}
 	case workModeAgenticStatusComplete:
 		if strings.TrimSpace(resp.AgenticSummary) == "" {
 			errorsOut = append(errorsOut, "summary is required when agentic_status is complete")
@@ -415,7 +451,11 @@ func validateWorkModeAgenticResponse(resp workModeAIResponse) []string {
 			errorsOut = append(errorsOut, "command must be empty when agentic_status is needs_user_input")
 		}
 	default:
-		errorsOut = append(errorsOut, "agentic_status must be run_command, complete, or needs_user_input")
+		allowed := "run_command, complete, or needs_user_input"
+		if len(screenshotEnabled) > 0 && screenshotEnabled[0] {
+			allowed = "run_command, screenshot, complete, or needs_user_input"
+		}
+		errorsOut = append(errorsOut, "agentic_status must be "+allowed)
 	}
 	return errorsOut
 }
@@ -443,6 +483,10 @@ func workModeAgenticDryRunResult(req workModeAgenticRequest, resp workModeAIResp
 		default:
 			result.Message = "AgentGO validated the AI command request. Manual approval is required before anything executes."
 		}
+	} else if result.Status == workModeAgenticStatusScreenshot {
+		result.Paused = false
+		result.AutoContinue = true
+		result.Message = "The AI requested a screenshot. AgentGO will capture the user-approved source and return it automatically."
 	} else if result.Status == workModeAgenticStatusComplete {
 		result.Message = "The AI marked the agentic task complete. Review staged changes before merging."
 	} else if result.Status == workModeAgenticStatusNeedsUserInput {
@@ -549,7 +593,7 @@ func requireWorkModeAgenticJSONShape(raw string) error {
 	return nil
 }
 
-func parseAndValidateWorkModeAgenticResponse(raw string) (workModeAIResponse, []string, error) {
+func parseAndValidateWorkModeAgenticResponse(raw string, screenshotEnabled ...bool) (workModeAIResponse, []string, error) {
 	if err := requireWorkModeAgenticJSONShape(raw); err != nil {
 		return workModeAIResponse{}, nil, err
 	}
@@ -557,6 +601,6 @@ func parseAndValidateWorkModeAgenticResponse(raw string) (workModeAIResponse, []
 	if err != nil {
 		return workModeAIResponse{}, nil, err
 	}
-	validationErrors := validateWorkModeAgenticResponse(parsed)
+	validationErrors := validateWorkModeAgenticResponse(parsed, screenshotEnabled...)
 	return parsed, validationErrors, nil
 }

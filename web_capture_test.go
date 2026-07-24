@@ -410,7 +410,9 @@ func TestWorkModeCodeBlocksDecodeEntitiesBeforeDisplayAndCopy(t *testing.T) {
 		"decoder.innerHTML = source.replace(/<\\/textarea/gi, '&lt;/textarea')",
 		"if (hasChangeMarker) appendSanitizedAgentGOCodeContent(el, node)",
 		"else el.textContent = decodeAgentGOCodeText(node)",
-		".work-mode-message.ai pre code .agentgo-code-change{color:#FFE27C}",
+		".work-mode-message.ai .agentgo-code-change{color:#FFE27C}",
+		"if (isAgentGOCodeChangeMarker(node))",
+		"el.className = 'agentgo-code-change'",
 		"const text = pre ? String(pre.textContent || '') : ''",
 		"const preview = content ? `<pre class=\"work-mode-file-output-pre\">${escapeHtml(content)}</pre>` : ''",
 	} {
@@ -892,10 +894,13 @@ func TestToastPositionContrastAndKnowledgeToggleLayering(t *testing.T) {
 		"top: 20px;",
 		"transform: translateX(-50%) translateY(-24px);",
 		"pointer-events: none;",
-		"background: rgba(17, 24, 39, 0.98);",
-		"border-left: 4px solid #f5a6d7;",
-		"border-left-color: #ffe27c;",
-		"color: #fff7dc;",
+		"background: #17355f;",
+		"border: 2px solid #9db6d7;",
+		"border-top-width: 4px;",
+		"border-top-color: #9db6d7;",
+		"border-top-color: #f4b740;",
+		"border-top-color: #ff5b67;",
+		"color: #f8fafc;",
 	} {
 		if !strings.Contains(toastCSS, required) {
 			t.Fatalf("toast CSS missing %q", required)
@@ -905,6 +910,8 @@ func TestToastPositionContrastAndKnowledgeToggleLayering(t *testing.T) {
 		"bottom: 24px;",
 		"translateY(20px)",
 		"background: rgba(16, 32, 58, 0.94);",
+		"border-left: 4px solid #f5a6d7;",
+		"background: rgba(47, 31, 15, 0.98);",
 	} {
 		if strings.Contains(toastCSS, forbidden) {
 			t.Fatalf("toast CSS still contains old styling %q", forbidden)
@@ -937,7 +944,7 @@ func TestAgentGOStylingPaletteAndWorkModeWebshotUI(t *testing.T) {
 	if prompt != strings.TrimSpace(defaultAgentGOStylingPrompt) {
 		t.Fatal("built-in styling prompt and system_prompts/agentgo_styling.txt are out of sync")
 	}
-	for _, required := range []string{"green #7EE7A8", "yellow #FFE27C", "orange #FF9900", "red #FF9696", `<span style="color:#RRGGBB">`, `CodeChange Rule - Code change highlighting is required`, `Keep the normal <pre><code> block`, `<span class="agentgo-code-change">...</span>`, `The span belongs inside <pre><code>`, `Use one span per changed or newly inserted line.`, `CodeChange Rule Example:`, `<span class="agentgo-code-change">const timeoutMs = 15000;</span>`} {
+	for _, required := range []string{"green #7EE7A8", "yellow #FFE27C", "orange #FF9900", "red #FF9696", `<span style="color:#RRGGBB">`, `Help the user quickly identify changes you make to user-provided code or`, `prose in your reply by wrapping each changed code line and each changed prose`, `sentence in its own <span class="agentgo-code-change">...</span>. Leave`, `unchanged content unwrapped.`, `Render prose as normal prose, never inside <pre><code>. Use <pre><code>`, `only for code.`} {
 		if !strings.Contains(prompt, required) {
 			t.Fatalf("styling prompt missing %q", required)
 		}

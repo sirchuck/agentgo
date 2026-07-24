@@ -352,14 +352,15 @@ select:focus {
   pointer-events: none;
   z-index: 2300;
   padding: 12px 16px;
-  border: 1px solid rgba(255,255,255,0.24);
-  border-left: 4px solid #f5a6d7;
+  border: 2px solid #9db6d7;
+  border-top-width: 4px;
+  border-top-color: #9db6d7;
   border-radius: 14px;
   color: #f8fafc;
   font-weight: 800;
   line-height: 1.35;
   text-align: center;
-  background: rgba(17, 24, 39, 0.98);
+  background: #17355f;
   box-shadow: 0 16px 36px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.08);
   transition: opacity 0.16s ease, transform 0.16s ease;
 }
@@ -368,10 +369,10 @@ select:focus {
   transform: translateX(-50%) translateY(0);
 }
 .toast[data-variant="warning"] {
-  background: rgba(47, 31, 15, 0.98);
-  border-color: rgba(255,226,124,0.52);
-  border-left-color: #ffe27c;
-  color: #fff7dc;
+  border-top-color: #f4b740;
+}
+.toast[data-variant="error"] {
+  border-top-color: #ff5b67;
 }
 
 .token-usage-display {
@@ -3461,7 +3462,7 @@ body.deaddrop-popover-open {
 .work-mode-terminal-body{position:relative;display:grid;gap:9px;padding:12px}.work-mode-terminal-screen{height:clamp(160px,27vh,290px);overflow:auto;border:1px solid rgba(255,255,255,.085);border-radius:17px;background:radial-gradient(circle at 88% 8%,rgba(209,75,160,.08),transparent 32%),#090b10;padding:13px 14px;font:16px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;box-shadow:inset 0 1px 0 rgba(255,255,255,.035);scrollbar-width:thin;scrollbar-color:rgba(255,226,124,.28) transparent}.work-mode-terminal-line{white-space:pre-wrap;overflow-wrap:anywhere}.work-mode-terminal-line+.work-mode-terminal-line{margin-top:8px}.work-mode-terminal-line.is-ai{color:#f5a6d7}.work-mode-terminal-line.is-agentgo{color:#ffe27c}.work-mode-terminal-line.is-process{color:#9fd7ff}.work-mode-terminal-line.is-error{color:#ff9f9f}.work-mode-terminal-line.is-muted{color:rgba(245,247,251,.48)}
 .work-mode-agentic-review{display:grid;gap:8px;max-height:210px;overflow:auto;border:1px solid rgba(109,224,182,.18);border-radius:15px;background:rgba(109,224,182,.045);padding:10px;scrollbar-width:thin}.work-mode-agentic-review[hidden]{display:none}.work-mode-agentic-review-head{display:flex;align-items:flex-start;gap:9px}.work-mode-agentic-review-title{font-size:.76rem;font-weight:950;color:#dbfff2}.work-mode-agentic-review-meta{color:rgba(219,255,242,.58);font-size:.67rem;line-height:1.35}.work-mode-agentic-review-status{margin-left:auto;border:1px solid rgba(255,226,124,.24);border-radius:999px;padding:3px 7px;color:#ffe8a0;font-size:.64rem;font-weight:950;text-transform:uppercase}.work-mode-agentic-review-status.is-complete{border-color:rgba(109,224,182,.30);color:#bfffe8}.work-mode-agentic-review-status.is-interrupted{border-color:rgba(255,112,112,.28);color:#ffb2b2}.work-mode-agentic-review-summary{color:rgba(245,247,251,.66);font-size:.70rem;line-height:1.35}.work-mode-agentic-review-actions{display:flex;gap:6px;flex-wrap:wrap}.work-mode-agentic-review-btn{appearance:none;border:1px solid rgba(109,224,182,.24);border-radius:999px;background:rgba(109,224,182,.10);color:#dbfff2;padding:5px 9px;font:inherit;font-size:.65rem;font-weight:950;cursor:pointer}.work-mode-agentic-review-btn.reject,.work-mode-agentic-review-btn.discard{border-color:rgba(255,112,112,.22);background:rgba(255,112,112,.08);color:#ffc3c3}.work-mode-agentic-review-btn:disabled{opacity:.42;cursor:not-allowed}.work-mode-agentic-change-list{display:grid;gap:5px}.work-mode-agentic-change{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:7px;padding:7px 8px;border-radius:11px;background:rgba(0,0,0,.20);border:1px solid rgba(255,255,255,.06)}.work-mode-agentic-change-kind{border-radius:999px;padding:3px 6px;background:rgba(74,163,255,.12);color:#bfe0ff;font-size:.60rem;font-weight:950;text-transform:uppercase}.work-mode-agentic-change-kind.is-deleted{background:rgba(255,112,112,.10);color:#ffc1c1}.work-mode-agentic-change-kind.is-added{background:rgba(109,224,182,.10);color:#caffec}.work-mode-agentic-change-path{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff;font:12px/1.3 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.work-mode-agentic-change-note{color:rgba(245,247,251,.48);font-size:.62rem}.work-mode-agentic-change-note.is-conflict{color:#ffb2b2}.work-mode-agentic-change-actions{display:flex;gap:5px}.work-mode-agentic-change.is-resolved{opacity:.58}.work-mode-manual-approval{display:grid;gap:8px;padding:10px;border-radius:14px;border:1px solid rgba(255,208,74,.24);background:rgba(255,208,74,.07)}.work-mode-manual-approval[hidden]{display:none}.work-mode-manual-title{font-size:.72rem;font-weight:950;color:#ffe296;text-transform:uppercase;letter-spacing:.04em}.work-mode-manual-detail{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:4px 8px;font-size:.67rem;color:rgba(245,247,251,.7)}.work-mode-manual-detail strong{color:#fff}.work-mode-manual-command{white-space:pre-wrap;overflow-wrap:anywhere;padding:8px;border-radius:9px;background:rgba(0,0,0,.26);font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#fff}.work-mode-manual-actions{display:flex;gap:7px;flex-wrap:wrap}.work-mode-manual-btn{appearance:none;border:1px solid rgba(109,224,182,.3);border-radius:999px;background:rgba(109,224,182,.12);color:#dffff2;padding:6px 11px;font:inherit;font-size:.67rem;font-weight:950;cursor:pointer}.work-mode-manual-btn.deny,.work-mode-terminal-stop{border-color:rgba(255,112,112,.3);background:rgba(255,112,112,.1);color:#ffcaca}.work-mode-manual-btn:disabled{opacity:.45;cursor:not-allowed}.work-mode-terminal-stop{appearance:none;border-radius:999px;padding:6px 11px;font:inherit;font-size:.67rem;font-weight:950;cursor:pointer}.work-mode-terminal-stop[hidden]{display:none}
 .work-mode-terminal-note{color:rgba(245,247,251,.56);font-size:.72rem;line-height:1.35}.work-mode-terminal-controls{display:flex;align-items:center;gap:7px;min-width:0;flex-wrap:nowrap}.work-mode-terminal-modes{display:inline-flex;align-items:center;gap:5px}.work-mode-terminal-mode,.work-mode-terminal-tool,.work-mode-terminal-toggle{appearance:none;height:34px;border:1px solid rgba(255,255,255,.11);border-radius:999px;background:rgba(255,255,255,.055);color:rgba(245,247,251,.72);font:inherit;font-size:.72rem;font-weight:950;cursor:pointer;padding:0 11px;white-space:nowrap}.work-mode-terminal-mode:hover,.work-mode-terminal-tool:hover,.work-mode-terminal-toggle:hover{background:rgba(255,255,255,.09);color:#fff}.work-mode-terminal-mode.is-selected,.work-mode-terminal-toggle.is-on{border-color:rgba(255,226,124,.46);background:rgba(255,226,124,.18);color:var(--work-yellow);box-shadow:0 0 0 2px rgba(255,226,124,.07)}.work-mode-terminal-mode:disabled,.work-mode-terminal-tool:disabled,.work-mode-terminal-toggle:disabled{opacity:.42;cursor:not-allowed}.work-mode-terminal-max{display:inline-flex;align-items:center;gap:6px;color:rgba(245,247,251,.62);font-size:.70rem;font-weight:900;white-space:nowrap}.work-mode-terminal-max input{width:58px;height:34px;box-sizing:border-box;border:1px solid rgba(255,255,255,.12);border-radius:11px;background:rgba(255,255,255,.065);color:#fff;font:inherit;font-size:.78rem;font-weight:900;text-align:center;outline:none}.work-mode-terminal-max.is-disabled{opacity:.42}.work-mode-terminal-tools{display:inline-flex;align-items:center;gap:5px;margin-left:auto}.work-mode-terminal-tool{width:34px;padding:0;display:inline-flex;align-items:center;justify-content:center}.work-mode-terminal-tool svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8}.work-mode-terminal-toggle{min-width:54px}.work-mode-terminal-blocked-note{display:none;color:#ffe8a1;font-size:.72rem;font-weight:850}.work-mode-terminal-blocked-note.is-visible{display:block}
-.work-mode-terminal-safety{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(7,9,14,.94);backdrop-filter:blur(10px)}.work-mode-terminal-safety[hidden]{display:none}.work-mode-terminal-safety-card{width:min(690px,100%);max-height:100%;overflow:auto;border:1px solid rgba(255,226,124,.30);border-radius:20px;background:linear-gradient(180deg,rgba(38,40,48,.99),rgba(21,23,30,.99));box-shadow:0 26px 60px rgba(0,0,0,.48);padding:17px;display:grid;gap:12px}.work-mode-terminal-safety-title{font-size:1rem;font-weight:950;color:var(--work-yellow)}.work-mode-terminal-safety-copy{margin:0;color:rgba(245,247,251,.80);font-size:.84rem;line-height:1.48}.work-mode-terminal-safety-list{margin:0;padding-left:22px;color:rgba(245,247,251,.80);font-size:.82rem;line-height:1.5}.work-mode-terminal-safety-list li+li{margin-top:4px}.work-mode-terminal-machine{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:5px 12px;padding:11px 12px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);font-size:.75rem;line-height:1.35}.work-mode-terminal-machine dt{color:rgba(245,247,251,.50);font-weight:850}.work-mode-terminal-machine dd{margin:0;color:#fff;font-weight:800;min-width:0;overflow-wrap:anywhere}.work-mode-terminal-ack{display:flex;align-items:flex-start;gap:10px;padding:10px 11px;border-radius:14px;background:rgba(255,226,124,.07);border:1px solid rgba(255,226,124,.16);color:#fff2bd;font-size:.80rem;line-height:1.4;font-weight:800;cursor:pointer}.work-mode-terminal-ack input{width:21px;height:21px;flex:0 0 21px;margin:0;accent-color:#e7bd28}.work-mode-terminal-safety-actions{display:flex;justify-content:flex-end;gap:9px}.work-mode-terminal-safety-btn{appearance:none;border:0;border-radius:999px;padding:9px 14px;font:inherit;font-size:.78rem;font-weight:950;cursor:pointer}.work-mode-terminal-safety-btn.cancel{background:rgba(255,255,255,.09);color:#fff}.work-mode-terminal-safety-btn.continue{background:linear-gradient(180deg,#ffe98f,#d6aa18);color:#282000;box-shadow:0 9px 22px rgba(214,170,24,.24)}.work-mode-terminal-safety-btn:disabled{opacity:.42;cursor:not-allowed;box-shadow:none}
+.work-mode-terminal-safety{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(7,9,14,.94);backdrop-filter:blur(10px)}.work-mode-terminal-safety[hidden]{display:none}.work-mode-terminal-safety-card{width:min(690px,100%);max-height:100%;overflow:auto;border:1px solid rgba(255,226,124,.30);border-radius:20px;background:linear-gradient(180deg,rgba(38,40,48,.99),rgba(21,23,30,.99));box-shadow:0 26px 60px rgba(0,0,0,.48);padding:17px;display:grid;gap:12px}.work-mode-terminal-safety-title{font-size:1rem;font-weight:950;color:var(--work-yellow)}.work-mode-terminal-safety-copy{margin:0;color:rgba(245,247,251,.80);font-size:.84rem;line-height:1.48}.work-mode-terminal-safety-list{margin:0;padding-left:22px;color:rgba(245,247,251,.80);font-size:.82rem;line-height:1.5}.work-mode-terminal-safety-list li+li{margin-top:4px}.work-mode-terminal-machine{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:5px 12px;padding:11px 12px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);font-size:.75rem;line-height:1.35}.work-mode-terminal-machine dt{color:rgba(245,247,251,.50);font-weight:850}.work-mode-terminal-machine dd{margin:0;color:#fff;font-weight:800;min-width:0;overflow-wrap:anywhere}.work-mode-terminal-capture-permission{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:14px;background:rgba(74,163,255,.055);border:1px solid rgba(74,163,255,.18);color:#dceeff;font-size:.80rem;line-height:1.35;font-weight:800}.work-mode-terminal-capture-permission.is-selected{background:rgba(74,163,255,.11);border-color:rgba(74,163,255,.34);color:#fff}.work-mode-terminal-capture-btn{appearance:none;width:34px;height:34px;flex:0 0 34px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(74,163,255,.28);border-radius:999px;background:rgba(74,163,255,.10);color:#9fd1ff;cursor:pointer}.work-mode-terminal-capture-btn:hover:not(:disabled){background:rgba(74,163,255,.20);border-color:rgba(74,163,255,.50);color:#fff}.work-mode-terminal-capture-btn:disabled{cursor:default;opacity:1;background:rgba(74,163,255,.24);border-color:rgba(74,163,255,.55);color:#fff;box-shadow:0 0 0 3px rgba(74,163,255,.10)}.work-mode-terminal-capture-btn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8}.work-mode-terminal-ack{display:flex;align-items:flex-start;gap:10px;padding:10px 11px;border-radius:14px;background:rgba(255,226,124,.07);border:1px solid rgba(255,226,124,.16);color:#fff2bd;font-size:.80rem;line-height:1.4;font-weight:800;cursor:pointer}.work-mode-terminal-ack input{width:21px;height:21px;flex:0 0 21px;margin:0;accent-color:#e7bd28}.work-mode-terminal-safety-actions{display:flex;justify-content:flex-end;gap:9px}.work-mode-terminal-safety-btn{appearance:none;border:0;border-radius:999px;padding:9px 14px;font:inherit;font-size:.78rem;font-weight:950;cursor:pointer}.work-mode-terminal-safety-btn.cancel{background:rgba(255,255,255,.09);color:#fff}.work-mode-terminal-safety-btn.continue{background:linear-gradient(180deg,#ffe98f,#d6aa18);color:#282000;box-shadow:0 9px 22px rgba(214,170,24,.24)}.work-mode-terminal-safety-btn:disabled{opacity:.42;cursor:not-allowed;box-shadow:none}
 .work-mode-terminal-config-modal{position:fixed;inset:0;z-index:2180;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(4,6,10,.72);backdrop-filter:blur(7px)}.work-mode-terminal-config-modal[hidden]{display:none}.work-mode-terminal-config-card{width:min(820px,calc(100vw - 48px));max-height:min(82vh,760px);overflow:auto;border:1px solid rgba(255,226,124,.26);border-radius:22px;background:linear-gradient(180deg,#282b34,#171920);box-shadow:0 30px 80px rgba(0,0,0,.58);color:#f5f7fb}.work-mode-terminal-config-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.09)}.work-mode-terminal-config-title{font-size:.94rem;font-weight:950;color:var(--work-yellow)}.work-mode-terminal-config-close{margin-left:auto;appearance:none;border:0;border-radius:999px;width:32px;height:32px;background:rgba(255,255,255,.07);color:#fff;cursor:pointer}.work-mode-terminal-config-body{display:grid;gap:13px;padding:16px}.work-mode-terminal-config-copy{margin:0;color:rgba(245,247,251,.66);font-size:.78rem;line-height:1.45}.work-mode-terminal-json{width:100%;min-height:320px;box-sizing:border-box;resize:vertical;border:1px solid rgba(255,255,255,.12);border-radius:15px;background:#0b0e14;color:#f3f6fb;padding:13px;font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;outline:none}.work-mode-terminal-json:focus,.work-mode-terminal-env-input:focus{border-color:rgba(255,226,124,.45);box-shadow:0 0 0 3px rgba(255,226,124,.08)}.work-mode-terminal-validation{display:grid;gap:7px;font-size:.76rem}.work-mode-terminal-validation:empty{display:none}.work-mode-terminal-validation-block{padding:10px 12px;border-radius:13px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.045)}.work-mode-terminal-validation-block.is-error{border-color:rgba(255,105,105,.26);color:#ffb5b5}.work-mode-terminal-validation-block.is-warning{border-color:rgba(255,226,124,.24);color:#ffe8a0}.work-mode-terminal-config-actions{display:flex;justify-content:flex-end;gap:8px}.work-mode-terminal-config-btn{appearance:none;border:1px solid rgba(255,255,255,.11);border-radius:999px;background:rgba(255,255,255,.075);color:#fff;padding:9px 14px;font:inherit;font-size:.76rem;font-weight:950;cursor:pointer}.work-mode-terminal-config-btn.primary{border-color:rgba(255,226,124,.36);background:rgba(255,226,124,.18);color:var(--work-yellow)}.work-mode-terminal-config-btn:disabled{opacity:.45;cursor:not-allowed}.work-mode-terminal-env-form{display:grid;grid-template-columns:minmax(150px,.8fr) minmax(180px,1.2fr) minmax(210px,1.4fr) auto;gap:8px;align-items:end}.work-mode-terminal-env-field{display:grid;gap:5px;color:rgba(245,247,251,.62);font-size:.69rem;font-weight:900}.work-mode-terminal-env-input{height:38px;box-sizing:border-box;border:1px solid rgba(255,255,255,.12);border-radius:11px;background:rgba(255,255,255,.06);color:#fff;padding:0 10px;font:inherit;outline:none}.work-mode-terminal-env-list{display:grid;gap:7px}.work-mode-terminal-env-row{display:grid;grid-template-columns:minmax(125px,.8fr) minmax(100px,.7fr) minmax(180px,1.4fr) auto;gap:9px;align-items:center;padding:9px 10px;border-radius:13px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.075);font-size:.75rem}.work-mode-terminal-env-name{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:900;color:#fff}.work-mode-terminal-env-value{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#f4b8df}.work-mode-terminal-env-description{color:rgba(245,247,251,.60);overflow-wrap:anywhere}.work-mode-terminal-env-actions{display:flex;gap:5px}.work-mode-terminal-env-action{appearance:none;border:0;border-radius:999px;background:rgba(255,255,255,.08);color:#fff;padding:6px 9px;font:inherit;font-size:.67rem;font-weight:900;cursor:pointer}.work-mode-terminal-env-action.delete{color:#ffb3b3}.work-mode-terminal-env-empty{padding:18px;text-align:center;color:rgba(245,247,251,.48);font-size:.78rem;border:1px dashed rgba(255,255,255,.11);border-radius:14px}.import-repository-choice{display:grid;gap:8px;padding:11px 12px;border:1px solid rgba(255,255,255,.09);border-radius:14px;background:rgba(255,255,255,.035)}.import-repository-choice-title{font-weight:900;color:#fff}.import-repository-choice label{display:flex;gap:9px;align-items:flex-start;color:rgba(245,247,251,.70);font-size:.78rem;line-height:1.38}.import-repository-choice input{margin-top:2px;accent-color:#d14ba0}.import-repository-choice strong{color:#fff}
 @media(max-width:760px){.work-mode-terminal-env-form{grid-template-columns:1fr}.work-mode-terminal-env-row{grid-template-columns:1fr}.work-mode-terminal-config-modal{padding:10px}.work-mode-terminal-config-card{width:100%;max-height:92vh}}
 .work-mode-prompt-wrap{position:absolute;left:50%;right:auto;bottom:26px;transform:translateX(-50%);max-width:920px;width:min(920px,calc(100% - 56px));margin:0;display:grid;gap:8px;z-index:2140;pointer-events:none}
@@ -3473,7 +3474,8 @@ body.deaddrop-popover-open {
 .work-mode-control-group{position:relative;display:inline-flex}
 .work-mode-icon-btn,.work-mode-send-btn,.work-mode-opened-btn,.work-mode-settings-btn{appearance:none;border:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:38px;border-radius:999px;background:transparent;color:rgba(245,247,251,.88);font-weight:800}
 .work-mode-icon-btn:hover,.work-mode-opened-btn:hover,.work-mode-settings-btn:hover{background:rgba(255,255,255,.09)}
-.work-mode-icon-btn.is-listening{background:rgba(209,75,160,.24);color:#fff;box-shadow:0 0 0 1px rgba(245,166,215,.30)}
+.work-mode-icon-btn.is-listening{background:rgba(255,62,78,.40);color:#fff;box-shadow:0 0 0 1px rgba(255,125,136,.58),0 0 18px rgba(255,62,78,.22)}
+.work-mode-icon-btn.is-hands-free{background:rgba(74,163,255,.22);color:#fff;box-shadow:0 0 0 1px rgba(74,163,255,.30)}
 .work-mode-icon-btn.is-auto-read{background:rgba(74,163,255,.22);color:#fff;box-shadow:0 0 0 1px rgba(74,163,255,.30)}
 .work-mode-icon-btn.is-observer-review{background:rgba(109,224,182,.20);color:#fff;box-shadow:0 0 0 1px rgba(109,224,182,.30)}
 .work-mode-icon-btn.is-terminal-open{background:rgba(255,226,124,.20);color:var(--work-yellow);box-shadow:0 0 0 1px rgba(255,226,124,.34)}
@@ -3503,16 +3505,21 @@ body.deaddrop-popover-open {
 .work-mode-settings-help{display:grid;gap:8px;margin:0 0 12px;color:rgba(245,247,251,.72);font-size:.86rem;line-height:1.45}.work-mode-settings-help p{margin:0}.work-mode-settings-help strong{color:#fff}.work-mode-settings-list{display:grid;gap:10px}
 .work-mode-setting-row{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:.88rem;color:rgba(245,247,251,.82)}
 .work-mode-setting-row select{max-width:170px;background:#151923;color:#fff;border:1px solid rgba(255,255,255,.16);border-radius:10px;padding:7px 8px}.work-mode-setting-row select option{background:#151923;color:#fff}
+.work-mode-voice-commands{display:grid;gap:8px;margin-top:2px;padding-top:12px;border-top:1px solid rgba(255,255,255,.10)}.work-mode-voice-commands-title{font-size:.78rem;font-weight:950;letter-spacing:.05em;text-transform:uppercase;color:var(--work-pink)}.work-mode-voice-command-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(130px,170px);align-items:center;gap:12px;font-size:.82rem;color:rgba(245,247,251,.82)}.work-mode-voice-command-row input{width:100%;box-sizing:border-box;background:#151923;color:#fff;border:1px solid rgba(255,255,255,.16);border-radius:10px;padding:7px 9px;font:inherit;outline:none}.work-mode-voice-command-row input:focus{border-color:rgba(74,163,255,.55);box-shadow:0 0 0 3px rgba(74,163,255,.12)}.work-mode-voice-command-help{display:grid;gap:2px;font-size:.72rem;line-height:1.35;color:rgba(245,247,251,.62)}
 .work-mode-setting-toggle{display:inline-flex;align-items:center;gap:8px;color:rgba(245,247,251,.86)}.work-mode-setting-toggle.with-action{display:flex;justify-content:space-between;width:100%;gap:12px}.work-mode-setting-toggle-main{display:inline-flex;align-items:center;gap:8px;min-width:0}.work-mode-setting-edit-link{appearance:none;border:none;background:transparent;color:var(--work-blue);font:inherit;font-weight:900;cursor:pointer;padding:2px 0;text-decoration:underline;text-underline-offset:3px}.work-mode-setting-edit-link:hover{color:#d9eeff}
 .work-mode-max-token-card{width:min(580px,calc(100vw - 36px));height:auto;max-height:min(82vh,720px)}.work-mode-max-token-body{display:grid;gap:14px;padding:18px 20px 20px;min-height:0;overflow-y:auto;color:#12233e}.work-mode-max-token-copy{margin:0;color:#516a8f;font-size:.86rem;line-height:1.5}.work-mode-max-token-estimate{padding:10px 12px;border-radius:14px;background:rgba(255,226,124,.14);border:1px solid rgba(202,155,0,.22);color:#6f5400;font-size:.82rem;font-weight:850}.work-mode-max-token-grid{display:grid;gap:10px}.work-mode-max-token-row{display:grid;gap:10px;padding:12px;border-radius:15px;background:rgba(23,50,92,.055);border:1px solid rgba(117,137,171,.16)}.work-mode-max-token-model{min-width:0}.work-mode-max-token-model strong{display:block;color:#172a4d;font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.work-mode-max-token-model small{display:block;margin-top:3px;color:#6f83a8;font-size:.72rem}.max-output-choice-row{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px}.max-output-choice{display:inline-flex;align-items:center;gap:7px;color:#213b64;font-size:.82rem;font-weight:850;cursor:pointer}.max-output-choice input{accent-color:#d91f45}.max-output-token-input{display:inline-flex;align-items:center;gap:8px}.max-output-token-input input{width:145px;box-sizing:border-box;border:1px solid rgba(116,136,170,.24);border-radius:11px;background:#fff;color:#17325c;font:inherit;font-weight:850;padding:8px 10px}.max-output-token-unit{color:#d91f45;font-size:.8rem;font-weight:950;letter-spacing:.06em}.max-output-token-input input:disabled{opacity:.55;background:#eef2f8}.model-max-output-field[hidden]{display:none!important}.model-max-output-control{display:grid;gap:9px}.model-max-output-note{margin:0;color:#6f83a8;font-size:.76rem;line-height:1.4}.work-mode-max-token-help{color:#6f83a8;font-size:.76rem;line-height:1.4}.work-mode-max-token-actions{display:flex;justify-content:flex-end;gap:10px}
 @media (max-width:640px){.max-output-choice-row{align-items:flex-start;flex-direction:column}.max-output-token-input input{width:min(180px,60vw)}}
-.work-mode-message.ai h3,.work-mode-message.ai h4,.work-mode-message.ai p,.work-mode-message.ai ul,.work-mode-message.ai ol{white-space:normal}.work-mode-message.ai h3{margin:0 0 7px;font-size:1.06rem;line-height:1.25}.work-mode-message.ai h4{margin:10px 0 5px;font-size:.96rem;line-height:1.25}.work-mode-message.ai p{margin:0 0 8px}.work-mode-message.ai ul,.work-mode-message.ai ol{margin:0 0 8px 20px;padding:0}.work-mode-message.ai li{margin:2px 0}.work-mode-message.ai code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.09);border-radius:6px;padding:1px 5px}.work-mode-message.ai pre{white-space:pre-wrap;margin:8px 0;padding:10px;border-radius:12px;background:rgba(0,0,0,.24);border:1px solid rgba(255,255,255,.10);overflow:auto}.work-mode-message.ai pre code{background:transparent;border:none;padding:0}.work-mode-message.ai pre code .agentgo-code-change{color:#FFE27C}.work-mode-code-block{max-width:100%;min-width:0;margin:8px 0;border-radius:12px;background:rgba(0,0,0,.24);border:1px solid rgba(255,255,255,.10);overflow:hidden}.work-mode-code-toolbar{min-height:40px;box-sizing:border-box;display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:6px 8px;background:rgba(255,255,255,.035);border-bottom:1px solid rgba(255,255,255,.08)}.work-mode-message.ai .work-mode-code-block pre{max-width:100%;min-width:0;box-sizing:border-box;white-space:pre;overflow-x:auto;overflow-y:auto;overflow-wrap:normal;word-break:normal;margin:0;padding:10px;border:0;border-radius:0;background:transparent}.work-mode-message.ai .work-mode-code-block pre.is-wrapped{white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}.work-mode-message.ai .work-mode-code-block pre code{display:block;min-width:max-content;background:transparent;border:none;padding:0}.work-mode-message.ai .work-mode-code-block pre.is-wrapped code{min-width:0}.work-mode-code-action-btn{appearance:none;width:28px;height:28px;border-radius:999px;border:1px solid rgba(74,163,255,.30);background:rgba(74,163,255,.10);color:#d9eeff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}.work-mode-code-action-btn:hover{background:rgba(74,163,255,.18);color:#fff}.work-mode-code-action-btn.is-active,.work-mode-code-action-btn.is-copied{background:rgba(74,163,255,.24);color:#fff;box-shadow:0 0 0 1px rgba(74,163,255,.30)}.work-mode-code-action-btn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.9}
+.work-mode-message.ai h3,.work-mode-message.ai h4,.work-mode-message.ai p,.work-mode-message.ai ul,.work-mode-message.ai ol{white-space:normal}.work-mode-message.ai h3{margin:0 0 7px;font-size:1.06rem;line-height:1.25}.work-mode-message.ai h4{margin:10px 0 5px;font-size:.96rem;line-height:1.25}.work-mode-message.ai p{margin:0 0 8px}.work-mode-message.ai ul,.work-mode-message.ai ol{margin:0 0 8px 20px;padding:0}.work-mode-message.ai li{margin:2px 0}.work-mode-message.ai code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.09);border-radius:6px;padding:1px 5px}.work-mode-message.ai pre{white-space:pre-wrap;margin:8px 0;padding:10px;border-radius:12px;background:rgba(0,0,0,.24);border:1px solid rgba(255,255,255,.10);overflow:auto}.work-mode-message.ai pre code{background:transparent;border:none;padding:0}.work-mode-message.ai .agentgo-code-change{color:#FFE27C}.work-mode-code-block{max-width:100%;min-width:0;margin:8px 0;border-radius:12px;background:rgba(0,0,0,.24);border:1px solid rgba(255,255,255,.10);overflow:hidden}.work-mode-code-toolbar{min-height:40px;box-sizing:border-box;display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:6px 8px;background:rgba(255,255,255,.035);border-bottom:1px solid rgba(255,255,255,.08)}.work-mode-message.ai .work-mode-code-block pre{max-width:100%;min-width:0;box-sizing:border-box;white-space:pre;overflow-x:auto;overflow-y:auto;overflow-wrap:normal;word-break:normal;margin:0;padding:10px;border:0;border-radius:0;background:transparent}.work-mode-message.ai .work-mode-code-block pre.is-wrapped{white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}.work-mode-message.ai .work-mode-code-block pre code{display:block;min-width:max-content;background:transparent;border:none;padding:0}.work-mode-message.ai .work-mode-code-block pre.is-wrapped code{min-width:0}.work-mode-code-action-btn{appearance:none;width:28px;height:28px;border-radius:999px;border:1px solid rgba(74,163,255,.30);background:rgba(74,163,255,.10);color:#d9eeff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}.work-mode-code-action-btn:hover{background:rgba(74,163,255,.18);color:#fff}.work-mode-code-action-btn.is-active,.work-mode-code-action-btn.is-copied{background:rgba(74,163,255,.24);color:#fff;box-shadow:0 0 0 1px rgba(74,163,255,.30)}.work-mode-code-action-btn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.9}
 .work-mode-attachment-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
 .work-mode-attachment-chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;border:1px solid rgba(74,163,255,.38);background:rgba(74,163,255,.12);border-radius:999px;padding:5px 8px;color:#d9eeff;font-size:.8rem}
 .work-mode-attachment-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}
 .work-mode-attachment-remove{appearance:none;border:none;background:transparent;color:#fff;font-weight:900;cursor:pointer;padding:0 2px}
 .work-mode-attach-actions{display:grid;gap:8px}
+.work-mode-attach-source-row{display:flex;align-items:center;gap:8px;min-width:0}
+.work-mode-screen-capture-btn{appearance:none;flex:0 0 auto;width:34px;height:34px;border:1px solid rgba(255,255,255,.14);border-radius:10px;background:rgba(255,255,255,.07);color:rgba(245,247,251,.88);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}.work-mode-screen-capture-btn:hover{background:rgba(74,163,255,.18);color:#fff;border-color:rgba(74,163,255,.36)}.work-mode-screen-capture-btn:focus-visible{outline:2px solid rgba(74,163,255,.72);outline-offset:2px}.work-mode-screen-capture-btn:disabled{opacity:.48;cursor:wait}.work-mode-screen-capture-btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7}
+.work-mode-attach-source-separator{flex:0 0 auto;color:rgba(245,247,251,.46);font-weight:900}
 .work-mode-attach-actions input[type=file]{width:100%;font-size:.82rem;color:rgba(245,247,251,.78)}
+.work-mode-attach-source-row input[type=file]{flex:1 1 auto;min-width:0;width:auto}
 .work-mode-paste-target{width:100%;min-height:118px;border:1px dashed rgba(74,163,255,.36);border-radius:14px;background:rgba(0,0,0,.24);color:rgba(245,247,251,.56);padding:12px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:.88rem;outline:none;overflow:hidden}.work-mode-paste-target:focus{border-color:rgba(74,163,255,.7);box-shadow:0 0 0 3px rgba(74,163,255,.14)}.work-mode-paste-target.has-preview{padding:8px;background:rgba(74,163,255,.08);border-style:solid}.work-mode-paste-preview{max-width:100%;max-height:180px;border-radius:10px;object-fit:contain;box-shadow:0 12px 28px rgba(0,0,0,.28)}
 .work-mode-popup-btn{appearance:none;border:none;border-radius:999px;background:rgba(74,163,255,.18);color:#d9eeff;font-weight:850;padding:8px 12px;cursor:pointer}
 .work-mode-scroll-bottom{position:absolute;left:50%;bottom:118px;transform:translateX(-50%);z-index:2145;width:42px;height:42px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(37,39,46,.28);color:rgba(245,247,251,.82);backdrop-filter:blur(10px);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}.work-mode-scroll-bottom svg{width:27px;height:27px;stroke:currentColor;fill:none}.work-mode-scroll-bottom:hover{background:rgba(74,163,255,.18);color:#fff}.work-mode-scroll-bottom[hidden]{display:none}
@@ -7330,6 +7337,7 @@ body.deaddrop-popover-open {
 <p class="work-mode-terminal-safety-copy">For configuration guidance, search for <strong>VirtualBox block guest access to local network while allowing internet</strong> together with the name of your host operating system and firewall. Always test the isolation before enabling terminal access: confirm the VM cannot reach the host, router, or other private-network devices except through access you intentionally allow.</p>
 <p class="work-mode-terminal-safety-copy"><strong>Agentic context:</strong> During agentic work, AgentGO temporarily ignores Work Mode Memory, AI Builder Role, Response Mode, AgentGO Styling, and model-wide Ugg styling. Compact Ugg formatting remains active only for the internal task-progress summary. AI Observer is unavailable. Saved settings are unchanged and remain available in normal Work Mode.</p>
 <dl class="work-mode-terminal-machine"><dt>Computer</dt><dd id="workModeTerminalComputer">Loading…</dd><dt>Operating system</dt><dd id="workModeTerminalOS">Loading…</dd><dt>Architecture</dt><dd id="workModeTerminalArch">Loading…</dd><dt>Project workspace</dt><dd id="workModeTerminalWorkspace">Loading…</dd><dt>Virtual environment</dt><dd id="workModeTerminalVM">Loading…</dd></dl>
+<div class="work-mode-terminal-capture-permission" id="workModeTerminalCapturePermission"><button class="work-mode-terminal-capture-btn" id="workModeTerminalCaptureBtn" type="button" aria-label="Allow AI to request screenshots from an app or screen" title="Allow AI to request screenshots from an app or screen"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8.25 6.75 9.5 4.75h5l1.25 2h2.5A2.25 2.25 0 0 1 20.5 9v7.25a2.25 2.25 0 0 1-2.25 2.25H5.75a2.25 2.25 0 0 1-2.25-2.25V9a2.25 2.25 0 0 1 2.25-2.25h2.5Z" stroke-linejoin="round"/><circle cx="12" cy="12.5" r="3.25"/></svg></button><span id="workModeTerminalCaptureLabel">Allow AI to request screenshots from an app or screen.</span></div>
 <label class="work-mode-terminal-ack"><input id="workModeTerminalSafetyCheck" type="checkbox"/> <span>I understand that AgentGO guards direct AI commands, but executable code may operate beyond those command-level guardrails.</span></label>
 <div class="work-mode-terminal-safety-actions"><button class="work-mode-terminal-safety-btn cancel" id="workModeTerminalSafetyCancelBtn" type="button">Cancel</button><button class="work-mode-terminal-safety-btn continue" disabled id="workModeTerminalSafetyContinueBtn" type="button">Continue to Terminal</button></div>
 </div>
@@ -7379,7 +7387,11 @@ body.deaddrop-popover-open {
 <div class="work-mode-popup" hidden id="workModeAttachPopup">
 <div class="work-mode-popup-title">Temporary attachments</div>
 <div class="work-mode-attach-actions">
+<div class="work-mode-attach-source-row">
+<button class="work-mode-screen-capture-btn" id="workModeScreenCaptureBtn" type="button" aria-label="Capture a screen or application window" title="Capture a screen or application window"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8.25 6.75 9.5 4.75h5l1.25 2h2.5A2.25 2.25 0 0 1 20.5 9v7.25a2.25 2.25 0 0 1-2.25 2.25H5.75a2.25 2.25 0 0 1-2.25-2.25V9a2.25 2.25 0 0 1 2.25-2.25h2.5Z" stroke-linejoin="round"/><circle cx="12" cy="12.5" r="3.25"/></svg></button>
+<span class="work-mode-attach-source-separator" aria-hidden="true">•</span>
 <input id="workModeAttachFileInput" type="file" multiple accept="image/*,.txt,.log,.md,.json,.csv,.tsv,.yaml,.yml,.xml,.html,.css,.js,.ts,.go,.py,.php,.java,.c,.cpp,.h,.hpp,.rs,.rb,.swift,.kt,.sql,.pdf,application/pdf,text/*"/>
+</div>
 <div class="work-mode-paste-target" id="workModePasteTarget" tabindex="0" aria-label="Paste screenshot image here">Click here, then paste a screenshot/image from your clipboard.</div>
 <div class="work-mode-popup-empty">Temporary attachments clear after a Work Mode prompt is sent.</div>
 </div>
@@ -7405,7 +7417,7 @@ body.deaddrop-popover-open {
 <button aria-expanded="false" aria-haspopup="true" aria-label="Work Mode settings" class="work-mode-settings-btn" id="workModeSettingsBtn" title="Work Mode settings" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992.004.085.004.17 0 .255-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/><path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg></button>
 <div class="work-mode-popup" hidden id="workModeSettingsPopup"></div>
 </div>
-<button aria-label="Start speech input" aria-pressed="false" class="work-mode-icon-btn" id="workModeMicBtn" title="Speech input" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3.75a3 3 0 0 0-3 3v5.5a3 3 0 0 0 6 0v-5.5a3 3 0 0 0-3-3Z"/><path d="M5.75 11.25a6.25 6.25 0 0 0 12.5 0M12 17.5v2.75M8.75 20.25h6.5"/></svg></button>
+<button aria-label="Start speech input" aria-pressed="false" class="work-mode-icon-btn" id="workModeMicBtn" title="Left-click to dictate. Right-click for hands-free mode." type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3.75a3 3 0 0 0-3 3v5.5a3 3 0 0 0 6 0v-5.5a3 3 0 0 0-3-3Z"/><path d="M5.75 11.25a6.25 6.25 0 0 0 12.5 0M12 17.5v2.75M8.75 20.25h6.5"/></svg></button>
 <button aria-label="Auto-read AI replies" aria-pressed="false" class="work-mode-icon-btn" id="workModeAutoReadBtn" title="Auto-read AI replies" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4.75 10.25v3.5h3.1L12 17.5v-11l-4.15 3.75h-3.1Z"/><path d="M15.25 9.25a4 4 0 0 1 0 5.5M17.75 7a7 7 0 0 1 0 10" stroke-linecap="round"/></svg></button>
 <button aria-label="Send Work Mode prompt" class="work-mode-send-btn" id="workModeSendBtn" title="Send Work Mode prompt" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 19.25V4.75M5.75 11 12 4.75 18.25 11"/></svg></button>
 </div>
@@ -7915,6 +7927,10 @@ let masterMindCreateKind = "";
 let masterMindReturnFocus = null;
 let riskState = { enabled: false, iterationsRemaining: 0, iterationsTotal: 0, originalPrompt: '', currentIteration: 0, statusTitle: '', statusLines: [], stopReason: '', showBubble: false };
 let agentGOTTSVoice = String({{.TTSVoiceJSON}} || '').trim();
+let workModeVoiceStartCommand = String({{.VoiceStartCommandJSON}} || 'AgentGO Start').trim() || 'AgentGO Start';
+let workModeVoiceSendCommand = String({{.VoiceSendCommandJSON}} || 'AgentGO Send').trim() || 'AgentGO Send';
+let workModeVoiceRepeatCommand = String({{.VoiceRepeatCommandJSON}} || 'AgentGO Repeat').trim() || 'AgentGO Repeat';
+let workModeVoiceReadCommand = String({{.VoiceReadCommandJSON}} || 'AgentGO Read').trim() || 'AgentGO Read';
 let agentGOTTSVoices = [];
 let agentGOTTSVoiceSignature = '';
 let agentGOTTSVoiceSaveSeq = 0;
@@ -7923,6 +7939,11 @@ let workModeOpen = false;
 let workModePromptDraft = "";
 let workModeRecognition = null;
 let workModeSpeechActive = false;
+let workModeSpeechMode = 'off';
+let workModeSpeechStopRequested = false;
+let workModeHandsFreeState = 'waiting';
+let workModeHandsFreeBuffer = '';
+let workModeHandsFreePromptBase = '';
 let workModeReplySpeechMessageIndex = null;
 let workModeReplySpeechUtterance = null;
 let workModeFileTree = null;
@@ -7980,6 +8001,15 @@ let workModeTerminalSafetyAccepted = false;
 let workModeTerminalOwnerTabId = '';
 let workModeTerminalMode = 'manual';
 let workModeTerminalMaxRuns = 50;
+let workModeAgenticCaptureStream = null;
+let workModeAgenticCaptureTrack = null;
+let workModeAgenticCaptureVideo = null;
+let workModeAgenticCaptureEndedHandler = null;
+let workModeAgenticCaptureLossHandling = false;
+let workModeAgenticScreenshotStreak = 0;
+const workModeAgenticScreenshotLimit = 20;
+const workModeAgenticScreenshotContinuationPrompt = "AgentGO fulfilled your screenshot request. The attached image is the current screenshot from the user-approved source. Inspect it, continue the task, and record any relevant visual findings in the workspace for later turns.";
+const workModeAgenticScreenshotLimitNote = "AI requested over 20 screenshots in a row and AgentGO stopped the session.";
 let workModeTerminalInfo = null;
 let workModeTerminalInfoProject = '';
 let workModeAgenticRecoveryTasks = [];
@@ -8618,7 +8648,19 @@ document.addEventListener('visibilitychange', () => {
 
 const nativeAgentGOFetch = window.fetch.bind(window);
 const AGENTGO_CONNECTION_FAILURE_THRESHOLD = 2;
-const agentGOConnectionState = { failures: 0, disconnected: false, dismissed: false, lastFailureAt: 0, healthCheckInFlight: false, mode: 'unreachable' };
+const AGENTGO_RECOVERY_BACKOFF_STEPS_MS = [5000, 10000, 30000, 60000];
+const AGENTGO_RECONNECT_HEADER = 'X-AgentGO-Reconnect-Attempt';
+const agentGOConnectionState = {
+  failures: 0,
+  disconnected: false,
+  dismissed: false,
+  lastFailureAt: 0,
+  healthCheckInFlight: false,
+  recoveryInFlight: false,
+  recoveryTimer: null,
+  recoveryAttempts: 0,
+  mode: 'unreachable'
+};
 
 function isAgentGOConnectionTrackedURL(value) {
   try {
@@ -8641,6 +8683,14 @@ function cancelAgentGOConnectionSensitiveLoops() {
     state.failures = 0;
   });
 }
+function resetAgentGOPollingLanesAfterRecovery() {
+  Object.keys(pollingLaneState).forEach(name => {
+    const state = pollingLaneState[name];
+    if (!state) return;
+    state.nextAt = 0;
+    state.failures = 0;
+  });
+}
 function closeAgentGOConnectionModal() {
   const modal = document.getElementById('agentGOConnectionModal');
   if (modal) {
@@ -8656,12 +8706,30 @@ function setAgentGOConnectionMessage(mode) {
   if (normalizedMode === 'blocked') {
     if (title) title.textContent = 'AgentGO request temporarily blocked';
     if (copy) copy.textContent = 'The AgentGO server is running, but one or more application requests are temporarily blocked. Wait for recovery before sending more requests. AgentGO will not resend any interrupted prompt or file-changing request.';
-    if (status) status.textContent = 'The health check succeeded. Your current browser-side Work Mode progress has not been refreshed or reset.';
+    if (status) status.textContent = 'The health check succeeded. The server is reachable, but the current browser session has not been accepted. AgentGO is checking quietly for recovery.';
     return;
   }
   if (title) title.textContent = 'AgentGO connection lost';
   if (copy) copy.textContent = 'The browser can no longer reach the AgentGO server. Restart AgentGO or restore the VirtualBox/network connection before sending more requests. AgentGO will not resend any interrupted prompt or file-changing request.';
-  if (status) status.textContent = 'The health check failed. Your current browser-side Work Mode progress has not been refreshed or reset.';
+  if (status) status.textContent = 'The health check failed. AgentGO is checking quietly for the existing session to become reachable again.';
+}
+function agentGORecoveryDelay() {
+  const idx = Math.max(0, Math.min(AGENTGO_RECOVERY_BACKOFF_STEPS_MS.length - 1, Number(agentGOConnectionState.recoveryAttempts || 0)));
+  const delay = AGENTGO_RECOVERY_BACKOFF_STEPS_MS[idx] || 60000;
+  if (document.visibilityState === 'hidden') return Math.max(delay, 60000);
+  return delay;
+}
+function clearAgentGORecoveryTimer() {
+  if (agentGOConnectionState.recoveryTimer) clearTimeout(agentGOConnectionState.recoveryTimer);
+  agentGOConnectionState.recoveryTimer = null;
+}
+function scheduleAgentGORecoveryProbe({ immediate = false } = {}) {
+  if (!agentGOConnectionState.disconnected || !agentGOActiveSessionId || agentGOConnectionState.recoveryInFlight || agentGOConnectionState.recoveryTimer) return;
+  const delay = immediate ? 0 : agentGORecoveryDelay();
+  agentGOConnectionState.recoveryTimer = setTimeout(() => {
+    agentGOConnectionState.recoveryTimer = null;
+    runAgentGORecoveryProbe().catch(() => {});
+  }, delay);
 }
 function showAgentGOConnectionLost(mode = 'unreachable') {
   agentGOConnectionState.mode = mode === 'blocked' ? 'blocked' : 'unreachable';
@@ -8669,8 +8737,10 @@ function showAgentGOConnectionLost(mode = 'unreachable') {
   if (!agentGOConnectionState.disconnected) {
     agentGOConnectionState.disconnected = true;
     agentGOConnectionState.dismissed = false;
+    agentGOConnectionState.recoveryAttempts = 0;
     cancelAgentGOConnectionSensitiveLoops();
   }
+  scheduleAgentGORecoveryProbe();
   if (agentGOConnectionState.dismissed) return;
   const modal = document.getElementById('agentGOConnectionModal');
   if (modal) {
@@ -8714,41 +8784,120 @@ function noteAgentGOConnectionFailure(url) {
     verifyAgentGOConnectionHealth().catch(() => showAgentGOConnectionLost('unreachable'));
   }
 }
-
+function resumeAgentGOConnectionSensitiveLoops() {
+  resetAgentGOPollingLanesAfterRecovery();
+  if (isAnyWorkModeTabSending() && isWorkModeObserverReviewActive()) startWorkModeObserverSessionPolling();
+}
+function completeAgentGOConnectionRecovery(url) {
+  if (!isAgentGOConnectionTrackedURL(url)) return;
+  clearAgentGORecoveryTimer();
+  agentGOConnectionState.failures = 0;
+  agentGOConnectionState.disconnected = false;
+  agentGOConnectionState.dismissed = false;
+  agentGOConnectionState.recoveryAttempts = 0;
+  agentGOConnectionState.mode = 'unreachable';
+  closeAgentGOConnectionModal();
+  resumeAgentGOConnectionSensitiveLoops();
+}
 function noteAgentGOConnectionSuccess(url) {
   if (!isAgentGOConnectionTrackedURL(url)) return;
   agentGOConnectionState.failures = 0;
   if (!agentGOConnectionState.disconnected) return;
-  agentGOConnectionState.disconnected = false;
-  agentGOConnectionState.dismissed = false;
-  agentGOConnectionState.mode = 'unreachable';
-  closeAgentGOConnectionModal();
+  completeAgentGOConnectionRecovery(url);
+}
+function pauseAgentGOForSessionConflict() {
+  agentGOConnectionState.mode = 'blocked';
+  setAgentGOConnectionMessage('blocked');
+  if (!agentGOConnectionState.disconnected) {
+    agentGOConnectionState.disconnected = true;
+    agentGOConnectionState.dismissed = true;
+    agentGOConnectionState.recoveryAttempts = 0;
+    cancelAgentGOConnectionSensitiveLoops();
+  }
+  scheduleAgentGORecoveryProbe();
 }
 function noteAgentGOSessionConflict(errorCode) {
-  if (String(errorCode || '') !== 'session_mismatch' || !agentGOActiveSessionId) return;
+  const normalizedCode = String(errorCode || '');
+  if ((normalizedCode !== 'session_mismatch' && normalizedCode !== 'session_unattached') || !agentGOActiveSessionId) return;
+  pauseAgentGOForSessionConflict();
+  if (normalizedCode !== 'session_mismatch') return;
   agentGOSessionClaimState.stale = true;
   if (agentGOSessionClaimState.promptOpen || agentGOSessionClaimState.dismissed || agentGOSessionClaimState.activating) return;
   Promise.resolve().then(() => promptAgentGOSessionTakeover()).catch(err => console.warn('Could not open stale-session prompt.', err));
 }
+async function runAgentGORecoveryProbe() {
+  clearAgentGORecoveryTimer();
+  if (!agentGOConnectionState.disconnected || agentGOConnectionState.recoveryInFlight || !agentGOActiveSessionId) return false;
+  agentGOConnectionState.recoveryInFlight = true;
+  agentGOConnectionState.recoveryAttempts = Math.min(1000000, Number(agentGOConnectionState.recoveryAttempts || 0) + 1);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), AGENTGO_HEALTH_CHECK_TIMEOUT_MS);
+  try {
+    const response = await nativeAgentGOFetch('/api/session/active', {
+      method: 'GET',
+      cache: 'no-store',
+      signal: controller.signal,
+      headers: {
+        'Accept': 'application/json',
+        'X-AgentGO-Session-ID': agentGOActiveSessionId,
+        [AGENTGO_RECONNECT_HEADER]: '1'
+      }
+    });
+    if (!response || !response.ok) throw new Error('AgentGO recovery probe failed.');
+    const payload = await response.json();
+    if (payload && payload.match === true && payload.status === 'matched') {
+      completeAgentGOConnectionRecovery('/api/session/active');
+      return true;
+    }
+    agentGOConnectionState.mode = 'blocked';
+    setAgentGOConnectionMessage('blocked');
+    if (payload && payload.status === 'mismatch') noteAgentGOSessionConflict('session_mismatch');
+    else if (payload && payload.status === 'unattached') noteAgentGOSessionConflict('session_unattached');
+    return false;
+  } catch (_) {
+    agentGOConnectionState.mode = 'unreachable';
+    setAgentGOConnectionMessage('unreachable');
+    return false;
+  } finally {
+    clearTimeout(timeoutId);
+    agentGOConnectionState.recoveryInFlight = false;
+    if (agentGOConnectionState.disconnected) scheduleAgentGORecoveryProbe();
+  }
+}
 async function agentGOFetch(url, options = {}) {
   const requestOptions = Object.assign({}, options || {});
-  if (agentGOActiveSessionId && isAgentGOConnectionTrackedURL(url)) {
+  const tracked = isAgentGOConnectionTrackedURL(url);
+  if (tracked) {
     const headers = new Headers(requestOptions.headers || {});
-    if (!headers.has('X-AgentGO-Session-ID')) headers.set('X-AgentGO-Session-ID', agentGOActiveSessionId);
+    if (agentGOActiveSessionId && !headers.has('X-AgentGO-Session-ID')) headers.set('X-AgentGO-Session-ID', agentGOActiveSessionId);
+    if (agentGOConnectionState.disconnected && !headers.has(AGENTGO_RECONNECT_HEADER)) headers.set(AGENTGO_RECONNECT_HEADER, '1');
     requestOptions.headers = headers;
   }
   try {
     const response = await nativeAgentGOFetch(url, requestOptions);
-    noteAgentGOConnectionSuccess(url);
-    if (response && response.status === 409 && isAgentGOConnectionTrackedURL(url)) {
-      response.clone().json().then(payload => noteAgentGOSessionConflict(payload && payload.error)).catch(() => {});
+    let sessionConflictCode = '';
+    let sessionConflict = false;
+    if (response && response.status === 409 && tracked) {
+      try {
+        const payload = await response.clone().json();
+        sessionConflictCode = String((payload && payload.error) || '');
+      } catch (_) {}
+      sessionConflict = sessionConflictCode === 'session_mismatch' || sessionConflictCode === 'session_unattached';
+      if (sessionConflict) noteAgentGOSessionConflict(sessionConflictCode);
     }
+    if (!sessionConflict) noteAgentGOConnectionSuccess(url);
     return response;
   } catch (err) {
     if (!(err && err.name === 'AbortError')) noteAgentGOConnectionFailure(url);
     throw err;
   }
 }
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || !agentGOConnectionState.disconnected) return;
+  clearAgentGORecoveryTimer();
+  scheduleAgentGORecoveryProbe({ immediate: true });
+});
 
 async function api(url, options = {}) {
   const { timeoutMs = 0, ...fetchOptions } = options || {};
@@ -12936,7 +13085,7 @@ function showToast(message, variant = 'default', duration = 1800) {
 }
 
 function showErrorToast(message) {
-  showToast(message || 'Something went wrong.', 'warning');
+  showToast(message || 'Something went wrong.', 'error');
 }
 
 function closeConfirmModal(confirmed = false) {
@@ -17978,6 +18127,7 @@ function renderWorkModeAgenticDryRunResult(agentic, tabId = workModeActiveTabId)
     tab.agenticTaskId = agentic.workspace.deleted ? '' : String(agentic.workspace.taskId || tab.agenticTaskId || '');
   }
   const status = String(agentic.status || '').trim();
+  if (status !== 'screenshot') workModeAgenticScreenshotStreak = 0;
   appendWorkModeTerminalLine('ai', `AI → AgentGO agentic status: ${status || 'missing'}`);
   if (status === 'run_command' && agentic.command) {
     const commandText = formatWorkModeAgenticCommand(agentic.command);
@@ -17994,6 +18144,8 @@ function renderWorkModeAgenticDryRunResult(agentic, tabId = workModeActiveTabId)
       appendWorkModeTerminalLine(agentic.execution.status === 'completed' ? 'process' : 'error', `Process status: ${agentic.execution.status}${Number.isInteger(agentic.execution.exitCode) ? ` · exit ${agentic.execution.exitCode}` : ''}`);
       if (agentic.execution.error) appendWorkModeTerminalLine('error', agentic.execution.error);
     }
+  } else if (status === 'screenshot') {
+    appendWorkModeTerminalLine('agentgo', 'AgentGO → AI requested a screenshot from the user-approved source. No operating-system command will run.');
   } else if (status === 'complete') {
     appendWorkModeTerminalLine('agentgo', `AgentGO → AI marked the task complete${agentic.summary ? `: ${agentic.summary}` : '.'}`);
   } else if (status === 'needs_user_input') {
@@ -18234,7 +18386,7 @@ async function continueWorkModeSemiAgentic(tabId, initialPrompt) {
           memoryContent:undefined,
           responseMode:'auto',
           agentGOStyling:false,
-          agentic:{ enabled:true, mode:'semi', maxRuns:50, taskId:String(tab.agenticTaskId || ''), continuation:true }
+          agentic:{ enabled:true, mode:'semi', maxRuns:50, taskId:String(tab.agenticTaskId || ''), continuation:true, screenshotEnabled:isWorkModeAgenticCaptureAvailable() }
         })
       });
       renderWorkModeAgenticDryRunResult(data.agentic, tab.id);
@@ -18249,6 +18401,13 @@ async function continueWorkModeSemiAgentic(tabId, initialPrompt) {
         else setWorkModeStatus('Semi mode continuing automatically...');
       });
       if (data.memoryWarning) showToast(data.memoryWarning, 'warning', 4200);
+      if (data.agentic?.status === 'screenshot') {
+        queueMicrotask(() => continueWorkModeAgenticScreenshot(tab.id).catch(err => {
+          appendWorkModeTerminalLine('error', `AgentGO → Screenshot continuation failed: ${err.message || err}`);
+          showToast(err.message || 'Screenshot continuation failed.', 'warning', 4200);
+        }));
+        return;
+      }
       if (data.agentic?.autoExecute) {
         const executionData = await runWorkModeSemiAutomaticCommand(tab.id);
         nextPrompt = executionData.autoContinue ? String(executionData.prompt || '').trim() : '';
@@ -18353,7 +18512,7 @@ async function continueWorkModeFullAgentic(tabId, initialPrompt) {
           memoryContent:undefined,
           responseMode:'auto',
           agentGOStyling:false,
-          agentic:{ enabled:true, mode:'full', maxRuns, taskId:String(tab.agenticTaskId || ''), continuation:true }
+          agentic:{ enabled:true, mode:'full', maxRuns, taskId:String(tab.agenticTaskId || ''), continuation:true, screenshotEnabled:isWorkModeAgenticCaptureAvailable() }
         })
       });
       renderWorkModeAgenticDryRunResult(data.agentic, tab.id);
@@ -18367,6 +18526,13 @@ async function continueWorkModeFullAgentic(tabId, initialPrompt) {
         else setWorkModeStatus('Full mode continuing automatically...');
       });
       if (data.memoryWarning) showToast(data.memoryWarning, 'warning', 4200);
+      if (data.agentic?.status === 'screenshot') {
+        queueMicrotask(() => continueWorkModeAgenticScreenshot(tab.id).catch(err => {
+          appendWorkModeTerminalLine('error', `AgentGO → Screenshot continuation failed: ${err.message || err}`);
+          showToast(err.message || 'Screenshot continuation failed.', 'warning', 4200);
+        }));
+        return;
+      }
       if (data.agentic?.autoExecute) {
         const executionData = await runWorkModeFullAutomaticCommand(tab.id);
         nextPrompt = executionData.autoContinue ? String(executionData.prompt || '').trim() : '';
@@ -18710,6 +18876,7 @@ function renderWorkModeTerminalUI() {
   }
   const safety = document.getElementById('workModeTerminalSafetyLayer');
   if (safety) safety.hidden = !!workModeTerminalSafetyAccepted;
+  renderWorkModeTerminalCapturePermission();
   renderWorkModeManualApproval();
   renderWorkModeAgenticWorkspaceReview();
   renderWorkModeAgenticTokenUsage();
@@ -18748,6 +18915,8 @@ async function toggleWorkModeTerminalAccess() {
     appendWorkModeTerminalLine('agentgo', `AgentGO → Terminal access turned Off for ${owner.title || 'New Chat'}. The staged workspace was preserved.`);
     stopWorkModeAgenticAuditPolling();
     workModeTerminalOwnerTabId = '';
+    releaseWorkModeAgenticCaptureSource();
+    resetWorkModeTerminalSafetyAcknowledgement();
     renderWorkModeTerminalUI();
     updateWorkModeObserverControls({ render: false });
     return;
@@ -18783,11 +18952,14 @@ function resetWorkModeTerminalSession({ resetSafety = false } = {}) {
   workModeTerminalPanelOpen = false;
   workModeTerminalMode = 'manual';
   workModeTerminalMaxRuns = 50;
-  if (resetSafety) workModeTerminalSafetyAccepted = false;
-  const check = document.getElementById('workModeTerminalSafetyCheck');
-  if (check) check.checked = false;
-  const continueBtn = document.getElementById('workModeTerminalSafetyContinueBtn');
-  if (continueBtn) continueBtn.disabled = true;
+  releaseWorkModeAgenticCaptureSource();
+  if (resetSafety) resetWorkModeTerminalSafetyAcknowledgement();
+  else {
+    const check = document.getElementById('workModeTerminalSafetyCheck');
+    if (check) check.checked = false;
+    const continueBtn = document.getElementById('workModeTerminalSafetyContinueBtn');
+    if (continueBtn) continueBtn.disabled = true;
+  }
   renderWorkModeTerminalUI();
 }
 function setWorkModeTabTitleFromPrompt(prompt, tabId = workModeActiveTabId) {
@@ -18886,6 +19058,8 @@ async function closeWorkModeConversationTab(tabId) {
     appendWorkModeTerminalLine('agentgo', `AgentGO → Terminal session ended because ${tab.title || 'the tab'} was closed. The staged workspace was preserved as interrupted.`);
     stopWorkModeAgenticAuditPolling();
     workModeTerminalOwnerTabId = '';
+    releaseWorkModeAgenticCaptureSource();
+    resetWorkModeTerminalSafetyAcknowledgement();
   }
   if (workModeTabs.length === 1) {
     const replacement = createWorkModeConversationTab({ settings: tab.settings, memoryOff: true });
@@ -18952,10 +19126,21 @@ function isWorkModeReplySpeechSupported() {
 function updateWorkModeSpeechUI() {
   const micBtn = document.getElementById('workModeMicBtn');
   if (micBtn) {
-    micBtn.classList.toggle('is-listening', !!workModeSpeechActive);
-    micBtn.setAttribute('aria-pressed', workModeSpeechActive ? 'true' : 'false');
-    micBtn.title = workModeSpeechActive ? 'Stop speech input' : 'Speech input';
-    micBtn.setAttribute('aria-label', workModeSpeechActive ? 'Stop speech input' : 'Start speech input');
+    const mode = ['dictation', 'handsfree'].includes(workModeSpeechMode) ? workModeSpeechMode : 'off';
+    const active = mode !== 'off' && !!workModeSpeechActive;
+    micBtn.classList.toggle('is-listening', active && mode === 'dictation');
+    micBtn.classList.toggle('is-hands-free', active && mode === 'handsfree');
+    micBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    if (active && mode === 'dictation') {
+      micBtn.title = 'Stop prompt dictation';
+      micBtn.setAttribute('aria-label', 'Stop prompt dictation');
+    } else if (active && mode === 'handsfree') {
+      micBtn.title = 'Stop hands-free voice mode';
+      micBtn.setAttribute('aria-label', 'Stop hands-free voice mode');
+    } else {
+      micBtn.title = 'Left-click to dictate. Right-click for hands-free mode.';
+      micBtn.setAttribute('aria-label', 'Start speech input');
+    }
   }
   const autoReadBtn = document.getElementById('workModeAutoReadBtn');
   if (autoReadBtn) {
@@ -19057,23 +19242,22 @@ function stopWorkModeReplySpeech(options = {}) {
   restoreWorkModeReplyScrolling();
   if (!options.silent && workModeOpen) updateWorkModeSettingsStatus();
 }
-function speakWorkModeReplyMessage(index, options = {}) {
+function speakWorkModeReplyText(index, text, options = {}) {
   if (!isWorkModeReplySpeechSupported()) {
     if (!options.silent) showToast('Text-to-speech is not supported in this browser.', 'warning', 3200);
     updateWorkModeSpeechUI();
-    return;
+    return false;
   }
-  const idx = Number(index);
-  const msg = Number.isFinite(idx) ? workModeMessages[idx] : null;
-  if (!msg || msg.role !== 'ai') return;
-  const text = workModeHTMLToPlainText(msg.text || '').trim();
-  if (!text) return;
-  if (workModeReplySpeechMessageIndex === idx && window.speechSynthesis.speaking) {
+  const spokenText = String(text || '').trim();
+  if (!spokenText) return false;
+  const numericIndex = Number(index);
+  const idx = index === null || index === undefined || index === '' || !Number.isFinite(numericIndex) ? null : numericIndex;
+  if (!options.restart && idx !== null && workModeReplySpeechMessageIndex === idx && window.speechSynthesis.speaking) {
     stopWorkModeReplySpeech({ silent: true });
-    return;
+    return false;
   }
   stopWorkModeReplySpeech({ silent: true });
-  const utterance = applyAgentGOTTSVoiceToUtterance(new SpeechSynthesisUtterance(text));
+  const utterance = applyAgentGOTTSVoiceToUtterance(new SpeechSynthesisUtterance(spokenText));
   utterance.onstart = () => {
     workModeReplySpeechMessageIndex = idx;
     workModeReplySpeechUtterance = utterance;
@@ -19099,12 +19283,22 @@ function speakWorkModeReplyMessage(index, options = {}) {
   workModeReplySpeechMessageIndex = idx;
   workModeReplySpeechUtterance = utterance;
   updateWorkModeReplySpeechButtons();
-  try { window.speechSynthesis.speak(utterance); } catch (err) {
+  try {
+    window.speechSynthesis.speak(utterance);
+    return true;
+  } catch (err) {
     workModeReplySpeechMessageIndex = null;
     workModeReplySpeechUtterance = null;
     updateWorkModeReplySpeechButtons();
     if (!options.silent) showToast('Could not read this reply aloud.', 'warning', 2800);
+    return false;
   }
+}
+function speakWorkModeReplyMessage(index, options = {}) {
+  const idx = Number(index);
+  const msg = Number.isFinite(idx) ? workModeMessages[idx] : null;
+  if (!msg || msg.role !== 'ai') return false;
+  return speakWorkModeReplyText(idx, workModeReplySpeechText(msg.text || ''), options);
 }
 function toggleWorkModeAutoReadReplies() {
   if (!isWorkModeReplySpeechSupported()) {
@@ -19208,17 +19402,21 @@ function sanitizeAgentGOReplyHTML(value) {
     if (tag === 'h3') el.setAttribute('style', 'color:#2b6cb0');
     if (tag === 'h4') el.setAttribute('style', 'color:#8aa6c9');
     if (tag === 'span') {
-      const style = String(node.getAttribute('style') || '');
-      let color = '';
-      style.split(';').forEach(declaration => {
-        if (color) return;
-        const colon = declaration.indexOf(':');
-        if (colon < 0) return;
-        const property = declaration.slice(0, colon).trim().toLowerCase();
-        const candidate = declaration.slice(colon + 1).trim();
-        if (property === 'color' && /^#[0-9a-fA-F]{6}$/.test(candidate)) color = candidate;
-      });
-      if (color) el.setAttribute('style', `color:${color}`);
+      if (isAgentGOCodeChangeMarker(node)) {
+        el.className = 'agentgo-code-change';
+      } else {
+        const style = String(node.getAttribute('style') || '');
+        let color = '';
+        style.split(';').forEach(declaration => {
+          if (color) return;
+          const colon = declaration.indexOf(':');
+          if (colon < 0) return;
+          const property = declaration.slice(0, colon).trim().toLowerCase();
+          const candidate = declaration.slice(colon + 1).trim();
+          if (property === 'color' && /^#[0-9a-fA-F]{6}$/.test(candidate)) color = candidate;
+        });
+        if (color) el.setAttribute('style', `color:${color}`);
+      }
     }
     if (tag === 'code') {
       const fenced = node.parentElement && String(node.parentElement.tagName || '').toLowerCase() === 'pre';
@@ -20909,11 +21107,13 @@ function attachWorkModeMessageEvents() {
   const feed = document.getElementById('workModeStage') || document.getElementById('workModeChatFeed');
   if (!feed) return;
   feed.querySelectorAll('[data-work-speak-message]').forEach(btn => {
-    btn.addEventListener('click', event => {
+    const toggleSpeaker = event => {
       event.preventDefault();
       const idx = Number(event.currentTarget.getAttribute('data-work-speak-message'));
       speakWorkModeReplyMessage(idx);
-    });
+    };
+    btn.addEventListener('click', toggleSpeaker);
+    btn.addEventListener('contextmenu', toggleSpeaker);
   });
   feed.querySelectorAll('[data-work-copy-message]').forEach(btn => {
     btn.addEventListener('click', event => {
@@ -21654,13 +21854,77 @@ function toggleWorkModeOpenedPopup(force) {
   btn.setAttribute('aria-expanded', open ? 'true' : 'false');
   if (open) { toggleWorkModeSettingsPopup(false); toggleWorkModeAttachPopup(false); closeWorkModeMemoryMenu(); }
 }
+function restoreWorkModeVoiceCommandInputs() {
+  const startInput = document.getElementById('workModeVoiceStartCommandInput');
+  const sendInput = document.getElementById('workModeVoiceSendCommandInput');
+  const repeatInput = document.getElementById('workModeVoiceRepeatCommandInput');
+  const readInput = document.getElementById('workModeVoiceReadCommandInput');
+  if (startInput) startInput.value = workModeVoiceStartCommand;
+  if (sendInput) sendInput.value = workModeVoiceSendCommand;
+  if (repeatInput) repeatInput.value = workModeVoiceRepeatCommand;
+  if (readInput) readInput.value = workModeVoiceReadCommand;
+}
+async function saveWorkModeVoiceCommands() {
+  const startInput = document.getElementById('workModeVoiceStartCommandInput');
+  const sendInput = document.getElementById('workModeVoiceSendCommandInput');
+  const repeatInput = document.getElementById('workModeVoiceRepeatCommandInput');
+  const readInput = document.getElementById('workModeVoiceReadCommandInput');
+  if (!startInput || !sendInput || !repeatInput || !readInput) return;
+  const startCommand = String(startInput.value || '').trim();
+  const sendCommand = String(sendInput.value || '').trim();
+  const repeatCommand = String(repeatInput.value || '').trim();
+  const readCommand = String(readInput.value || '').trim();
+  const startNormalized = normalizeWorkModeVoiceCommand(startCommand);
+  const sendNormalized = normalizeWorkModeVoiceCommand(sendCommand);
+  const repeatNormalized = normalizeWorkModeVoiceCommand(repeatCommand);
+  const readNormalized = normalizeWorkModeVoiceCommand(readCommand);
+  if (!startNormalized || !sendNormalized || !repeatNormalized || !readNormalized) {
+    restoreWorkModeVoiceCommandInputs();
+    throw new Error('Voice commands must contain at least one letter or number.');
+  }
+  if (new Set([startNormalized, sendNormalized, repeatNormalized, readNormalized]).size !== 4) {
+    restoreWorkModeVoiceCommandInputs();
+    throw new Error('Voice commands must be different.');
+  }
+  if (startCommand === workModeVoiceStartCommand && sendCommand === workModeVoiceSendCommand && repeatCommand === workModeVoiceRepeatCommand && readCommand === workModeVoiceReadCommand) return;
+  startInput.disabled = true;
+  sendInput.disabled = true;
+  repeatInput.disabled = true;
+  readInput.disabled = true;
+  try {
+    const data = await api('/api/config/voice-commands', { method:'POST', body:JSON.stringify({ start_command:startCommand, send_command:sendCommand, repeat_command:repeatCommand, read_command:readCommand }) });
+    workModeVoiceStartCommand = String(data && data.start_command || startCommand).trim() || 'AgentGO Start';
+    workModeVoiceSendCommand = String(data && data.send_command || sendCommand).trim() || 'AgentGO Send';
+    workModeVoiceRepeatCommand = String(data && data.repeat_command || repeatCommand).trim() || 'AgentGO Repeat';
+    workModeVoiceReadCommand = String(data && data.read_command || readCommand).trim() || 'AgentGO Read';
+    restoreWorkModeVoiceCommandInputs();
+    showToast('Voice commands saved.', 'success', 2200);
+  } finally {
+    startInput.disabled = false;
+    sendInput.disabled = false;
+    repeatInput.disabled = false;
+    readInput.disabled = false;
+  }
+}
+function bindWorkModeVoiceCommandInput(input) {
+  if (!input) return;
+  input.addEventListener('keydown', event => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    input.blur();
+  });
+  input.addEventListener('blur', () => saveWorkModeVoiceCommands().catch(err => {
+    restoreWorkModeVoiceCommandInputs();
+    showToast(err.message || 'Could not save voice commands.', 'warning', 3600);
+  }));
+}
 function renderWorkModeSettingsPopup() {
   const pop = document.getElementById('workModeSettingsPopup');
   if (!pop) return;
   const mode = normalizeResponseMode(workModeSettings.responseMode);
   const memoryDefaultValue = workModeMemoryDefaultSelectValue();
   const namedOptions = Array.isArray(workModeMemoryDefaultState.saved) ? workModeMemoryDefaultState.saved.map(item => `<option value="named:${escapeHtml(item.name)}" ${memoryDefaultValue === `named:${item.name}` ? 'selected' : ''}>${escapeHtml(item.name)}</option>`).join('') : '';
-  pop.innerHTML = `<div class="work-mode-popup-title">Work Mode settings</div><div class="work-mode-settings-help"><p><strong>AgentGO Work Mode</strong> lets you message your AI worker, ask it to create new files, or select/upload project files for revision and updates.</p><p>Use the Memory toggle below the prompt to help the AI remember this Work Mode conversation. Memory uses tokens faster because AgentGO reminds the AI what you discussed.</p><p>Click a file name to open or edit it. Click the bubble next to a file to include it with your next AI message. Right-click folder names or the AI Builder name to create files and folders.</p><p>Enable Roles to apply this AI Builder's configured role. AgentGO Styling adds the compact rendered reply style when enabled.</p></div><div class="work-mode-settings-list"><label class="work-mode-setting-toggle"><input id="workModeRoleToggle" type="checkbox" ${workModeSettings.includeRoleContext !== false ? 'checked' : ''}> Apply AI Builder role</label><label class="work-mode-setting-toggle"><input id="workModeImageCompressToggle" type="checkbox" ${workModeSettings.autoCompressImages !== false ? 'checked' : ''}> AgentGO auto-compress image uploads</label><label class="work-mode-setting-toggle with-action"><span class="work-mode-setting-toggle-main"><input id="workModeAgentGOStylingToggle" type="checkbox" ${workModeSettings.agentGOStyling !== false ? 'checked' : ''}> AgentGO Styling</span><button class="work-mode-setting-edit-link" id="workModeAgentGOStylingEditBtn" type="button">edit</button></label><label class="work-mode-setting-row"><span>Response mode</span><select id="workModeResponseModeSelect">${responseModeOptions.map(option => `<option value="${escapeHtml(option.value)}" ${option.value === mode ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}</select></label><label class="work-mode-setting-row"><span>AgentGO Memory Default</span><select id="workModeMemoryDefaultSelect"><option value="off" ${memoryDefaultValue === 'off' ? 'selected' : ''}>Off</option><option value="new" ${memoryDefaultValue === 'new' ? 'selected' : ''}>New Memory</option><option value="continue" ${memoryDefaultValue === 'continue' ? 'selected' : ''}>Continue Last Memory</option>${namedOptions ? `<optgroup label="Saved memory files">${namedOptions}</optgroup>` : ''}</select></label></div>`;
+  pop.innerHTML = `<div class="work-mode-popup-title">Work Mode settings</div><div class="work-mode-settings-help"><p><strong>AgentGO Work Mode</strong> lets you message your AI worker, ask it to create new files, or select/upload project files for revision and updates.</p><p>Use the Memory toggle below the prompt to help the AI remember this Work Mode conversation. Memory uses tokens faster because AgentGO reminds the AI what you discussed.</p><p>Click a file name to open or edit it. Click the bubble next to a file to include it with your next AI message. Right-click folder names or the AI Builder name to create files and folders.</p><p>Enable Roles to apply this AI Builder's configured role. AgentGO Styling adds the compact rendered reply style when enabled.</p></div><div class="work-mode-settings-list"><label class="work-mode-setting-toggle"><input id="workModeRoleToggle" type="checkbox" ${workModeSettings.includeRoleContext !== false ? 'checked' : ''}> Apply AI Builder role</label><label class="work-mode-setting-toggle"><input id="workModeImageCompressToggle" type="checkbox" ${workModeSettings.autoCompressImages !== false ? 'checked' : ''}> AgentGO auto-compress image uploads</label><label class="work-mode-setting-toggle with-action"><span class="work-mode-setting-toggle-main"><input id="workModeAgentGOStylingToggle" type="checkbox" ${workModeSettings.agentGOStyling !== false ? 'checked' : ''}> AgentGO Styling</span><button class="work-mode-setting-edit-link" id="workModeAgentGOStylingEditBtn" type="button">edit</button></label><label class="work-mode-setting-row"><span>Response mode</span><select id="workModeResponseModeSelect">${responseModeOptions.map(option => `<option value="${escapeHtml(option.value)}" ${option.value === mode ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}</select></label><label class="work-mode-setting-row"><span>AgentGO Memory Default</span><select id="workModeMemoryDefaultSelect"><option value="off" ${memoryDefaultValue === 'off' ? 'selected' : ''}>Off</option><option value="new" ${memoryDefaultValue === 'new' ? 'selected' : ''}>New Memory</option><option value="continue" ${memoryDefaultValue === 'continue' ? 'selected' : ''}>Continue Last Memory</option>${namedOptions ? `<optgroup label="Saved memory files">${namedOptions}</optgroup>` : ''}</select></label><div class="work-mode-voice-commands"><div class="work-mode-voice-commands-title">Voice Commands</div><label class="work-mode-voice-command-row"><span>Start Recording Prompt</span><input id="workModeVoiceStartCommandInput" type="text" maxlength="120" value="${escapeHtml(workModeVoiceStartCommand)}" autocomplete="off" spellcheck="false"></label><label class="work-mode-voice-command-row"><span>Send Recording Prompt</span><input id="workModeVoiceSendCommandInput" type="text" maxlength="120" value="${escapeHtml(workModeVoiceSendCommand)}" autocomplete="off" spellcheck="false"></label><label class="work-mode-voice-command-row"><span>Repeat Response Prompt</span><input id="workModeVoiceRepeatCommandInput" type="text" maxlength="120" value="${escapeHtml(workModeVoiceRepeatCommand)}" autocomplete="off" spellcheck="false"></label><label class="work-mode-voice-command-row"><span>Read Lines Prompt</span><input id="workModeVoiceReadCommandInput" type="text" maxlength="120" value="${escapeHtml(workModeVoiceReadCommand)}" autocomplete="off" spellcheck="false"></label><div class="work-mode-voice-command-help"><span>Example: “${escapeHtml(workModeVoiceReadCommand)} 4 to 8”</span><span>Follow the command with two line numbers.</span></div></div></div>`;
   const role = document.getElementById('workModeRoleToggle');
   if (role) role.addEventListener('change', e => { workModeSettings.includeRoleContext = !!e.target.checked; updateWorkModeSettingsStatus(); });
   const compression = document.getElementById('workModeImageCompressToggle');
@@ -21677,6 +21941,10 @@ function renderWorkModeSettingsPopup() {
     try { await saveWorkModeMemoryDefault(e.target.value); renderWorkModeSettingsPopup(); }
     catch (err) { showToast(err.message || 'Could not save AgentGO Memory Default.', 'warning', 3800); await refreshWorkModeMemoryDefaultSettings().catch(() => {}); renderWorkModeSettingsPopup(); }
   });
+  bindWorkModeVoiceCommandInput(document.getElementById('workModeVoiceStartCommandInput'));
+  bindWorkModeVoiceCommandInput(document.getElementById('workModeVoiceSendCommandInput'));
+  bindWorkModeVoiceCommandInput(document.getElementById('workModeVoiceRepeatCommandInput'));
+  bindWorkModeVoiceCommandInput(document.getElementById('workModeVoiceReadCommandInput'));
 }
 function normalizeWorkModeMemoryFiles(data) {
   const saved = Array.isArray(data && data.saved) ? data.saved : [];
@@ -22107,13 +22375,21 @@ async function handleWorkModeAttachmentPaste(event) {
   await addWorkModeTemporaryFiles(imageItems);
   showToast('Temporary screenshot added.');
 }
+const workModeTemporaryAttachmentLimit = 8;
+function ensureWorkModeTemporaryAttachmentCapacity() {
+  if (workModeTemporaryAttachments.length >= workModeTemporaryAttachmentLimit) {
+    throw new Error(`Temporary attachments are limited to ${workModeTemporaryAttachmentLimit} files per prompt.`);
+  }
+}
 function addWorkModeTemporaryAttachment(item) {
   if (!item) return;
+  ensureWorkModeTemporaryAttachmentCapacity();
   workModeTemporaryAttachments.push(item);
   renderWorkModeAttachments();
 }
 async function addWorkModeTemporaryFile(file) {
   if (!file) return;
+  ensureWorkModeTemporaryAttachmentCapacity();
   const mime = String(file.type || '').toLowerCase();
   const name = String(file.name || 'attachment');
   if (mime.startsWith('image/')) {
@@ -22139,6 +22415,346 @@ async function addWorkModeTemporaryFile(file) {
 async function addWorkModeTemporaryFiles(files) {
   for (const file of Array.from(files || [])) await addWorkModeTemporaryFile(file);
 }
+function stopWorkModeDisplayCapture(stream) {
+  if (!stream || typeof stream.getTracks !== 'function') return;
+  stream.getTracks().forEach(track => {
+    try { track.stop(); } catch (_) {}
+  });
+}
+function isWorkModeAgenticCaptureAvailable() {
+  return !!(workModeAgenticCaptureStream && workModeAgenticCaptureTrack && workModeAgenticCaptureVideo && workModeAgenticCaptureTrack.readyState !== 'ended');
+}
+function resetWorkModeTerminalSafetyAcknowledgement() {
+  workModeTerminalSafetyAccepted = false;
+  const check = document.getElementById('workModeTerminalSafetyCheck');
+  if (check) check.checked = false;
+  const continueBtn = document.getElementById('workModeTerminalSafetyContinueBtn');
+  if (continueBtn) continueBtn.disabled = true;
+}
+function renderWorkModeTerminalCapturePermission() {
+  const wrap = document.getElementById('workModeTerminalCapturePermission');
+  const button = document.getElementById('workModeTerminalCaptureBtn');
+  const label = document.getElementById('workModeTerminalCaptureLabel');
+  const selected = isWorkModeAgenticCaptureAvailable();
+  if (wrap) wrap.classList.toggle('is-selected', selected);
+  if (button) {
+    const busy = button.getAttribute('aria-busy') === 'true';
+    button.disabled = selected || busy;
+    button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+    button.title = selected ? 'Screenshot source selected for this Terminal session' : 'Allow AI to request screenshots from an app or screen';
+    button.setAttribute('aria-label', button.title);
+  }
+  if (label) label.textContent = selected ? 'Screenshot source selected for this Terminal session.' : 'Allow AI to request screenshots from an app or screen.';
+}
+function releaseWorkModeAgenticCaptureSource() {
+  const track = workModeAgenticCaptureTrack;
+  if (track && workModeAgenticCaptureEndedHandler && typeof track.removeEventListener === 'function') {
+    try { track.removeEventListener('ended', workModeAgenticCaptureEndedHandler); } catch (_) {}
+  }
+  if (workModeAgenticCaptureVideo) {
+    try { workModeAgenticCaptureVideo.pause(); } catch (_) {}
+    workModeAgenticCaptureVideo.srcObject = null;
+  }
+  stopWorkModeDisplayCapture(workModeAgenticCaptureStream);
+  workModeAgenticCaptureStream = null;
+  workModeAgenticCaptureTrack = null;
+  workModeAgenticCaptureVideo = null;
+  workModeAgenticCaptureEndedHandler = null;
+  workModeAgenticScreenshotStreak = 0;
+  renderWorkModeTerminalCapturePermission();
+}
+async function selectWorkModeAgenticCaptureSource() {
+  if (isWorkModeAgenticCaptureAvailable()) return;
+  if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
+    throw new Error('Screen capture is unavailable in this browser or connection. Open AgentGO through localhost or HTTPS in a supported browser.');
+  }
+  const button = document.getElementById('workModeTerminalCaptureBtn');
+  if (button?.getAttribute('aria-busy') === 'true') return;
+  if (button) button.setAttribute('aria-busy', 'true');
+  renderWorkModeTerminalCapturePermission();
+  let stream = null;
+  let video = null;
+  try {
+    stream = await navigator.mediaDevices.getDisplayMedia({ video:true, audio:false });
+    const track = stream.getVideoTracks()[0];
+    if (!track) throw new Error('The selected source did not provide a video image.');
+    video = document.createElement('video');
+    video.muted = true;
+    video.playsInline = true;
+    video.srcObject = stream;
+    await Promise.race([
+      Promise.resolve(video.play()),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('The selected screen or application did not become ready in time.')), 7000))
+    ]);
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    if (track.readyState === 'ended') throw new Error('The selected screen or application became unavailable before AgentGO could retain it.');
+    workModeAgenticCaptureStream = stream;
+    workModeAgenticCaptureTrack = track;
+    workModeAgenticCaptureVideo = video;
+    workModeAgenticCaptureEndedHandler = () => endWorkModeTerminalForLostCaptureSource().catch(err => console.warn('Could not end Terminal after screenshot source loss:', err));
+    if (typeof track.addEventListener === 'function') track.addEventListener('ended', workModeAgenticCaptureEndedHandler, { once:true });
+    stream = null;
+    video = null;
+    workModeAgenticScreenshotStreak = 0;
+    appendWorkModeTerminalLine('agentgo', 'AgentGO → Screenshot source selected for this Terminal session.');
+    showToast('Screenshot source selected for this Terminal session.');
+  } catch (err) {
+    if (workModeScreenCaptureWasCanceled(err)) {
+      showToast('Screenshot source selection was canceled or not permitted.', 'warning', 3000);
+      return;
+    }
+    throw err;
+  } finally {
+    if (video) {
+      try { video.pause(); } catch (_) {}
+      video.srcObject = null;
+    }
+    stopWorkModeDisplayCapture(stream);
+    if (button) button.removeAttribute('aria-busy');
+    renderWorkModeTerminalCapturePermission();
+  }
+}
+async function captureWorkModeAgenticScreenshotAttachment() {
+  if (!isWorkModeAgenticCaptureAvailable()) throw new Error('The approved screenshot source is no longer available.');
+  const track = workModeAgenticCaptureTrack;
+  const video = workModeAgenticCaptureVideo;
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  const settings = typeof track.getSettings === 'function' ? track.getSettings() : {};
+  const width = Number(video.videoWidth || settings.width || 0);
+  const height = Number(video.videoHeight || settings.height || 0);
+  if (!width || !height || track.readyState === 'ended') throw new Error('The approved screenshot source is no longer available.');
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('AgentGO could not prepare the requested screenshot.');
+  ctx.drawImage(video, 0, 0, width, height);
+  const blob = await canvasToPNGBlob(canvas);
+  if (!blob || !blob.size) throw new Error('AgentGO could not create the requested screenshot image.');
+  const name = workModeScreenCaptureFileName();
+  const file = typeof File === 'function'
+    ? new File([blob], name, { type:'image/png', lastModified:Date.now() })
+    : Object.assign(blob, { name, lastModified:Date.now() });
+  return prepareWorkModeImageAttachment(file);
+}
+async function endWorkModeTerminalForLostCaptureSource() {
+  if (workModeAgenticCaptureLossHandling) return;
+  workModeAgenticCaptureLossHandling = true;
+  const message = 'AgentGO ended the Terminal session because it can no longer access your approved screenshot source.';
+  const owner = getWorkModeTerminalOwnerTab();
+  try {
+    releaseWorkModeAgenticCaptureSource();
+    if (owner?.agenticTaskId) await interruptWorkModeAgenticTask(owner, message);
+    stopWorkModeAgenticAuditPolling();
+    workModeTerminalOwnerTabId = '';
+    resetWorkModeTerminalSafetyAcknowledgement();
+    workModeTerminalPanelOpen = true;
+    appendWorkModeTerminalLine('error', `AgentGO → ${message}`);
+    if (owner) runWithWorkModeTab(owner.id, () => {
+      appendWorkModeMessage('agentgo', message);
+      setWorkModeStatus(message);
+    });
+    renderWorkModeTerminalUI();
+    updateWorkModeObserverControls({ render:false });
+    showToast(message, 'warning', 5200);
+  } finally {
+    workModeAgenticCaptureLossHandling = false;
+  }
+}
+function cancelWorkModeTerminalSafetySetup() {
+  releaseWorkModeAgenticCaptureSource();
+  resetWorkModeTerminalSafetyAcknowledgement();
+  toggleWorkModeTerminalPanel(false);
+}
+async function stopWorkModeAgenticScreenshotLoop(tab) {
+  if (!tab) return;
+  if (tab.agenticTaskId) {
+    const data = await api('/api/work-mode/agentic-work/interrupt', { method:'POST', body:JSON.stringify({ taskId:tab.agenticTaskId, reason:workModeAgenticScreenshotLimitNote }) });
+    tab.agenticWorkspace = data;
+    mergeWorkModeAgenticAuditRecords(tab, data.auditRecords);
+  }
+  appendWorkModeTerminalLine('error', `AgentGO → ${workModeAgenticScreenshotLimitNote}`);
+  runWithWorkModeTab(tab.id, () => {
+    appendWorkModeMessage('agentgo', workModeAgenticScreenshotLimitNote);
+    setWorkModeStatus(workModeAgenticScreenshotLimitNote);
+  });
+  renderWorkModeManualApproval();
+  renderWorkModeAgenticWorkspaceReview();
+  renderWorkModeAgenticTokenUsage();
+}
+async function continueWorkModeAgenticScreenshot(tabId) {
+  while (true) {
+    const tab = getWorkModeTab(tabId);
+    if (!tab || tab.id !== workModeTerminalOwnerTabId || !tab.agenticTaskId) return;
+    workModeAgenticScreenshotStreak += 1;
+    if (workModeAgenticScreenshotStreak > workModeAgenticScreenshotLimit) {
+      await stopWorkModeAgenticScreenshotLoop(tab);
+      return;
+    }
+    if (!isWorkModeAgenticCaptureAvailable()) {
+      await endWorkModeTerminalForLostCaptureSource();
+      return;
+    }
+    const modelId = getActiveBuilderModelId();
+    if (!modelId) throw new Error('Could not identify the active Builder AI for screenshot continuation.');
+    const mode = String(workModeTerminalMode || 'manual').toLowerCase();
+    const maxRuns = normalizeWorkModeTerminalMaxRuns(tab.agenticWorkspace?.maxRuns || workModeTerminalMaxRuns);
+    let attachment;
+    try {
+      attachment = await captureWorkModeAgenticScreenshotAttachment();
+    } catch (err) {
+      if (!isWorkModeAgenticCaptureAvailable() || /no longer available/i.test(String(err?.message || ''))) {
+        await endWorkModeTerminalForLostCaptureSource();
+        return;
+      }
+      throw err;
+    }
+    const requestAttachments = serializeWorkModeAttachmentsForRequest([attachment]);
+    const messageAttachment = snapshotWorkModeAttachmentForMessage(attachment);
+    tab.sending = true;
+    workModeSending = true;
+    workModeSendingTabId = tab.id;
+    renderWorkModeConversationTabs();
+    runWithWorkModeTab(tab.id, () => {
+      appendWorkModeMessage('agentgo', workModeAgenticScreenshotContinuationPrompt, { attachments:messageAttachment ? [messageAttachment] : [] });
+      setWorkModeStatus(`Returning screenshot ${workModeAgenticScreenshotStreak} of ${workModeAgenticScreenshotLimit} to the Builder...`);
+    });
+    let data;
+    try {
+      data = await api('/api/work-mode/send', {
+        method:'POST',
+        body:JSON.stringify({
+          modelId,
+          prompt:workModeAgenticScreenshotContinuationPrompt,
+          selectedFiles:[],
+          temporaryAttachments:requestAttachments,
+          urlCaptures:[],
+          includeRoleContext:false,
+          useMemory:false,
+          memoryName:'',
+          memoryContent:undefined,
+          responseMode:'auto',
+          agentGOStyling:false,
+          agentic:{ enabled:true, mode, maxRuns, taskId:String(tab.agenticTaskId || ''), continuation:true, screenshotEnabled:true }
+        })
+      });
+      renderWorkModeAgenticDryRunResult(data.agentic, tab.id);
+      runWithWorkModeTab(tab.id, () => {
+        appendWorkModeMessage('ai', data.reply || '(No visible reply returned.)', { modelId, modelLabel:getActiveBuilderLabel(), warnings:Array.isArray(data.warnings) ? data.warnings : [], repairDetails:Array.isArray(data.repairDetails) ? data.repairDetails : [], changedFiles:[], blockedFiles:Array.isArray(data.blockedFiles) ? data.blockedFiles : [], inlineFiles:[], autoRead:true });
+        if (data.agentMessage) appendWorkModeMessage('agentgo', data.agentMessage);
+        applyWorkModeResponseMemory(data);
+        if (data.agentic?.status === 'screenshot') setWorkModeStatus(`AI requested another screenshot (${workModeAgenticScreenshotStreak + 1} of ${workModeAgenticScreenshotLimit}).`);
+        else if (data.agentic?.status === 'protocol_error') setWorkModeStatus('The agentic task was interrupted for protocol review. Staged changes remain available.');
+        else if (data.agentic?.status === 'run_command' && mode === 'full') setWorkModeStatus('Full command authorized and starting automatically.');
+        else if (data.agentic?.status === 'run_command' && mode === 'semi' && data.agentic?.autoExecute) setWorkModeStatus('Semi command authorized and starting automatically.');
+        else if (data.agentic?.status === 'run_command' && mode === 'semi') setWorkModeStatus('Semi command paused for a decision in the terminal panel.');
+        else if (data.agentic?.status === 'run_command') setWorkModeStatus('Manual command request validated. Choose Yes or No in the terminal panel.');
+        else if (data.agentic?.status === 'needs_user_input') setWorkModeStatus('The current agentic task is paused and waiting for your input.');
+        else setWorkModeStatus('Agentic task completed. Staged changes are awaiting review. Terminal access remains enabled.');
+      });
+      if (data.memoryWarning) showToast(data.memoryWarning, 'warning', 4200);
+      await refreshLogs().catch(() => {});
+      await loadWorkModeFileTree().catch(() => {});
+    } finally {
+      const current = getWorkModeTab(tabId);
+      if (current) current.sending = false;
+      workModeSending = isAnyWorkModeTabSending();
+      workModeSendingTabId = '';
+      renderWorkModeConversationTabs();
+      requestAnimationFrame(updateWorkModeScrollButton);
+    }
+    if (data.agentic?.status === 'screenshot') continue;
+    workModeAgenticScreenshotStreak = 0;
+    if (data.agentic?.autoExecute && (mode === 'semi' || mode === 'full')) {
+      const executionData = mode === 'full' ? await runWorkModeFullAutomaticCommand(tab.id) : await runWorkModeSemiAutomaticCommand(tab.id);
+      if (executionData.autoContinue && executionData.prompt) {
+        if (mode === 'full') await continueWorkModeFullAgentic(tab.id, executionData.prompt);
+        else await continueWorkModeSemiAgentic(tab.id, executionData.prompt);
+      }
+    }
+    return;
+  }
+}
+function workModeScreenCaptureFileName(now = new Date()) {
+  const pad = value => String(value).padStart(2, '0');
+  return `AgentGO-screenshot-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.png`;
+}
+function canvasToPNGBlob(canvas) {
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+}
+async function captureWorkModeDisplaySurfaceFile() {
+  if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
+    throw new Error('Screen capture is unavailable in this browser or connection. Open AgentGO through localhost or HTTPS in a supported browser.');
+  }
+  let stream = null;
+  let video = null;
+  try {
+    stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+    const track = stream.getVideoTracks()[0];
+    if (!track) throw new Error('The selected source did not provide a video image.');
+    video = document.createElement('video');
+    video.muted = true;
+    video.playsInline = true;
+    video.srcObject = stream;
+    await Promise.race([
+      Promise.resolve(video.play()),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('The selected screen or application did not become ready in time.')), 7000))
+    ]);
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const settings = typeof track.getSettings === 'function' ? track.getSettings() : {};
+    const width = Number(video.videoWidth || settings.width || 0);
+    const height = Number(video.videoHeight || settings.height || 0);
+    if (!width || !height || track.readyState === 'ended') throw new Error('The selected screen or application became unavailable before AgentGO could capture it.');
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('AgentGO could not prepare the screenshot.');
+    ctx.drawImage(video, 0, 0, width, height);
+    const blob = await canvasToPNGBlob(canvas);
+    if (!blob || !blob.size) throw new Error('AgentGO could not create the screenshot image.');
+    const name = workModeScreenCaptureFileName();
+    if (typeof File === 'function') return new File([blob], name, { type: 'image/png', lastModified: Date.now() });
+    blob.name = name;
+    blob.lastModified = Date.now();
+    return blob;
+  } finally {
+    if (video) {
+      try { video.pause(); } catch (_) {}
+      video.srcObject = null;
+    }
+    stopWorkModeDisplayCapture(stream);
+  }
+}
+function workModeScreenCaptureWasCanceled(error) {
+  const name = String((error && error.name) || '');
+  return name === 'AbortError' || name === 'NotAllowedError';
+}
+async function captureWorkModeScreenScreenshot() {
+  const button = document.getElementById('workModeScreenCaptureBtn');
+  if (button && button.disabled) return;
+  if (button) {
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+  }
+  try {
+    ensureWorkModeTemporaryAttachmentCapacity();
+    const file = await captureWorkModeDisplaySurfaceFile();
+    await addWorkModeTemporaryFile(file);
+    showToast('Temporary screenshot added.');
+  } catch (err) {
+    if (workModeScreenCaptureWasCanceled(err)) {
+      showToast('Screen capture was canceled or not permitted.', 'warning', 3000);
+      return;
+    }
+    throw err;
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.removeAttribute('aria-busy');
+    }
+  }
+}
 function toggleWorkModeAttachPopup(force) {
   const pop = document.getElementById('workModeAttachPopup');
   if (!pop) return;
@@ -22152,65 +22768,267 @@ function toggleWorkModeAttachPopup(force) {
     requestAnimationFrame(() => document.getElementById('workModePasteTarget')?.focus());
   }
 }
+function setWorkModePromptText(value, options = {}) {
+  const input = document.getElementById('workModePromptInput');
+  if (!input) return;
+  input.value = String(value || '');
+  workModePromptDraft = input.value;
+  autosizeWorkModePrompt();
+  if (options.focus !== false) input.focus();
+}
+function joinWorkModePromptSpeech(base, speech) {
+  const left = String(base || '');
+  const right = String(speech || '').trim();
+  if (!right) return left;
+  const spacer = left && !/\s$/.test(left) ? ' ' : '';
+  return left + spacer + right;
+}
 function appendWorkModeTranscript(transcript) {
   const input = document.getElementById('workModePromptInput');
   if (!input) return;
   const text = String(transcript || '').trim();
   if (!text) return;
-  const current = String(input.value || '');
-  const spacer = current && !/\s$/.test(current) ? ' ' : '';
-  input.value = current + spacer + text;
-  workModePromptDraft = input.value;
-  autosizeWorkModePrompt();
-  input.focus();
+  setWorkModePromptText(joinWorkModePromptSpeech(input.value, text));
+}
+function isWorkModeVoiceCommandCharacter(character) {
+  try { return /[\p{L}\p{N}]/u.test(character); }
+  catch (_) { return /[a-z0-9]/i.test(character); }
+}
+function normalizeWorkModeVoiceCommand(value) {
+  let normalized = '';
+  for (const character of String(value || '').toLocaleLowerCase()) {
+    if (isWorkModeVoiceCommandCharacter(character)) normalized += character;
+  }
+  return normalized;
+}
+function findWorkModeVoiceCommand(value, command) {
+  const target = normalizeWorkModeVoiceCommand(command);
+  if (!target) return null;
+  let normalized = '';
+  const mapping = [];
+  let offset = 0;
+  for (const character of String(value || '')) {
+    const start = offset;
+    offset += character.length;
+    const lowered = character.toLocaleLowerCase();
+    for (const loweredCharacter of lowered) {
+      if (!isWorkModeVoiceCommandCharacter(loweredCharacter)) continue;
+      normalized += loweredCharacter;
+      mapping.push({ start, end: offset });
+    }
+  }
+  const index = normalized.indexOf(target);
+  if (index < 0) return null;
+  const last = index + target.length - 1;
+  if (!mapping[index] || !mapping[last]) return null;
+  return { start:mapping[index].start, end:mapping[last].end };
+}
+function stripWorkModeSpeechLineFormatting(value) {
+  let line = String(value || '').trim();
+  if (!line || /^```/.test(line)) return '';
+  line = line
+    .replace(/^#{1,6}\s+/, '')
+    .replace(/^>+\s*/, '')
+    .replace(/^[-*+]\s+/, '')
+    .replace(/^\d+[.)]\s+/, '')
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/[*_~`]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return line;
+}
+function workModeReplyLogicalLines(value) {
+  return String(workModeHTMLToPlainText(value || '') || '')
+    .split(/\r?\n/)
+    .map(stripWorkModeSpeechLineFormatting)
+    .filter(Boolean);
+}
+function workModeReplySpeechText(value) {
+  return workModeReplyLogicalLines(value).join('\n');
+}
+function latestWorkModeAIMessageIndex() {
+  for (let index = workModeMessages.length - 1; index >= 0; index--) {
+    if (workModeMessages[index] && workModeMessages[index].role === 'ai') return index;
+  }
+  return -1;
+}
+function showWorkModeVoiceCommandError() {
+  const message = "AgentGO couldn't understand your request.";
+  showToast(message, 'warning', 3600);
+  speakWorkModeReplyText(null, message, { restart:true, silent:true });
+}
+function parseWorkModeVoiceLineRange(value) {
+  const matches = String(value || '').match(/\d+/g) || [];
+  if (matches.length < 2) return null;
+  const start = Number(matches[0]);
+  const end = Number(matches[1]);
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 1 || end < start) return null;
+  return { start, end };
+}
+function repeatLatestWorkModeReply() {
+  const index = latestWorkModeAIMessageIndex();
+  const msg = index >= 0 ? workModeMessages[index] : null;
+  const text = msg ? workModeReplySpeechText(msg.text || '') : '';
+  if (!text) {
+    showWorkModeVoiceCommandError();
+    return false;
+  }
+  return speakWorkModeReplyText(index, text, { restart:true });
+}
+function readLatestWorkModeReplyLines(range) {
+  const index = latestWorkModeAIMessageIndex();
+  const msg = index >= 0 ? workModeMessages[index] : null;
+  const lines = msg ? workModeReplyLogicalLines(msg.text || '') : [];
+  if (!range || range.start < 1 || range.end < range.start || range.end > lines.length) {
+    showWorkModeVoiceCommandError();
+    return false;
+  }
+  return speakWorkModeReplyText(index, lines.slice(range.start - 1, range.end).join('\n'), { restart:true });
+}
+function findWorkModeResponseVoiceCommand(value) {
+  const candidates = [
+    { kind:'repeat', match:findWorkModeVoiceCommand(value, workModeVoiceRepeatCommand) },
+    { kind:'read', match:findWorkModeVoiceCommand(value, workModeVoiceReadCommand) }
+  ].filter(item => item.match);
+  if (!candidates.length) return null;
+  candidates.sort((left, right) => left.match.start - right.match.start || right.match.end - left.match.end);
+  return candidates[0];
+}
+function consumeWorkModeResponseVoiceCommand(value) {
+  const text = String(value || '');
+  const command = findWorkModeResponseVoiceCommand(text);
+  if (!command) return { handled:false, remaining:text };
+  const remaining = text.slice(0, command.match.start).replace(/\s+$/, '');
+  if (command.kind === 'repeat') repeatLatestWorkModeReply();
+  else {
+    const range = parseWorkModeVoiceLineRange(text.slice(command.match.end));
+    if (!range) showWorkModeVoiceCommandError();
+    else readLatestWorkModeReplyLines(range);
+  }
+  return { handled:true, remaining };
+}
+function processWorkModeDictationTranscript(transcript) {
+  const result = consumeWorkModeResponseVoiceCommand(String(transcript || '').trim());
+  if (result.handled) {
+    if (result.remaining) appendWorkModeTranscript(result.remaining);
+    return;
+  }
+  appendWorkModeTranscript(transcript);
+}
+function trimWorkModeHandsFreeWaitingBuffer() {
+  if (workModeHandsFreeBuffer.length <= 512) return;
+  workModeHandsFreeBuffer = workModeHandsFreeBuffer.slice(-512);
+}
+function updateWorkModeHandsFreePromptPreview() {
+  if (workModeHandsFreeState !== 'recording') return;
+  setWorkModePromptText(joinWorkModePromptSpeech(workModeHandsFreePromptBase, workModeHandsFreeBuffer), { focus:false });
+}
+function resetWorkModeHandsFreeState() {
+  workModeHandsFreeState = 'waiting';
+  workModeHandsFreeBuffer = '';
+  workModeHandsFreePromptBase = '';
+}
+function processWorkModeHandsFreeTranscript(transcript) {
+  const fragment = String(transcript || '').trim();
+  if (!fragment) return;
+  const spacer = workModeHandsFreeBuffer && !/\s$/.test(workModeHandsFreeBuffer) ? ' ' : '';
+  workModeHandsFreeBuffer += spacer + fragment;
+  const responseCommand = consumeWorkModeResponseVoiceCommand(workModeHandsFreeBuffer);
+  if (responseCommand.handled) {
+    if (workModeHandsFreeState === 'recording') {
+      workModeHandsFreeBuffer = responseCommand.remaining;
+      updateWorkModeHandsFreePromptPreview();
+    } else {
+      workModeHandsFreeBuffer = '';
+    }
+    return;
+  }
+  if (workModeHandsFreeState === 'waiting') {
+    const startMatch = findWorkModeVoiceCommand(workModeHandsFreeBuffer, workModeVoiceStartCommand);
+    if (!startMatch) {
+      trimWorkModeHandsFreeWaitingBuffer();
+      return;
+    }
+    const input = document.getElementById('workModePromptInput');
+    workModeHandsFreePromptBase = String((input && input.value) || '');
+    workModeHandsFreeBuffer = workModeHandsFreeBuffer.slice(startMatch.end).replace(/^\s+/, '');
+    workModeHandsFreeState = 'recording';
+  }
+  const sendMatch = findWorkModeVoiceCommand(workModeHandsFreeBuffer, workModeVoiceSendCommand);
+  if (!sendMatch) {
+    updateWorkModeHandsFreePromptPreview();
+    return;
+  }
+  const spokenPrompt = workModeHandsFreeBuffer.slice(0, sendMatch.start).replace(/\s+$/, '');
+  setWorkModePromptText(joinWorkModePromptSpeech(workModeHandsFreePromptBase, spokenPrompt), { focus:false });
+  resetWorkModeHandsFreeState();
+  queueMicrotask(() => sendWorkModePrompt({ voiceCommand:true }).catch(err => showErrorToast(err.message || 'Work Mode request failed.')));
 }
 function stopWorkModeSpeechInput() {
+  workModeSpeechStopRequested = true;
+  workModeSpeechMode = 'off';
+  resetWorkModeHandsFreeState();
   if (workModeRecognition && workModeSpeechActive) {
     try { workModeRecognition.stop(); } catch (_) {}
   }
   workModeSpeechActive = false;
   updateWorkModeSpeechUI();
 }
+function finishWorkModeSpeechInput(options = {}) {
+  const wasRequested = workModeSpeechStopRequested;
+  const wasActive = workModeSpeechMode !== 'off' || workModeSpeechActive;
+  workModeSpeechActive = false;
+  workModeSpeechMode = 'off';
+  workModeSpeechStopRequested = false;
+  resetWorkModeHandsFreeState();
+  updateWorkModeSpeechUI();
+  if (!wasRequested && wasActive && options.notify !== false && workModeOpen) showToast('Speech input ended. Start it again from the microphone when ready.', 'warning', 3000);
+}
+function workModeRecognitionFinalTranscripts(event) {
+  const results = event && event.results ? event.results : [];
+  const startIndex = Number.isFinite(Number(event && event.resultIndex)) ? Number(event.resultIndex) : 0;
+  const transcripts = [];
+  for (let index = startIndex; index < results.length; index++) {
+    const result = results[index];
+    if (!result || result.isFinal === false || !result[0]) continue;
+    const transcript = String(result[0].transcript || '').trim();
+    if (transcript) transcripts.push(transcript);
+  }
+  return transcripts;
+}
 function ensureWorkModeRecognition() {
   const Recognition = getWorkModeSpeechRecognitionCtor();
   if (!Recognition) return null;
   if (workModeRecognition) return workModeRecognition;
   const recognition = new Recognition();
-  recognition.continuous = false;
+  recognition.continuous = true;
   recognition.interimResults = false;
   recognition.lang = navigator.language || 'en-US';
   recognition.onstart = () => {
-    workModeSpeechActive = true;
-    setWorkModeStatus('Listening... speak now.');
+    workModeSpeechActive = workModeSpeechMode !== 'off';
     updateWorkModeSpeechUI();
   };
   recognition.onresult = event => {
-    const results = Array.from(event.results || []);
-    const transcript = results.map(result => result && result[0] ? result[0].transcript : '').join(' ').trim();
-    appendWorkModeTranscript(transcript);
-    if (transcript) setWorkModeStatus('Speech added to the Work Mode prompt.');
+    workModeRecognitionFinalTranscripts(event).forEach(transcript => {
+      if (workModeSpeechMode === 'handsfree') processWorkModeHandsFreeTranscript(transcript);
+      else if (workModeSpeechMode === 'dictation') processWorkModeDictationTranscript(transcript);
+    });
   };
   recognition.onerror = event => {
-    workModeSpeechActive = false;
-    updateWorkModeSpeechUI();
     const error = String((event && event.error) || '').trim();
+    finishWorkModeSpeechInput({ notify:false });
     if (error === 'not-allowed' || error === 'service-not-allowed') showToast('Microphone permission was denied.', 'warning', 3200);
     else if (error === 'no-speech') showToast('No speech detected.', 'warning', 2400);
     else showToast('Speech input is not available right now.', 'warning', 3200);
-    setWorkModeStatus('Speech input stopped.');
   };
-  recognition.onend = () => {
-    workModeSpeechActive = false;
-    updateWorkModeSpeechUI();
-    if (workModeOpen) updateWorkModeSettingsStatus();
-  };
+  recognition.onend = () => finishWorkModeSpeechInput();
   workModeRecognition = recognition;
   return workModeRecognition;
 }
-function toggleWorkModeSpeechInput() {
-  if (workModeSpeechActive) {
+function startWorkModeSpeechMode(mode) {
+  if (workModeSpeechMode !== 'off' || workModeSpeechActive) {
     stopWorkModeSpeechInput();
-    setWorkModeStatus('Speech input stopped.');
     return;
   }
   const recognition = ensureWorkModeRecognition();
@@ -22218,11 +23036,22 @@ function toggleWorkModeSpeechInput() {
     showToast('Speech input is not supported in this browser.', 'warning', 3200);
     return;
   }
+  workModeSpeechMode = mode === 'handsfree' ? 'handsfree' : 'dictation';
+  workModeSpeechStopRequested = false;
+  resetWorkModeHandsFreeState();
   try {
     recognition.start();
   } catch (err) {
+    finishWorkModeSpeechInput({ notify:false });
     showToast('Speech input could not start. Try again in a moment.', 'warning', 3200);
   }
+}
+function toggleWorkModeSpeechInput() {
+  startWorkModeSpeechMode('dictation');
+}
+function toggleWorkModeHandsFreeSpeechInput(event) {
+  if (event) event.preventDefault();
+  startWorkModeSpeechMode('handsfree');
 }
 function autosizeWorkModePrompt() {
   const input = document.getElementById('workModePromptInput');
@@ -22681,7 +23510,12 @@ function applyWorkModeResponseMemory(data) {
   else syncContinuedWorkModeMemory(nextContent);
 }
 async function sendWorkModePrompt(options = {}) {
-  if (isAnyWorkModeTabSending()) return;
+  if (isAnyWorkModeTabSending()) {
+    console.warn('[AgentGO] Work Mode send blocked locally because another tab or request is still marked as sending. No request was sent to GoServer.');
+    showToast('Work Mode is still waiting on an earlier request. No new prompt was sent.', 'warning', 4200);
+    return;
+  }
+  if (workModeSpeechMode === 'dictation') stopWorkModeSpeechInput();
   ensureWorkModeConversationTabs();
   const input = document.getElementById('workModePromptInput');
   const prompt = String((input && input.value) || '').trim();
@@ -22866,7 +23700,7 @@ async function sendWorkModePrompt(options = {}) {
         memoryName: agenticActive ? '' : memoryName,
         responseMode: agenticActive ? 'auto' : normalizeResponseMode(workModeSettings.responseMode),
         agentGOStyling: agenticActive ? false : workModeSettings.agentGOStyling !== false,
-        agentic: agenticActive ? { enabled:true, mode:workModeTerminalMode, maxRuns:normalizeWorkModeTerminalMaxRuns(workModeTerminalMaxRuns), taskId:String(sendingTab.agenticTaskId || ''), continuation:agenticContinuation } : undefined
+        agentic: agenticActive ? { enabled:true, mode:workModeTerminalMode, maxRuns:normalizeWorkModeTerminalMaxRuns(workModeTerminalMaxRuns), taskId:String(sendingTab.agenticTaskId || ''), continuation:agenticContinuation, screenshotEnabled:isWorkModeAgenticCaptureAvailable() } : undefined
       })
     });
     renderWorkModeAgenticDryRunResult(data.agentic, sendingTabId);
@@ -22888,6 +23722,7 @@ async function sendWorkModePrompt(options = {}) {
         else if (data.agentic.status === 'run_command' && data.agentic.mode === 'semi' && data.agentic.autoExecute) setWorkModeStatus('Semi command authorized and starting automatically.');
         else if (data.agentic.status === 'run_command' && data.agentic.mode === 'semi') setWorkModeStatus('Semi command paused for a decision in the terminal panel.');
         else if (data.agentic.status === 'run_command') setWorkModeStatus('Manual command request validated. Choose Yes or No in the terminal panel.');
+        else if (data.agentic.status === 'screenshot') setWorkModeStatus('AgentGO is capturing the user-approved screenshot source for the AI.');
         else if (data.agentic.status === 'needs_user_input') setWorkModeStatus('The current agentic task is paused and waiting for your input. Its staged workspace remains available.');
         else setWorkModeStatus('Agentic task completed. Staged changes are awaiting review. Terminal access remains enabled.');
       } else if (skipped) setWorkModeStatus(`Work Mode completed. ${skipped} file request${skipped === 1 ? '' : 's'} skipped by AgentGO.`);
@@ -22897,7 +23732,12 @@ async function sendWorkModePrompt(options = {}) {
     await loadWorkModeFileTree().catch(err => showToast(err.message || 'Could not refresh Work Mode files.', 'warning'));
     if (data.memoryWarning) showToast(data.memoryWarning, 'warning', 4200);
     if (memoryEnabled) await refreshWorkModeMemoryState().catch(() => {});
-    if (data.agentic?.autoExecute && (workModeTerminalMode === 'semi' || workModeTerminalMode === 'full')) {
+    if (data.agentic?.status === 'screenshot') {
+      queueMicrotask(() => continueWorkModeAgenticScreenshot(sendingTabId).catch(err => {
+        appendWorkModeTerminalLine('error', `AgentGO → Screenshot continuation failed: ${err.message || err}`);
+        showToast(err.message || 'Screenshot continuation failed.', 'warning', 4200);
+      }));
+    } else if (data.agentic?.autoExecute && (workModeTerminalMode === 'semi' || workModeTerminalMode === 'full')) {
       const automaticMode = workModeTerminalMode;
       queueMicrotask(() => {
         const execute = automaticMode === 'full' ? runWorkModeFullAutomaticCommand(sendingTabId) : runWorkModeSemiAutomaticCommand(sendingTabId);
@@ -23054,6 +23894,7 @@ function resetWorkModeState() {
   workModeBackgroundTabMutation = false;
   workModeSendingTabId = '';
   workModeTerminalPanelOpen = false;
+  releaseWorkModeAgenticCaptureSource();
   workModeTerminalSafetyAccepted = false;
   workModeTerminalOwnerTabId = '';
   workModeTerminalMode = 'manual';
@@ -25355,10 +26196,17 @@ if (workModeTabList) {
   });
 }
 const workModeMicBtn = document.getElementById('workModeMicBtn');
-if (workModeMicBtn) workModeMicBtn.addEventListener('click', toggleWorkModeSpeechInput);
+if (workModeMicBtn) {
+  workModeMicBtn.addEventListener('click', toggleWorkModeSpeechInput);
+  workModeMicBtn.addEventListener('contextmenu', toggleWorkModeHandsFreeSpeechInput);
+}
 const workModeAutoReadBtn = document.getElementById('workModeAutoReadBtn');
 if (workModeAutoReadBtn) {
   workModeAutoReadBtn.addEventListener('click', toggleWorkModeAutoReadReplies);
+  workModeAutoReadBtn.addEventListener('contextmenu', event => {
+    event.preventDefault();
+    toggleWorkModeAutoReadReplies();
+  });
   updateWorkModeSpeechUI();
 }
 const workModeSendBtn = document.getElementById('workModeSendBtn');
@@ -25454,7 +26302,7 @@ if (workModeTerminalSafetyCheck) workModeTerminalSafetyCheck.addEventListener('c
   if (continueBtn) continueBtn.disabled = !workModeTerminalSafetyCheck.checked;
 });
 const workModeTerminalSafetyCancelBtn = document.getElementById('workModeTerminalSafetyCancelBtn');
-if (workModeTerminalSafetyCancelBtn) workModeTerminalSafetyCancelBtn.addEventListener('click', () => toggleWorkModeTerminalPanel(false));
+if (workModeTerminalSafetyCancelBtn) workModeTerminalSafetyCancelBtn.addEventListener('click', () => cancelWorkModeTerminalSafetySetup());
 const workModeTerminalSafetyContinueBtn = document.getElementById('workModeTerminalSafetyContinueBtn');
 if (workModeTerminalSafetyContinueBtn) workModeTerminalSafetyContinueBtn.addEventListener('click', () => {
   if (!document.getElementById('workModeTerminalSafetyCheck')?.checked) return;
@@ -25462,6 +26310,10 @@ if (workModeTerminalSafetyContinueBtn) workModeTerminalSafetyContinueBtn.addEven
   appendWorkModeTerminalLine('agentgo', 'AgentGO → Terminal safety notice accepted for this Work Mode session.');
   renderWorkModeTerminalUI();
 });
+const workModeTerminalCaptureBtn = document.getElementById('workModeTerminalCaptureBtn');
+if (workModeTerminalCaptureBtn) workModeTerminalCaptureBtn.addEventListener('click', () => selectWorkModeAgenticCaptureSource().catch(err => showToast(err.message || 'Could not select screenshot source.', 'warning', 4200)));
+const workModeScreenCaptureBtn = document.getElementById('workModeScreenCaptureBtn');
+if (workModeScreenCaptureBtn) workModeScreenCaptureBtn.addEventListener('click', () => captureWorkModeScreenScreenshot().catch(err => showToast(err.message || 'Could not capture screenshot.', 'warning')));
 const workModeAttachFileInput = document.getElementById('workModeAttachFileInput');
 if (workModeAttachFileInput) workModeAttachFileInput.addEventListener('change', event => {
   addWorkModeTemporaryFiles(event.target.files).then(() => {

@@ -2,9 +2,11 @@ package main
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -14,9 +16,10 @@ import (
 )
 
 const (
-	activeSessionFilename = "activesession.json"
-	activeSessionHeader   = "X-AgentGO-Session-ID"
-	activeSessionSchema   = 1
+	activeSessionFilename        = "activesession.json"
+	activeSessionHeader          = "X-AgentGO-Session-ID"
+	activeSessionReconnectHeader = "X-AgentGO-Reconnect-Attempt"
+	activeSessionSchema          = 1
 )
 
 type activeSessionObserver struct {
@@ -163,6 +166,7 @@ func (a *App) rotateActiveSession(projectName string) (activeSessionFile, error)
 	if err := a.persistActiveSession(session); err != nil {
 		return activeSessionFile{}, err
 	}
+	a.resetActiveSessionMismatchDiagnostics()
 	return session, nil
 }
 
@@ -260,6 +264,72 @@ func activeSessionIDFromRequest(r *http.Request) string {
 	return strings.TrimSpace(r.Header.Get(activeSessionHeader))
 }
 
+func activeSessionFingerprint(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "empty"
+	}
+	sum := sha256.Sum256([]byte(value))
+	return hex.EncodeToString(sum[:6])
+}
+
+func activeSessionRequestRoute(r *http.Request) string {
+	if r == nil || r.URL == nil {
+		return "unknown"
+	}
+	route := strings.TrimSpace(r.URL.Path)
+	if route == "" {
+		return "unknown"
+	}
+	return route
+}
+
+func (a *App) resetActiveSessionMismatchDiagnostics() {
+	a.sessionMismatchLogMu.Lock()
+	a.sessionMismatchLogKey = ""
+	a.sessionMismatchSuppressed = 0
+	a.sessionMismatchLogMu.Unlock()
+}
+
+func (a *App) logActiveSessionMismatch(r *http.Request, incomingSessionID, activeSessionID string) {
+	incomingFingerprint := activeSessionFingerprint(incomingSessionID)
+	activeFingerprint := activeSessionFingerprint(activeSessionID)
+	key := incomingFingerprint + ":" + activeFingerprint
+
+	a.sessionMismatchLogMu.Lock()
+	if a.sessionMismatchLogKey == key {
+		a.sessionMismatchSuppressed++
+		a.sessionMismatchLogMu.Unlock()
+		return
+	}
+	a.sessionMismatchLogKey = key
+	a.sessionMismatchSuppressed = 0
+	a.sessionMismatchLogMu.Unlock()
+
+	remote := "unknown"
+	if r != nil && strings.TrimSpace(r.RemoteAddr) != "" {
+		remote = strings.TrimSpace(r.RemoteAddr)
+	}
+	log.Printf("[WARN] AgentGO received stale session ID at %s route=%s incoming=%s active=%s remote=%s; repeated warnings for this session pair are suppressed", time.Now().Format("15:04:05"), activeSessionRequestRoute(r), incomingFingerprint, activeFingerprint, remote)
+}
+
+func (a *App) noteActiveSessionMatchedRequest(r *http.Request, activeSessionID string) {
+	reconnectAttempt := r != nil && strings.TrimSpace(r.Header.Get(activeSessionReconnectHeader)) != ""
+	if !reconnectAttempt {
+		return
+	}
+	a.sessionMismatchLogMu.Lock()
+	suppressed := a.sessionMismatchSuppressed
+	a.sessionMismatchLogKey = ""
+	a.sessionMismatchSuppressed = 0
+	a.sessionMismatchLogMu.Unlock()
+	remote := "unknown"
+	if r != nil && strings.TrimSpace(r.RemoteAddr) != "" {
+		remote = strings.TrimSpace(r.RemoteAddr)
+	}
+	log.Printf("[INFO] AgentGO session reconnected at %s route=%s session=%s remote=%s suppressed_mismatch_attempts=%d", time.Now().Format("15:04:05"), activeSessionRequestRoute(r), activeSessionFingerprint(activeSessionID), remote, suppressed)
+}
+
 func (a *App) activeSessionMatchesRequest(r *http.Request) bool {
 	session, ok := a.activeSessionSnapshot()
 	if !ok {
@@ -269,16 +339,23 @@ func (a *App) activeSessionMatchesRequest(r *http.Request) bool {
 }
 
 func (a *App) requireActiveSessionMatch(w http.ResponseWriter, r *http.Request) bool {
-	if a.activeSessionMatchesRequest(r) {
+	session, ok := a.activeSessionSnapshot()
+	if !ok {
 		return true
 	}
-	if activeSessionIDFromRequest(r) == "" {
+	incomingSessionID := activeSessionIDFromRequest(r)
+	if incomingSessionID == session.SessionID {
+		a.noteActiveSessionMatchedRequest(r, session.SessionID)
+		return true
+	}
+	if incomingSessionID == "" {
 		writeJSON(w, http.StatusConflict, map[string]any{
 			"error":   "session_unattached",
 			"message": "This page is not attached to AgentGO's active session. Refresh to start a new session.",
 		})
 		return false
 	}
+	a.logActiveSessionMismatch(r, incomingSessionID, session.SessionID)
 	writeJSON(w, http.StatusConflict, map[string]any{
 		"error":   "session_mismatch",
 		"message": "A newer AgentGO session is active. Refresh this tab or choose Make This Tab Active.",
@@ -358,12 +435,16 @@ func (a *App) handleActiveSession(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, activeSessionStatusResponse{Active: false, Match: activeSessionIDFromRequest(r) == "", Status: "none"})
 		return
 	}
-	match := activeSessionIDFromRequest(r) == session.SessionID
+	incomingSessionID := activeSessionIDFromRequest(r)
+	match := incomingSessionID == session.SessionID
 	status := "mismatch"
 	if match {
 		status = "matched"
-	} else if activeSessionIDFromRequest(r) == "" {
+		a.noteActiveSessionMatchedRequest(r, session.SessionID)
+	} else if incomingSessionID == "" {
 		status = "unattached"
+	} else {
+		a.logActiveSessionMismatch(r, incomingSessionID, session.SessionID)
 	}
 	// A stale or unattached browser may learn that a session exists and which
 	// project owns it, but it must not receive the key needed to impersonate it.

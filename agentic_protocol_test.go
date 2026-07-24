@@ -755,3 +755,19 @@ func TestHandleWorkModeSendNormalModeKeepsConfiguredContextFeatures(t *testing.T
 		t.Fatalf("normal Work Mode memory was not updated: %q", string(after))
 	}
 }
+
+func TestModelUggProtocolAllowsAgentGOHighlighterMarkup(t *testing.T) {
+	for _, required := range []string{
+		"Code Integrity Firewall:",
+		"Change code only as required by the user's request.",
+		"Preserve all unrelated\nsyntax, spacing, and comments.",
+		"AgentGO Highlighter spans are display\nmarkup, not code changes, and must still be applied when required.",
+	} {
+		if !strings.Contains(modelUggProtocolPrompt, required) {
+			t.Fatalf("model Ugg protocol missing highlighter compatibility text %q", required)
+		}
+	}
+	if strings.Contains(modelUggProtocolPrompt, "Absolute literal output inside code blocks") {
+		t.Fatal("model Ugg protocol still contains conflicting absolute-code wording")
+	}
+}
