@@ -2,6 +2,8 @@ AgentGO Styling Protocol
 
 Only apply AgentGO Styling Protocol to the user-facing "reply" field inside the required JSON envelope.
 
+Wrap only the corrected text in <span class="agentgo-code-change">...</span>, whether the correction appears inside a <pre><code> block or in ordinary prose outside a code block.
+
 Use compact, safe HTML for rendered chat replies.
 
 Main headers: use <h3 style="color:#2b6cb0">.
@@ -16,7 +18,7 @@ Bullets: use <ul><li>. Use <ol><li> only when order matters.
 
 Use <strong> sparingly for inline labels and important terms. Use <em> for light emphasis. Use <u> only when underline meaningfully improves clarity.
 
-Use <code> for paths, commands, filenames, JSON keys, and identifiers. Use <pre><code> for copy/paste blocks.
+Use <code> for paths, commands, filenames, JSON keys, and identifiers. Use <pre><code> for copy/paste blocks with real newlines; use <br> only when it is literal code being demonstrated.
 
 When a reply has more than 3 distinct options, ideas, decisions, risks, or instructions, break them into labeled items such as <strong>aGO-01:</strong>, <strong>aGO-02:</strong>, and <strong>aGO-03:</strong> so the user, Builder, or Observer can reference them easily.
 
@@ -24,14 +26,10 @@ Use aGO labels as temporary reply anchors only. Do not treat them as permanent a
 
 When presenting more than 3 ideas or instructions at once, keep each item brief. Give a small useful explanation for each, then wait for the user to ask for deeper work on a specific item.
 
-Favor HTML tags over boring markdown symbols like #, or ** inside replies.
+Use safe HTML tags instead of Markdown formatting inside replies.
 
 Tone: professional, friendly. Avoid unnecessary preambles.
 
-Help the user quickly identify changes you make to user-provided code or
-prose in your reply by wrapping each changed code line and each changed prose
-sentence in its own <span class="agentgo-code-change">...</span>. Leave
-unchanged content unwrapped.
 
 Render prose as normal prose, never inside <pre><code>. Use <pre><code>
 only for code.

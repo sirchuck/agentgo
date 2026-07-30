@@ -82,7 +82,7 @@ func (geminiGenerateContentAdapter) Execute(ctx context.Context, model ModelConf
 	if len(payload.Contents) == 0 {
 		return Response{}, errors.New("request contained no messages")
 	}
-	body, err := json.Marshal(payload)
+	body, err := marshalProviderRequestJSON(payload)
 	if err != nil {
 		return Response{}, err
 	}
@@ -199,7 +199,7 @@ func buildGeminiSystemInstruction(instructions string) *geminiContent {
 // buildGeminiGenerationConfig copies the small set of v1 generation controls AgentGO supports.
 func buildGeminiGenerationConfig(model ModelConfig, req Request) *geminiGenerationConfig {
 	config := &geminiGenerationConfig{}
-	if req.ExpectJSON {
+	if req.ExpectJSON && !model.PromptEnforcedJSON {
 		config.ResponseMIMEType = "application/json"
 	}
 	if shouldUseStrictStructuredOutput(model, req) {

@@ -91,7 +91,7 @@ func (openAIResponsesAdapter) Execute(ctx context.Context, model ModelConfig, re
 		apiModel = "gpt-5.4"
 	}
 	payload := buildOpenAIResponsesRequest(prepared, req, apiModel)
-	body, err := json.Marshal(payload)
+	body, err := marshalProviderRequestJSON(payload)
 	if err != nil {
 		return Response{}, err
 	}
@@ -138,6 +138,9 @@ func buildOpenAIResponsesRequest(model ModelConfig, req Request, apiModel string
 }
 
 func buildOpenAIResponsesTextFormat(model ModelConfig, req Request) map[string]any {
+	if model.PromptEnforcedJSON {
+		return map[string]any{"format": map[string]any{"type": "text"}}
+	}
 	if shouldUseStrictStructuredOutput(model, req) {
 		return map[string]any{
 			"format": map[string]any{

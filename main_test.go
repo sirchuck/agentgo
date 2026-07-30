@@ -33,7 +33,7 @@ func TestSlowHTTPRequestWarningThresholdUsesWorkModeAllowance(t *testing.T) {
 	}
 }
 
-func TestAgentGOHighlighterIsSingleFinalWorkModeReplyCheck(t *testing.T) {
+func TestDefaultAgentGOStylingKeepsCorrectionInstructionNearTop(t *testing.T) {
 	instructions := buildWorkModeInstructions(
 		ModelConfig{UseUggPrompt: true},
 		false,
@@ -41,31 +41,21 @@ func TestAgentGOHighlighterIsSingleFinalWorkModeReplyCheck(t *testing.T) {
 		"auto",
 		nil,
 		defaultAgentGOStylingPrompt,
+		"",
 	)
-	if count := strings.Count(instructions, agentGOHighlighterMarker); count != 1 {
-		t.Fatalf("AgentGO Highlighter count = %d, want 1\n%s", count, instructions)
+	correction := `Wrap only the corrected text in <span class="agentgo-code-change">...</span>, whether the correction appears inside a <pre><code> block or in ordinary prose outside a code block.`
+	if count := strings.Count(instructions, correction); count != 1 {
+		t.Fatalf("correction instruction count = %d, want 1\n%s", count, instructions)
 	}
-	highlighterIndex := strings.Index(instructions, agentGOHighlighterMarker)
-	uggIndex := strings.Index(instructions, "SYSTEM INSTRUCTION: UGG PROTOCOL")
-	if uggIndex < 0 || highlighterIndex <= uggIndex {
-		t.Fatalf("AgentGO Highlighter must follow Ugg protocol: ugg=%d highlighter=%d", uggIndex, highlighterIndex)
-	}
-	for _, required := range []string{
-		"Help the user quickly identify changes you make to user-provided code or",
-		`sentence in its own <span class="agentgo-code-change">...</span>. Leave`,
-		"Render prose as normal prose, never inside <pre><code>.",
-		"Use <pre><code>",
-	} {
-		if !strings.Contains(instructions, required) {
-			t.Fatalf("final AgentGO Highlighter missing %q", required)
-		}
-	}
-	if !strings.HasSuffix(strings.TrimSpace(instructions), "only for code.") {
-		t.Fatalf("AgentGO Highlighter is not the final Work Mode reply check:\n%s", instructions)
+	applyIndex := strings.Index(instructions, `Only apply AgentGO Styling Protocol to the user-facing "reply" field`)
+	correctionIndex := strings.Index(instructions, correction)
+	compactIndex := strings.Index(instructions, "Use compact, safe HTML for rendered chat replies.")
+	if applyIndex < 0 || correctionIndex <= applyIndex || compactIndex <= correctionIndex {
+		t.Fatalf("correction instruction is not in the requested styling position: apply=%d correction=%d compact=%d", applyIndex, correctionIndex, compactIndex)
 	}
 }
 
-func TestAgentGOHighlighterIsSingleFinalObserverWorkerReplyCheck(t *testing.T) {
+func TestDefaultAgentGOStylingPositionIsPreservedForObserverWorker(t *testing.T) {
 	instructions := workModeObserverReviewWorkerInstructions(
 		ModelConfig{UseUggPrompt: true},
 		false,
@@ -73,24 +63,330 @@ func TestAgentGOHighlighterIsSingleFinalObserverWorkerReplyCheck(t *testing.T) {
 		"auto",
 		nil,
 		defaultAgentGOStylingPrompt,
+		"",
 	)
-	if count := strings.Count(instructions, agentGOHighlighterMarker); count != 1 {
-		t.Fatalf("Observer Worker AgentGO Highlighter count = %d, want 1\n%s", count, instructions)
+	correction := `Wrap only the corrected text in <span class="agentgo-code-change">...</span>, whether the correction appears inside a <pre><code> block or in ordinary prose outside a code block.`
+	if count := strings.Count(instructions, correction); count != 1 {
+		t.Fatalf("Observer Worker correction instruction count = %d, want 1\n%s", count, instructions)
 	}
-	highlighterIndex := strings.Index(instructions, agentGOHighlighterMarker)
-	observerIndex := strings.Index(instructions, "OBSERVER REVIEW MEMORY OWNERSHIP")
-	if observerIndex < 0 || highlighterIndex <= observerIndex {
-		t.Fatalf("AgentGO Highlighter must follow Observer Worker instructions: observer=%d highlighter=%d", observerIndex, highlighterIndex)
-	}
-	if !strings.HasSuffix(strings.TrimSpace(instructions), "only for code.") {
-		t.Fatalf("AgentGO Highlighter is not the final Observer Worker reply check:\n%s", instructions)
+	if strings.Index(instructions, correction) > strings.Index(instructions, "OBSERVER REVIEW MODE") {
+		t.Fatalf("default styling prompt moved outside its requested position:\n%s", instructions)
 	}
 }
 
-func TestAgentGOHighlighterNotAddedWhenStylingDisabled(t *testing.T) {
-	instructions := buildWorkModeInstructions(ModelConfig{UseUggPrompt: true}, false, false, "auto", nil, "")
-	if strings.Contains(instructions, agentGOHighlighterMarker) {
-		t.Fatalf("AgentGO Highlighter was added while styling disabled:\n%s", instructions)
+func TestAgentGOStylingCorrectionInstructionNotAddedWhenStylingDisabled(t *testing.T) {
+	instructions := buildWorkModeInstructions(ModelConfig{UseUggPrompt: true}, false, false, "auto", nil, "", "")
+	if strings.Contains(instructions, `Wrap only the corrected text in <span class="agentgo-code-change">...</span>, whether the correction appears inside a <pre><code> block or in ordinary prose outside a code block.`) {
+		t.Fatalf("AgentGO styling correction instruction was added while styling disabled:\n%s", instructions)
+	}
+}
+
+func TestWorkModeStructuredOutputPromptMatchesEffectiveCompatibilityMode(t *testing.T) {
+	nativeInstructions := buildWorkModeInstructions(ModelConfig{}, false, false, "auto", nil, "", "")
+	for _, required := range []string{
+		`The provider enforces AgentGO's Work Mode JSON schema.`,
+		`For ordinary replies, explanations, summaries, code examples, and read-only questions, leave "files" and "artifacts" empty.`,
+		`Use artifacts only for requested binary/file outputs, with base64 data.`,
+	} {
+		if !strings.Contains(nativeInstructions, required) {
+			t.Fatalf("native-schema Work Mode instructions missing %q:\n%s", required, nativeInstructions)
+		}
+	}
+	for _, redundant := range []string{
+		`Return strict valid JSON according to RFC 8259.`,
+		`Use this compact response shape:`,
+		`{"reply":"User-facing response or summary of actions here."`,
+	} {
+		if strings.Contains(nativeInstructions, redundant) {
+			t.Fatalf("native-schema Work Mode instructions retained redundant prompt text %q:\n%s", redundant, nativeInstructions)
+		}
+	}
+
+	promptInstructions := buildWorkModeInstructions(ModelConfig{PromptEnforcedJSON: true}, false, false, "auto", nil, "", "")
+	for _, required := range []string{
+		`CRITICAL JSON CONTRACT`,
+		`Return strict valid JSON according to RFC 8259.`,
+		`Use this compact response shape:`,
+		`{"reply":"User-facing response or summary of actions here.","files":[],"artifacts":[],"memory":"","warnings":[]}`,
+	} {
+		if !strings.Contains(promptInstructions, required) {
+			t.Fatalf("prompt-enforced Work Mode instructions missing %q:\n%s", required, promptInstructions)
+		}
+	}
+
+	properties := workModeJSONSchema()["properties"].(map[string]any)
+	files := properties["files"].(map[string]any)
+	fileItems := files["items"].(map[string]any)
+	fileProperties := fileItems["properties"].(map[string]any)
+	action := fileProperties["action"].(map[string]any)
+	actions, ok := action["enum"].([]string)
+	if !ok || len(actions) != 2 || actions[0] != "create" || actions[1] != "overwrite" {
+		t.Fatalf("normal Work Mode actions = %#v, want create/overwrite only", action["enum"])
+	}
+	artifacts := properties["artifacts"].(map[string]any)
+	items := artifacts["items"].(map[string]any)
+	artifactProperties := items["properties"].(map[string]any)
+	encoding := artifactProperties["encoding"].(map[string]any)
+	enum, ok := encoding["enum"].([]string)
+	if encoding["type"] != "string" || !ok || len(enum) != 1 || enum[0] != "base64" {
+		t.Fatalf("artifact encoding schema = %#v, want base64 only", encoding)
+	}
+}
+
+func TestParseWorkModeAdapterResponseIgnoresUnreferencedInvalidArtifact(t *testing.T) {
+	raw := `{"reply":"ok","files":[],"artifacts":[{"id":"hallucinated","encoding":"utf-8","mime_type":"text/plain","data":"not used"}],"memory":"","warnings":[]}`
+	parsed, err := parseWorkModeAdapterResponse(adapters.Response{Text: raw}, t.TempDir(), "Demo")
+	if err != nil {
+		t.Fatalf("parse response: %v", err)
+	}
+	if len(parsed.Artifacts) != 0 {
+		t.Fatalf("unreferenced artifacts were retained: %#v", parsed.Artifacts)
+	}
+	if len(parsed.Warnings) != 0 {
+		t.Fatalf("successful normalization leaked into AI warnings: %#v", parsed.Warnings)
+	}
+	if !strings.Contains(strings.Join(parsed.Normalizations, "\n"), "ignored 1 unreferenced artifact") {
+		t.Fatalf("missing ignored-artifact normalization: %#v", parsed.Normalizations)
+	}
+}
+
+func TestParseWorkModeAdapterResponseNormalizesReferencedPlainTextArtifact(t *testing.T) {
+	raw := `{"reply":"saved","files":[{"path":"notes.txt","action":"create","content":"","artifact_ref":"note"}],"artifacts":[{"id":"note","encoding":"utf-8","mime_type":"text/plain","data":"hello"}],"memory":"","warnings":[]}`
+	parsed, err := parseWorkModeAdapterResponse(adapters.Response{Text: raw}, t.TempDir(), "Demo")
+	if err != nil {
+		t.Fatalf("parse response: %v", err)
+	}
+	if len(parsed.Artifacts) != 1 || parsed.Artifacts[0].Encoding != "base64" {
+		t.Fatalf("artifact was not normalized: %#v", parsed.Artifacts)
+	}
+	decoded, err := decodeBuilderArtifactData(parsed.Artifacts[0].Data)
+	if err != nil || string(decoded) != "hello" {
+		t.Fatalf("normalized artifact data = %q err=%v", string(decoded), err)
+	}
+	if !strings.Contains(strings.Join(parsed.Normalizations, "\n"), "normalized plain-text artifact encoding to base64") {
+		t.Fatalf("missing artifact-encoding normalization detail: %#v", parsed.Normalizations)
+	}
+}
+
+func TestWorkModeDiagnosticSanitizationRedactsConfiguredAndNamedSecrets(t *testing.T) {
+	model := ModelConfig{APIKey: "configured-secret-key", APIPass: "configured-password"}
+	raw := `Bearer abcdefghijklmnop {"api_key":"inline-api-key","password":"inline-password"} configured-secret-key configured-password`
+	clean := sanitizeWorkModeDiagnosticText(model, raw)
+	for _, secret := range []string{"abcdefghijklmnop", "inline-api-key", "inline-password", "configured-secret-key", "configured-password"} {
+		if strings.Contains(clean, secret) {
+			t.Fatalf("diagnostic leaked %q: %s", secret, clean)
+		}
+	}
+	if strings.Count(clean, "[REDACTED]") < 5 {
+		t.Fatalf("expected redaction markers: %s", clean)
+	}
+}
+
+func TestModelMaxOutputEditorUsesStructuredResponsiveLayout(t *testing.T) {
+	raw, err := os.ReadFile("templates/index.html")
+	if err != nil {
+		t.Fatalf("read template: %v", err)
+	}
+	template := string(raw)
+	for _, required := range []string{
+		`class="model-max-output-options"`,
+		`data-model-max-option="automatic"`,
+		`data-model-max-option="custom"`,
+		`id="modelMaxCustomRow"`,
+		`class="model-max-output-custom-copy"`,
+		`customRow?.classList.toggle('is-disabled', !custom.checked)`,
+	} {
+		if !strings.Contains(template, required) {
+			t.Fatalf("model maximum output layout missing %q", required)
+		}
+	}
+}
+
+func TestWorkModeFailureDiagnosticsAreCopyableAndAddedFromErrorResponse(t *testing.T) {
+	raw, err := os.ReadFile("templates/index.html")
+	if err != nil {
+		t.Fatalf("read template: %v", err)
+	}
+	template := string(raw)
+	for _, required := range []string{
+		`parsed.diagnostic && typeof appendDiagnosticsEntry === 'function'`,
+		`data-diag-copy-field`,
+		`Sanitized outbound request`,
+		`entry.detailsLabel || 'Details'`,
+		`diagnosticsEntries.findIndex(item => item.id === normalized.id)`,
+	} {
+		if !strings.Contains(template, required) {
+			t.Fatalf("Work Mode diagnostics UI missing %q", required)
+		}
+	}
+}
+
+func TestWorkModeNormalizationUIUsesDiagnosticsSubtleNoteAndPlainTextWarnings(t *testing.T) {
+	raw, err := os.ReadFile("templates/index.html")
+	if err != nil {
+		t.Fatalf("read template: %v", err)
+	}
+	template := string(raw)
+	for _, required := range []string{
+		`parsed.diagnostics.forEach(entry => appendDiagnosticsEntry(entry))`,
+		`Response normalized by AgentGO`,
+		`class="work-mode-normalized-note"`,
+		`function workModeWarningPlainText(value)`,
+		`doc.querySelectorAll('script,style,template,noscript')`,
+		`warnings:Array.isArray(data.warnings) ? data.warnings : [], normalized:!!data.normalized`,
+		`warnings: Array.isArray(data.warnings) ? data.warnings : [], normalized: !!data.normalized`,
+	} {
+		if !strings.Contains(template, required) {
+			t.Fatalf("Work Mode normalization UI missing %q", required)
+		}
+	}
+}
+
+func TestOllamaContextGuidanceIsInlineAndAdapterSpecific(t *testing.T) {
+	raw, err := os.ReadFile("templates/index.html")
+	if err != nil {
+		t.Fatalf("read template: %v", err)
+	}
+	template := string(raw)
+	for _, required := range []string{
+		`Known adapters use built-in transport rules. Provider Options remain optional JSON overrides.`,
+		`id="modelOllamaContextHint" hidden`,
+		`For smaller local models, limited context can be a problem. With Ollama, try increasing`,
+		`<code>8192</code>`,
+		`<code>16384</code>`,
+		`<code>32768</code>`,
+		`<code>65536</code>`,
+		`"num_ctx": 16384`,
+		`"num_predict": 2048`,
+		`ollamaContextHint.hidden = String(adapter || '').toLowerCase() !== 'ollama_generate'`,
+		`case 'ollama_generate':
+      return '{}';`,
+	} {
+		if !strings.Contains(template, required) {
+			t.Fatalf("Ollama context guidance missing %q", required)
+		}
+	}
+	for _, required := range []string{
+		`.model-ollama-context-hint pre{`,
+		`background:#475569`,
+		`color:#FFFFFF`,
+	} {
+		if !strings.Contains(template, required) {
+			t.Fatalf("Ollama context example styling missing %q", required)
+		}
+	}
+	if strings.Contains(template, `or Ollama context size. Larger context windows may require more system memory.`) {
+		t.Fatal("Provider Options popup still contains the old Ollama context explanation")
+	}
+	ollamaHintStart := strings.Index(template, `id="modelOllamaContextHint"`)
+	if ollamaHintStart < 0 {
+		t.Fatal("Ollama context hint not found")
+	}
+	ollamaHintEnd := strings.Index(template[ollamaHintStart:], `</div>`)
+	if ollamaHintEnd < 0 {
+		t.Fatal("Ollama context hint end not found")
+	}
+	if strings.Contains(template[ollamaHintStart:ollamaHintStart+ollamaHintEnd], `temperature`) {
+		t.Fatal("general Ollama context example must not set a temperature default")
+	}
+}
+
+func TestModelNamePickerUsesLiveProviderDiscovery(t *testing.T) {
+	raw, err := os.ReadFile("templates/index.html")
+	if err != nil {
+		t.Fatalf("read template: %v", err)
+	}
+	template := string(raw)
+	mainRaw, err := os.ReadFile("main.go")
+	if err != nil {
+		t.Fatalf("read main source: %v", err)
+	}
+	for _, required := range []string{
+		`/api/models/discover`,
+		`Select a Provider and Base URL so AgentGO can fetch the available models.`,
+		`Fetching available models…`,
+		`Could not connect to the provider.`,
+		`The provider reported no available models.`,
+		`Search available models`,
+		`Enter model name manually…`,
+		`function collectModelDiscoveryPayload()`,
+		`headers_present: !!headersRaw && !deleteHeaders`,
+		`api('/api/models/discover', { method: 'POST', body: JSON.stringify(payload) })`,
+		`data-model-name-manual`,
+	} {
+		if !strings.Contains(template+string(mainRaw), required) {
+			t.Fatalf("live model discovery UI missing %q", required)
+		}
+	}
+	missingSetup := `showKnownModelNamePicker(popover, anchor, '<p class="model-name-picker-status">Select a Provider and Base URL so AgentGO can fetch the available models.</p>');`
+	if !strings.Contains(template, missingSetup) {
+		t.Fatal("missing-provider state should show only the setup guidance")
+	}
+}
+
+func TestWorkModeSettingsIntroAndDismissibleStageStatus(t *testing.T) {
+	raw, err := os.ReadFile("templates/index.html")
+	if err != nil {
+		t.Fatalf("read template: %v", err)
+	}
+	template := string(raw)
+	mainRaw, err := os.ReadFile("main.go")
+	if err != nil {
+		t.Fatalf("read main source: %v", err)
+	}
+	source := template + string(mainRaw)
+	for _, required := range []string{
+		`AgentGO Work Mode</strong> — an AI Builder, optional Observer, and project file manager. Use the file manager to select existing files or right-click to create files and folders for your AI to work on.`,
+		`function renderWorkModeStatusMessage(content, dismissible = true)`,
+		`data-work-status-dismiss`,
+		`aria-label="Hide status"`,
+		`function dismissWorkModeStatus()`,
+		"statusItems.join(separatorHTML)}</span>`, { dismissible: false });",
+		`stageMessage: String(state.stageMessage || '')`,
+		`if (normalized.status === 'running' && normalized.stageMessage) return normalized.stageMessage;`,
+		`Sending response for second-pass polish...`,
+		`Sending response to Observer...`,
+		`Finalizing response...`,
+	} {
+		if !strings.Contains(source, required) {
+			t.Fatalf("Work Mode settings or staged status UI missing %q", required)
+		}
+	}
+	for _, removed := range []string{
+		`Memory uses tokens faster because AgentGO reminds the AI what you discussed.`,
+		`Enable Roles to apply this AI Builder's configured role.`,
+	} {
+		if strings.Contains(template, removed) {
+			t.Fatalf("old Work Mode settings preamble still contains %q", removed)
+		}
+	}
+}
+
+func TestWorkModeSessionStageTracksMatchingExecution(t *testing.T) {
+	state := newWorkModeSessionState("demo", workModeRoleSelection{}, false, 3, "test")
+	state.ExecutionID = "run-1"
+	if state.StageMessage != "Sending Work Mode prompt..." {
+		t.Fatalf("initial stage = %q", state.StageMessage)
+	}
+	app := &App{workModeSessionsByProject: map[string]workModeSessionState{"demo": state}}
+	updated := app.updateWorkModeSessionStage("demo", "run-1", "Sending response for second-pass polish...", workModeCallOwnerWorker)
+	if updated.StageMessage != "Sending response for second-pass polish..." || updated.ActiveCallOwner != workModeCallOwnerWorker {
+		t.Fatalf("updated session = %#v", updated)
+	}
+	unchanged := app.updateWorkModeSessionStage("demo", "different-run", "wrong stage", workModeCallOwnerObserver)
+	if unchanged.StageMessage != updated.StageMessage || unchanged.ActiveCallOwner != updated.ActiveCallOwner {
+		t.Fatalf("mismatched execution changed session: %#v", unchanged)
+	}
+}
+
+func TestWorkModeResponseDiagnosticSanitizationOmitsMalformedArtifactData(t *testing.T) {
+	raw := `{"artifacts":[{"id":"x","encoding":"base64","data":"private-payload"}],`
+	clean := sanitizeWorkModeResponseDiagnostic(ModelConfig{}, raw)
+	if strings.Contains(clean, "private-payload") {
+		t.Fatalf("malformed response diagnostic leaked artifact data: %s", clean)
+	}
+	if !strings.Contains(clean, "omitted from diagnostic") {
+		t.Fatalf("malformed response diagnostic did not mark omission: %s", clean)
 	}
 }
 
@@ -537,7 +833,7 @@ func TestWriteWorkModeJSONErrorIncludesOriginalAndRepairResponses(t *testing.T) 
 		OriginalResponse:   "original raw",
 		RepairParseError:   "repair bad",
 		RepairResponse:     "repair raw",
-	}, "repair raw")
+	}, "repair raw", diagnosticsEntry{}, nil)
 	if rr.Code != http.StatusBadGateway {
 		t.Fatalf("status = %d", rr.Code)
 	}
@@ -998,5 +1294,285 @@ func TestWorkModeTemplateContainsConversationTabPatchControls(t *testing.T) {
 		if !strings.Contains(source, required) {
 			t.Fatalf("Work Mode template missing %q", required)
 		}
+	}
+}
+
+func TestRevision421StylingPromptClarifications(t *testing.T) {
+	for _, required := range []string{
+		"Use <pre><code> for copy/paste blocks with real newlines; use <br> only when it is literal code being demonstrated.",
+		"Use safe HTML tags instead of Markdown formatting inside replies.",
+	} {
+		if !strings.Contains(defaultAgentGOStylingPrompt, required) {
+			t.Fatalf("default styling prompt missing %q", required)
+		}
+	}
+	for _, unwanted := range []string{
+		"Favor HTML tags over boring markdown symbols",
+		"Use <pre><code> for copy/paste blocks.",
+	} {
+		if strings.Contains(defaultAgentGOStylingPrompt, unwanted) {
+			t.Fatalf("default styling prompt retained old wording %q", unwanted)
+		}
+	}
+}
+
+func TestWorkModeClearsInvalidArtifactRefWhenInlineContentExists(t *testing.T) {
+	raw := `{"reply":"ok","files":[{"path":"code_snippets/php_code_snippet.txt","action":"create","content":"complete inline text","artifact_ref":"php_code_snippet.txt"}],"artifacts":[],"memory":"","warnings":[]}`
+	parsed, err := parseWorkModeAdapterResponse(adapters.Response{Text: raw}, t.TempDir(), "Demo")
+	if err != nil {
+		t.Fatalf("parse response: %v", err)
+	}
+	if len(parsed.Files) != 1 || parsed.Files[0].ArtifactRef != "" {
+		t.Fatalf("invalid artifact_ref was not cleared: %#v", parsed.Files)
+	}
+	if !strings.Contains(strings.Join(parsed.Normalizations, "\n"), "cleared invalid artifact_ref") {
+		t.Fatalf("missing normalization note: %#v", parsed.Normalizations)
+	}
+}
+
+func TestWorkModeRejectsMissingArtifactWhenInlineContentIsEmpty(t *testing.T) {
+	raw := `{"reply":"ok","files":[{"path":"output.bin","action":"create","content":"","artifact_ref":"missing"}],"artifacts":[],"memory":"","warnings":[]}`
+	_, err := parseWorkModeAdapterResponse(adapters.Response{Text: raw}, t.TempDir(), "Demo")
+	if err == nil || !strings.Contains(err.Error(), "does not match a returned artifact") {
+		t.Fatalf("expected missing artifact error, got %v", err)
+	}
+}
+
+func TestWorkModeModelCorrectionsAreBuilderOnly(t *testing.T) {
+	corrections := "- Leave artifact_ref empty when inline content is present."
+	instructions := buildWorkModeInstructions(ModelConfig{}, false, false, "auto", nil, "", corrections)
+	if !strings.Contains(instructions, "MODEL CORRECTIONS (WORK MODE BUILDER ONLY)") || !strings.Contains(instructions, corrections) {
+		t.Fatalf("builder instructions missing corrections:\n%s", instructions)
+	}
+	observerInstructions := workModeObserverInstructions(ModelConfig{})
+	if strings.Contains(observerInstructions, corrections) || strings.Contains(observerInstructions, "MODEL CORRECTIONS (WORK MODE BUILDER ONLY)") {
+		t.Fatalf("Observer instructions unexpectedly include Builder corrections:\n%s", observerInstructions)
+	}
+}
+
+func TestWorkModeCorrectionFailureSummaryIncludesAutomaticRepair(t *testing.T) {
+	summary := workModeCorrectionFailureSummary(nil, &workModeJSONRepairDetail{OriginalParseError: "invalid character after top-level value"})
+	if !strings.Contains(summary, "automatically repaired invalid Work Mode JSON") || !strings.Contains(summary, "invalid character") {
+		t.Fatalf("repair summary = %q", summary)
+	}
+}
+
+func TestWorkModeCorrectionCandidateSanitizesSecretsAndArtifactData(t *testing.T) {
+	model := ModelConfig{ID: 4, Label: "Qwen", APIKey: "secret-token-123"}
+	raw := `{"artifacts":[{"id":"sample","encoding":"base64","data":"sensitive-artifact-data"}],"files":[]}`
+	candidate := newWorkModeCorrectionCandidate(model, "Invalid JSON", "Return valid JSON.", "authorization=secret-token-123", raw, diagnosticsEntry{ID: "diag-1"})
+	if candidate == nil {
+		t.Fatal("expected correction candidate")
+	}
+	combined := candidate.Issue + candidate.Expected + candidate.Failure + candidate.ResponseExcerpt
+	if strings.Contains(combined, "secret-token-123") || strings.Contains(combined, "sensitive-artifact-data") {
+		t.Fatalf("candidate leaked sensitive data: %#v", candidate)
+	}
+	if !strings.Contains(candidate.Failure, "[REDACTED]") || !strings.Contains(candidate.ResponseExcerpt, "omitted from diagnostic") {
+		t.Fatalf("candidate was not sanitized as expected: %#v", candidate)
+	}
+}
+
+func TestModelCorrectionsHandlerSavesPerConfiguredModel(t *testing.T) {
+	root := t.TempDir()
+	app := &App{cfg: AppConfig{WorkRoot: root, Models: []ModelConfig{{ID: 4, Label: "Qwen", WorkDir: "i4_qwen"}, {ID: 5, Label: "Qwen Copy", WorkDir: "i5_qwen"}}}}
+	body := strings.NewReader(`{"modelId":"4","content":"- Use files only for durable file work."}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/model-corrections", body)
+	rr := httptest.NewRecorder()
+	app.handleModelCorrections(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("save status = %d: %s", rr.Code, rr.Body.String())
+	}
+	path := filepath.Join(root, "i4_qwen", modelCorrectionsFileName)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read correction file: %v", err)
+	}
+	if string(data) != "- Use files only for durable file work.\n" {
+		t.Fatalf("saved content = %q", string(data))
+	}
+	if got := app.loadModelCorrections(app.cfg.Models[0]); got != "- Use files only for durable file work." {
+		t.Fatalf("loaded corrections = %q", got)
+	}
+	if got := app.loadModelCorrections(app.cfg.Models[1]); got != "" {
+		t.Fatalf("corrections leaked to another configured model: %q", got)
+	}
+}
+
+func TestRevision421TemplateIncludesModelCorrectionsWorkflow(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("templates", "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(data)
+	for _, required := range []string{
+		`data-model-action="corrections"`,
+		`id="modelCorrectionsModal"`,
+		`Suggest a correction for this AI`,
+		`/api/model-corrections/draft`,
+		`They apply whenever this configured model is used as an AI Builder in Work Mode.`,
+	} {
+		if !strings.Contains(text, required) {
+			t.Fatalf("template missing %q", required)
+		}
+	}
+}
+
+func TestRevision422CorrectionModalStacksAboveWorkModeBelowEmergencyStop(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("templates", "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(data)
+	for _, required := range []string{
+		`.work-mode-overlay{--work-pink:#f5a6d7;--work-pink-strong:#d14ba0;--work-blue:#4aa3ff;--work-yellow:#ffe27c;position:fixed;inset:0;z-index:2100;`,
+		`.model-corrections-modal{position:fixed;inset:0;z-index:2190;`,
+		`z-index: 2220;`,
+	} {
+		if !strings.Contains(text, required) {
+			t.Fatalf("correction modal stacking missing %q", required)
+		}
+	}
+}
+
+func TestRevision422CorrectionActionsUseAdaptiveRows(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("templates", "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(data)
+	for _, required := range []string{
+		`class="work-mode-normalization-row"`,
+		`class="work-mode-correction-footer`,
+		`function renderWorkModeNormalizationRow(normalized, candidate, messageIndex)`,
+		`function renderWorkModeCorrectionFooter(candidate, messageIndex, variant = '')`,
+		`title="Suggest a correction for this AI">Suggest correction</button>`,
+		`renderWorkModeCorrectionFooter(msg.correction, index, 'warning')`,
+		`renderWorkModeCorrectionFooter(msg.correction, index, 'agentgo')`,
+		`${normalized}${warnings}${correction}${repairs}${inlineFiles}${actions}`,
+	} {
+		if !strings.Contains(text, required) {
+			t.Fatalf("adaptive correction layout missing %q", required)
+		}
+	}
+}
+
+func TestWorkModeSmallModelPolishPayloadAvoidsNativeSchemaDuplication(t *testing.T) {
+	raw := `{"reply":"plain","files":[],"artifacts":[],"memory":"","warnings":[]}`
+	userRequest := "Create the requested project file."
+	payload := buildWorkModeSmallModelPolishPayload(false, "CUSTOM SAVED STYLING", workModeJSONSchema(), userRequest, raw)
+	for _, required := range []string{
+		"AGENTGO SMALL MODEL POLISH PASS",
+		`Revise only the "reply" field`,
+		"AGENTGO STYLING INSTRUCTIONS:\nCUSTOM SAVED STYLING",
+		`Return only one complete AgentGO Work Mode JSON object.`,
+	} {
+		if !strings.Contains(payload.Instructions, required) {
+			t.Fatalf("native polish instructions missing %q:\n%s", required, payload.Instructions)
+		}
+	}
+	for _, duplicated := range []string{"REQUIRED AGENTGO WORK MODE JSON SCHEMA:", `"required": [`, "PROMPT-ENFORCED JSON CONTRACT:"} {
+		if strings.Contains(payload.Instructions, duplicated) {
+			t.Fatalf("native polish instructions duplicated schema/contract %q:\n%s", duplicated, payload.Instructions)
+		}
+	}
+	if len(payload.Messages) != 1 || payload.Messages[0].Role != "user" || !strings.Contains(payload.Messages[0].Text, "ORIGINAL USER REQUEST:\n"+userRequest) || !strings.Contains(payload.Messages[0].Text, "AI BUILDER RESPONSE TO POLISH:\n"+raw) {
+		t.Fatalf("polish response message=%+v", payload.Messages)
+	}
+	if !payload.ExpectJSON || payload.JSONSchema == nil {
+		t.Fatalf("polish payload does not retain provider schema: %+v", payload)
+	}
+}
+
+func TestWorkModeSmallModelPolishPayloadKeepsPromptEnforcedContract(t *testing.T) {
+	payload := buildWorkModeSmallModelPolishPayload(true, "CUSTOM SAVED STYLING", workModeJSONSchema(), "Fix it.", `{"reply":"plain","files":[],"artifacts":[],"memory":"","warnings":[]}`)
+	for _, required := range []string{
+		"PROMPT-ENFORCED JSON CONTRACT:",
+		"CRITICAL JSON CONTRACT",
+		`{"reply":"User-facing response or summary of actions here.","files":[],"artifacts":[],"memory":"","warnings":[]}`,
+	} {
+		if !strings.Contains(payload.Instructions, required) {
+			t.Fatalf("prompt-enforced polish instructions missing %q:\n%s", required, payload.Instructions)
+		}
+	}
+	if strings.Contains(payload.Instructions, "REQUIRED AGENTGO WORK MODE JSON SCHEMA:") {
+		t.Fatalf("prompt-enforced polish instructions duplicated the full schema:\n%s", payload.Instructions)
+	}
+}
+
+func TestWorkModeHTMLReplySettingAndHiddenPolishPassWiring(t *testing.T) {
+	raw, err := os.ReadFile("templates/index.html")
+	if err != nil {
+		t.Fatalf("read template: %v", err)
+	}
+	template := string(raw)
+	for _, required := range []string{
+		`id="workModeAllowHTMLRepliesToggle"`,
+		`Allow AI to send HTML in replies`,
+		`allowAIHTMLReplies: !!settings.allow_ai_html_replies`,
+		`smallModelPolishPass: false`,
+		`smallModelPolishPass: false,`,
+		`function saveWorkModeAllowAIHTMLReplies(enabled)`,
+	} {
+		if !strings.Contains(template, required) {
+			t.Fatalf("HTML reply/hidden polish wiring missing %q", required)
+		}
+	}
+	for _, forbidden := range []string{
+		`id="workModeSmallModelPolishToggle"`,
+		`<strong>Small Model Polish Pass</strong>`,
+		`workModeSettings.smallModelPolishPass = !!e.target.checked`,
+	} {
+		if strings.Contains(template, forbidden) {
+			t.Fatalf("hidden Small Model Polish Pass UI still contains %q", forbidden)
+		}
+	}
+}
+
+func TestPreserveWorkModeSmallModelPolishDecisionsChangesOnlyReply(t *testing.T) {
+	original := `{"reply":"plain","files":[{"path":"notes.txt","action":"create","content":"keep","artifact_ref":""}],"artifacts":[],"memory":"keep memory","warnings":["keep warning"]}`
+	polished := `{"reply":"<p>styled</p>","files":[],"artifacts":[{"id":"new","encoding":"base64","mime_type":"text/plain","data":"bmV3"}],"memory":"changed","warnings":[],"extra":"not allowed"}`
+	preserved, ok := preserveWorkModeSmallModelPolishDecisions(original, polished, workModeJSONSchema())
+	if !ok {
+		t.Fatal("valid responses were not merged")
+	}
+	var result map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(preserved), &result); err != nil {
+		t.Fatalf("decode merged response: %v", err)
+	}
+	var reply string
+	if err := json.Unmarshal(result["reply"], &reply); err != nil || reply != "<p>styled</p>" {
+		t.Fatalf("reply=%q err=%v", reply, err)
+	}
+	for _, key := range []string{"files", "artifacts", "memory", "warnings"} {
+		var originalValue map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(original), &originalValue); err != nil {
+			t.Fatal(err)
+		}
+		if string(result[key]) != string(originalValue[key]) {
+			t.Fatalf("%s changed: got=%s want=%s", key, result[key], originalValue[key])
+		}
+	}
+	if _, exists := result["extra"]; exists {
+		t.Fatalf("polish-added field was retained: %s", preserved)
+	}
+}
+
+func TestPreserveWorkModeSmallModelPolishDecisionsAllowsStructuralRepair(t *testing.T) {
+	original := `{"reply":"plain","files":"not-an-array","artifacts":[],"memory":"","warnings":[],"unexpected":"remove"}`
+	polished := `{"reply":"<p>styled</p>","files":[],"artifacts":[],"memory":"","warnings":[]}`
+	preserved, ok := preserveWorkModeSmallModelPolishDecisions(original, polished, workModeJSONSchema())
+	if !ok {
+		t.Fatal("valid polish result was not retained")
+	}
+	parsed, err := parseWorkModeAIResponse(preserved)
+	if err != nil {
+		t.Fatalf("structural repair was lost: %v\n%s", err, preserved)
+	}
+	if parsed.Reply != "<p>styled</p>" || len(parsed.Files) != 0 {
+		t.Fatalf("parsed=%+v", parsed)
+	}
+	if strings.Contains(preserved, "unexpected") || strings.Contains(preserved, "not-an-array") {
+		t.Fatalf("invalid original structure was restored: %s", preserved)
 	}
 }

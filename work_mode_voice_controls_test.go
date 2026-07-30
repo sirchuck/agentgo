@@ -24,6 +24,12 @@ func TestVoiceCommandConfigDefaultsValidationAndPersistence(t *testing.T) {
 	if _, _, _, _, err := validateVoiceCommands("AgentGO Start", "agentgo-start", "AgentGO Repeat", "AgentGO Read"); err == nil {
 		t.Fatal("equivalent normalized commands were accepted")
 	}
+	if _, _, _, _, err := validateVoiceCommands("Go", "Send", "Repeat", "Read"); err == nil {
+		t.Fatal("voice command shorter than 4 characters was accepted")
+	}
+	if start, send, repeat, read, err := validateVoiceCommands("  Start  ", " Send ", " Repeat ", " Read "); err != nil || start != "Start" || send != "Send" || repeat != "Repeat" || read != "Read" {
+		t.Fatalf("trimmed voice commands = %q / %q / %q / %q, err = %v", start, send, repeat, read, err)
+	}
 
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "config.json")
@@ -69,6 +75,16 @@ func TestVoiceCommandConfigDefaultsValidationAndPersistence(t *testing.T) {
 	if badRR.Code != http.StatusBadRequest {
 		t.Fatalf("equivalent command status = %d, want 400", badRR.Code)
 	}
+
+	shortReq := httptest.NewRequest(http.MethodPost, "/api/config/voice-commands", strings.NewReader(`{"start_command":"Go","send_command":"Computer Send","repeat_command":"Computer Repeat","read_command":"Computer Read"}`))
+	shortRR := httptest.NewRecorder()
+	app.handleVoiceCommandConfig(shortRR, shortReq)
+	if shortRR.Code != http.StatusBadRequest {
+		t.Fatalf("short command status = %d, want 400", shortRR.Code)
+	}
+	if app.cfg.VoiceStartCommand != "Computer Listen" {
+		t.Fatalf("short command overwrote the last valid command: %q", app.cfg.VoiceStartCommand)
+	}
 }
 
 func TestWorkModeVoiceControlsTemplate(t *testing.T) {
@@ -90,14 +106,19 @@ func TestWorkModeVoiceControlsTemplate(t *testing.T) {
 		`Send Recording Prompt`,
 		`Repeat Response Prompt`,
 		`Read Lines Prompt`,
-		`Example: “${escapeHtml(workModeVoiceReadCommand)} 4 to 8”`,
-		`Follow the command with two line numbers.`,
+		`id="workModeVoiceReadCommandExample"`,
+		`Example Say: “${escapeHtml(workModeVoiceReadCommand)} 4 to 9”`,
+		`function updateWorkModeVoiceReadCommandExample(value)`,
+		"example.textContent = `Example Say: “${command} 4 to 9”`;",
+		`Array.from(command).length < 4`,
+		`Voice commands must be at least 4 characters.`,
 		`id="workModeVoiceStartCommandInput"`,
 		`id="workModeVoiceSendCommandInput"`,
 		`id="workModeVoiceRepeatCommandInput"`,
 		`id="workModeVoiceReadCommandInput"`,
 		`/api/config/voice-commands`,
 		`input.addEventListener('blur'`,
+		`readCommandInput.addEventListener('input'`,
 		`event.key !== 'Enter'`,
 		`workModeMicBtn.addEventListener('contextmenu', toggleWorkModeHandsFreeSpeechInput)`,
 		`workModeAutoReadBtn.addEventListener('contextmenu'`,
@@ -252,5 +273,59 @@ class MockRecognition {
 	cmd := exec.Command("node", "-e", testJS)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("hands-free voice JavaScript flow failed: %v\n%s", err, output)
+	}
+}
+
+func TestWorkModeStatusDismissAndReadExampleJavaScriptFlow(t *testing.T) {
+	if _, err := exec.LookPath("node"); err != nil {
+		t.Skip("node is unavailable")
+	}
+	data, err := os.ReadFile(filepath.Join("templates", "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(data)
+	statusStart := strings.Index(source, "function renderWorkModeStatusMessage")
+	statusEnd := strings.Index(source[statusStart:], "function restoreWorkModeReplyScrolling")
+	readStart := strings.Index(source, "function updateWorkModeVoiceReadCommandExample")
+	readEnd := strings.Index(source[readStart:], "async function saveWorkModeVoiceCommands")
+	if statusStart < 0 || statusEnd < 0 || readStart < 0 || readEnd < 0 {
+		t.Fatal("could not isolate Work Mode status or read-example JavaScript")
+	}
+	statusJS := source[statusStart : statusStart+statusEnd]
+	readJS := source[readStart : readStart+readEnd]
+	testJS := `
+const assert = require('node:assert/strict');
+const tab = {statusText:'old', statusHTML:''};
+const status = {innerHTML:''};
+const example = {textContent:''};
+let settingsUpdates = 0;
+let workModeBackgroundTabMutation = false;
+let workModeVoiceReadCommand = 'AgentGO Read';
+function getWorkModeTab(){return tab;}
+function escapeHtml(value){return String(value || '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');}
+function updateWorkModeSettingsStatus(){settingsUpdates++;status.innerHTML='OPTIONS';}
+globalThis.document = {getElementById(id){if(id==='workModePromptStatus')return status;if(id==='workModeVoiceReadCommandExample')return example;return null;}};
+` + statusJS + readJS + `
+setWorkModeStatus('<waiting>');
+assert.match(status.innerHTML,/data-work-status-dismiss/);
+assert.match(status.innerHTML,/&lt;waiting&gt;/);
+assert.ok(status.innerHTML.indexOf('data-work-status-dismiss') < status.innerHTML.indexOf('work-mode-status-copy'));
+assert.equal(tab.statusText,'');
+assert.equal(tab.statusHTML,status.innerHTML);
+dismissWorkModeStatus();
+assert.equal(settingsUpdates,1);
+assert.equal(status.innerHTML,'OPTIONS');
+setWorkModeStatusHTML('<b>options</b>',{dismissible:false});
+assert.equal(status.innerHTML,'<b>options</b>');
+assert.doesNotMatch(status.innerHTML,/data-work-status-dismiss/);
+updateWorkModeVoiceReadCommandExample(' Custom Read ');
+assert.equal(example.textContent,'Example Say: “Custom Read 4 to 9”');
+updateWorkModeVoiceReadCommandExample('');
+assert.equal(example.textContent,'Example Say: “AgentGO Read 4 to 9”');
+`
+	cmd := exec.Command("node", "-e", testJS)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("Work Mode status/read-example JavaScript flow failed: %v\n%s", err, output)
 	}
 }

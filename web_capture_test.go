@@ -935,6 +935,27 @@ func TestToastPositionContrastAndKnowledgeToggleLayering(t *testing.T) {
 	}
 }
 
+func TestWorkModeUserMessagesAlwaysUseEscapedPlainTextRendering(t *testing.T) {
+	templateBytes, err := os.ReadFile("templates/index.html")
+	if err != nil {
+		t.Fatalf("read template: %v", err)
+	}
+	templateText := string(templateBytes)
+	for _, required := range []string{
+		`function formatWorkModeUserMessageText(value) {`,
+		`return escapeHtml(value || '').replace(/\r\n|\r|\n/g, '<br>');`,
+		`const allowHTML = options.allowHTML !== false;`,
+		`const hasHTML = allowHTML && workModeReplyHasAllowedHTML(text);`,
+		`: formatWorkModeUserMessageText(text);`,
+		`renderWorkModeMessageBody(msg.text || '', index, { allowHTML: role !== 'user' })`,
+		`renderWorkModeMessageBody((msg && msg.text) || '', Number.NaN, { allowHTML: role !== 'user' })`,
+	} {
+		if !strings.Contains(templateText, required) {
+			t.Fatalf("Work Mode user-message escaping missing %q", required)
+		}
+	}
+}
+
 func TestAgentGOStylingPaletteAndWorkModeWebshotUI(t *testing.T) {
 	promptBytes, err := os.ReadFile("system_prompts/agentgo_styling.txt")
 	if err != nil {
@@ -944,7 +965,7 @@ func TestAgentGOStylingPaletteAndWorkModeWebshotUI(t *testing.T) {
 	if prompt != strings.TrimSpace(defaultAgentGOStylingPrompt) {
 		t.Fatal("built-in styling prompt and system_prompts/agentgo_styling.txt are out of sync")
 	}
-	for _, required := range []string{"green #7EE7A8", "yellow #FFE27C", "orange #FF9900", "red #FF9696", `<span style="color:#RRGGBB">`, `Help the user quickly identify changes you make to user-provided code or`, `prose in your reply by wrapping each changed code line and each changed prose`, `sentence in its own <span class="agentgo-code-change">...</span>. Leave`, `unchanged content unwrapped.`, `Render prose as normal prose, never inside <pre><code>. Use <pre><code>`, `only for code.`} {
+	for _, required := range []string{"green #7EE7A8", "yellow #FFE27C", "orange #FF9900", "red #FF9696", `<span style="color:#RRGGBB">`, `Wrap only the corrected text in <span class="agentgo-code-change">...</span>, whether the correction appears inside a <pre><code> block or in ordinary prose outside a code block.`, `Render prose as normal prose, never inside <pre><code>. Use <pre><code>`, `only for code.`} {
 		if !strings.Contains(prompt, required) {
 			t.Fatalf("styling prompt missing %q", required)
 		}
@@ -1067,7 +1088,7 @@ func TestWorkModeTranscriptExportAndReconnectUI(t *testing.T) {
 		`nativeAgentGOFetch('/api/healthz'`,
 		`AgentGO request temporarily blocked`,
 		`The health check succeeded.`,
-		`The health check failed.`,
+		`The HTTPS health check failed.`,
 		`const INITIALIZATION_READ_TIMEOUT_MS = 15000;`,
 		`const initializationReadOptions = { timeoutMs: INITIALIZATION_READ_TIMEOUT_MS };`,
 		`await loadWaveState(initializationReadOptions).catch(() => {});`,
@@ -1079,8 +1100,19 @@ func TestWorkModeTranscriptExportAndReconnectUI(t *testing.T) {
 	if strings.Contains(templateText, `z-index:2210;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(5,10,18,.72)`) {
 		t.Fatal("connection modal reused a normal Work Mode modal z-index")
 	}
-	for _, forbidden := range []string{
+	for _, required := range []string{
 		`id="agentGOConnectionRetryBtn"`,
+		`id="agentGOConnectionHTTPBtn"`,
+		`Retry HTTPS`,
+		`Open Local HTTP`,
+		`retryAgentGOHTTPSConnection`,
+		`openAgentGOLocalHTTP`,
+	} {
+		if !strings.Contains(templateText, required) {
+			t.Fatalf("connection recovery UI missing %q", required)
+		}
+	}
+	for _, forbidden := range []string{
 		`Try Reconnecting`,
 		`startAgentGOConnectionChecks`,
 		`tryAgentGOReconnect`,

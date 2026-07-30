@@ -3,7 +3,6 @@ package adapters
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -22,7 +21,7 @@ func (customJSONAdapter) Execute(ctx context.Context, model ModelConfig, req Req
 	if err != nil {
 		return Response{}, err
 	}
-	body, err := json.Marshal(payload)
+	body, err := marshalProviderRequestJSON(payload)
 	if err != nil {
 		return Response{}, err
 	}

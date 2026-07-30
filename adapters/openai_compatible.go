@@ -32,11 +32,12 @@ type openAICompatibleChatMessage struct {
 }
 
 type openAICompatibleChatRequest struct {
-	Model       string                        `json:"model"`
-	Messages    []openAICompatibleChatMessage `json:"messages"`
-	Temperature *float64                      `json:"temperature,omitempty"`
-	MaxTokens   int                           `json:"max_tokens,omitempty"`
-	Stream      bool                          `json:"stream"`
+	Model          string                        `json:"model"`
+	Messages       []openAICompatibleChatMessage `json:"messages"`
+	Temperature    *float64                      `json:"temperature,omitempty"`
+	MaxTokens      int                           `json:"max_tokens,omitempty"`
+	ResponseFormat map[string]any                `json:"response_format,omitempty"`
+	Stream         bool                          `json:"stream"`
 }
 
 type openAICompatibleChatResponse struct {
@@ -126,7 +127,7 @@ func executeOpenAICompatibleResponses(ctx context.Context, model ModelConfig, re
 		return Response{}, errors.New("model name is required")
 	}
 	payload := buildOpenAIResponsesRequest(model, req, apiModel)
-	body, err := json.Marshal(payload)
+	body, err := marshalProviderRequestJSON(payload)
 	if err != nil {
 		return Response{}, err
 	}
@@ -162,13 +163,14 @@ func executeOpenAICompatibleChat(ctx context.Context, model ModelConfig, req Req
 		return Response{}, errors.New("model name is required")
 	}
 	payload := openAICompatibleChatRequest{
-		Model:       apiModel,
-		Messages:    buildOpenAICompatibleChatMessages(req),
-		Temperature: compatibleTemperature(model),
-		MaxTokens:   model.MaxOutputTokens,
-		Stream:      false,
+		Model:          apiModel,
+		Messages:       buildOpenAICompatibleChatMessages(req),
+		Temperature:    compatibleTemperature(model),
+		MaxTokens:      model.MaxOutputTokens,
+		ResponseFormat: buildOpenAICompatibleResponseFormat(model, req),
+		Stream:         false,
 	}
-	body, err := json.Marshal(payload)
+	body, err := marshalProviderRequestJSON(payload)
 	if err != nil {
 		return Response{}, err
 	}
@@ -195,6 +197,23 @@ func executeOpenAICompatibleChat(ctx context.Context, model ModelConfig, req Req
 		response.RawBody = string(respBody)
 	}
 	return response, nil
+}
+
+func buildOpenAICompatibleResponseFormat(model ModelConfig, req Request) map[string]any {
+	if model.PromptEnforcedJSON || !req.ExpectJSON {
+		return nil
+	}
+	if shouldUseStrictStructuredOutput(model, req) {
+		return map[string]any{
+			"type": "json_schema",
+			"json_schema": map[string]any{
+				"name":   structuredOutputSchemaName(model),
+				"strict": true,
+				"schema": strictJSONSchema(req.JSONSchema),
+			},
+		}
+	}
+	return map[string]any{"type": "json_object"}
 }
 
 func parseOpenAICompatibleChatResponse(respBody []byte, contentType string, model ModelConfig) (Response, error) {

@@ -34,6 +34,26 @@ func TestAnthropicMaxTokensUsesResolvedOrAutomaticMaximum(t *testing.T) {
 	}
 }
 
+func TestOllamaBlankProviderOptionsUseAgentGODefaults(t *testing.T) {
+	options := ollamaRequestOptions(ModelConfig{})
+	if got := options["num_ctx"]; got != defaultOllamaContextTokens {
+		t.Fatalf("num_ctx = %#v, want %d", got, defaultOllamaContextTokens)
+	}
+	if got := options["num_predict"]; got != defaultOllamaOutputTokens {
+		t.Fatalf("num_predict = %#v, want %d", got, defaultOllamaOutputTokens)
+	}
+}
+
+func TestOllamaBlankProviderOptionsKeepContextDefaultAndUseCustomMaxOutput(t *testing.T) {
+	options := ollamaRequestOptions(ModelConfig{MaxOutputTokens: 4096})
+	if got := options["num_ctx"]; got != defaultOllamaContextTokens {
+		t.Fatalf("num_ctx = %#v, want %d", got, defaultOllamaContextTokens)
+	}
+	if got := options["num_predict"]; got != 4096 {
+		t.Fatalf("num_predict = %#v, want 4096", got)
+	}
+}
+
 func TestOllamaSharedMaxOutputOverridesAdvancedNumPredict(t *testing.T) {
 	options := ollamaRequestOptions(ModelConfig{
 		MaxOutputTokens: 32000,
@@ -50,10 +70,26 @@ func TestOllamaSharedMaxOutputOverridesAdvancedNumPredict(t *testing.T) {
 	}
 }
 
-func TestOllamaAutomaticModeDoesNotReuseRawNumPredict(t *testing.T) {
-	options := ollamaRequestOptions(ModelConfig{ProviderOptions: map[string]any{"options": map[string]any{"num_ctx": float64(8192), "num_predict": float64(123)}}})
-	if _, exists := options["num_predict"]; exists {
-		t.Fatalf("raw num_predict must not override Automatic Maximum: %#v", options)
+func TestOllamaProviderOptionsMergeMissingDefaults(t *testing.T) {
+	options := ollamaRequestOptions(ModelConfig{ProviderOptions: map[string]any{"options": map[string]any{"num_ctx": float64(8192)}}})
+	if got := int(options["num_ctx"].(float64)); got != 8192 {
+		t.Fatalf("num_ctx = %d, want 8192", got)
+	}
+	if got := options["num_predict"]; got != defaultOllamaOutputTokens {
+		t.Fatalf("num_predict = %#v, want %d", got, defaultOllamaOutputTokens)
+	}
+	if _, exists := options["temperature"]; exists {
+		t.Fatalf("temperature should be omitted when the user and model leave it unset: %#v", options)
+	}
+}
+
+func TestOllamaProviderNumPredictIsPreservedInAutomaticMode(t *testing.T) {
+	options := ollamaRequestOptions(ModelConfig{ProviderOptions: map[string]any{"options": map[string]any{"num_predict": float64(123)}}})
+	if got := int(options["num_predict"].(float64)); got != 123 {
+		t.Fatalf("num_predict = %d, want 123", got)
+	}
+	if got := options["num_ctx"]; got != defaultOllamaContextTokens {
+		t.Fatalf("num_ctx = %#v, want %d", got, defaultOllamaContextTokens)
 	}
 }
 

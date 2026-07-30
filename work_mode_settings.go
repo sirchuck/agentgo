@@ -12,7 +12,7 @@ import (
 const (
 	workModeSettingsFilename        = "workmodesettings.json"
 	workModeContinuedMemoryFilename = "continuedmemory.md"
-	workModeSettingsSchemaVersion   = 1
+	workModeSettingsSchemaVersion   = 2
 	workModeMemoryDefaultOff        = "off"
 	workModeMemoryDefaultNew        = "new"
 	workModeMemoryDefaultContinue   = "continue"
@@ -24,6 +24,7 @@ type workModeSettingsFile struct {
 	MemoryDefault        string `json:"memory_default"`
 	DefaultMemoryFile    string `json:"default_memory_file,omitempty"`
 	DefaultMemoryModelID string `json:"default_memory_model_id,omitempty"`
+	AllowAIHTMLReplies   bool   `json:"allow_ai_html_replies"`
 }
 
 type workModeSettingsResponse struct {
@@ -36,9 +37,10 @@ type workModeSettingsResponse struct {
 }
 
 type workModeSettingsSaveRequest struct {
-	ModelID           string `json:"modelId,omitempty"`
-	MemoryDefault     string `json:"memoryDefault"`
-	DefaultMemoryFile string `json:"defaultMemoryFile,omitempty"`
+	ModelID            string  `json:"modelId,omitempty"`
+	MemoryDefault      *string `json:"memoryDefault,omitempty"`
+	DefaultMemoryFile  string  `json:"defaultMemoryFile,omitempty"`
+	AllowAIHTMLReplies *bool   `json:"allowAIHTMLReplies,omitempty"`
 }
 
 func defaultWorkModeSettingsFile() workModeSettingsFile {
@@ -176,10 +178,14 @@ func (a *App) workModeSettingsResponse(projectName, modelID, message string) (wo
 			// Named memories remain Builder-specific. Preserve the configured default
 			// so it is available when that Builder is active again, but apply Off to
 			// this Builder rather than silently loading another AI's memory file.
+			allowHTML := settings.AllowAIHTMLReplies
 			settings = defaultWorkModeSettingsFile()
+			settings.AllowAIHTMLReplies = allowHTML
 			message = "The configured named default belongs to a different Builder. Memory will start Off for this Builder."
 		} else if _, err := a.validateNamedWorkModeDefault(projectName, modelID, settings.DefaultMemoryFile); err != nil {
+			allowHTML := settings.AllowAIHTMLReplies
 			settings = defaultWorkModeSettingsFile()
+			settings.AllowAIHTMLReplies = allowHTML
 			message = "The configured default memory file was not found. AgentGO Memory Default was reset to Off."
 			if err := a.saveWorkModeSettings(projectName, settings); err != nil {
 				return workModeSettingsResponse{}, err
@@ -238,22 +244,36 @@ func (a *App) handleWorkModeSettings(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "invalid json", http.StatusBadRequest)
 			return
 		}
-		settings := defaultWorkModeSettingsFile()
-		settings.MemoryDefault = normalizeWorkModeMemoryDefault(req.MemoryDefault)
-		if settings.MemoryDefault == workModeMemoryDefaultNamed {
-			displayName, err := a.validateNamedWorkModeDefault(projectName, req.ModelID, req.DefaultMemoryFile)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
+		settings, err := a.loadWorkModeSettings(projectName)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		message := "Work Mode settings saved."
+		if req.MemoryDefault != nil {
+			settings.MemoryDefault = normalizeWorkModeMemoryDefault(*req.MemoryDefault)
+			settings.DefaultMemoryFile = ""
+			settings.DefaultMemoryModelID = ""
+			if settings.MemoryDefault == workModeMemoryDefaultNamed {
+				displayName, err := a.validateNamedWorkModeDefault(projectName, req.ModelID, req.DefaultMemoryFile)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				settings.DefaultMemoryFile = displayName
+				settings.DefaultMemoryModelID = strings.TrimSpace(req.ModelID)
 			}
-			settings.DefaultMemoryFile = displayName
-			settings.DefaultMemoryModelID = strings.TrimSpace(req.ModelID)
+			message = "AgentGO Memory Default saved."
+		}
+		if req.AllowAIHTMLReplies != nil {
+			settings.AllowAIHTMLReplies = *req.AllowAIHTMLReplies
+			message = "HTML reply setting saved."
 		}
 		if err := a.saveWorkModeSettings(projectName, settings); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		resp, err := a.workModeSettingsResponse(projectName, req.ModelID, "AgentGO Memory Default saved.")
+		resp, err := a.workModeSettingsResponse(projectName, req.ModelID, message)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

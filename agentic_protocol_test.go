@@ -1,6 +1,7 @@
 package main
 
 import (
+	"agentgo/adapters"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -375,6 +376,262 @@ func TestHandleWorkModeSendNormalModeDoesNotInjectAgenticProtocol(t *testing.T) 
 	}
 	if strings.Contains(receivedMessages, "AGENTGO AGENTIC TASK CONTINUITY") || strings.Contains(receivedMessages, "ROLLING CUMULATIVE PROGRESS SUMMARY") {
 		t.Fatal("normal Work Mode received agentic continuity context")
+	}
+}
+
+func TestHandleWorkModeSendRecordsNormalizationDiagnosticForUnreferencedArtifact(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		writeJSON(w, http.StatusOK, map[string]any{"text": `{"reply":"Plain response.","files":[],"artifacts":[{"id":"unused","encoding":"utf-8","mime_type":"text/plain","data":"not a requested file"}],"memory":"","warnings":[]}`})
+	}))
+	defer server.Close()
+
+	app := newAgenticHandlerTestApp(t, server.URL)
+	body, _ := json.Marshal(map[string]any{"modelId": "1", "prompt": "test"})
+	rr := httptest.NewRecorder()
+	app.handleWorkModeSend(rr, httptest.NewRequest(http.MethodPost, "/api/work-mode/send", strings.NewReader(string(body))))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if calls != 1 {
+		t.Fatalf("provider calls=%d, want 1", calls)
+	}
+	var response workModeResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if response.Reply != "Plain response." || len(response.Warnings) != 0 || !response.Normalized {
+		t.Fatalf("response=%+v", response)
+	}
+	if len(response.Diagnostics) != 1 {
+		t.Fatalf("normalization diagnostics=%d, want 1: %+v", len(response.Diagnostics), response.Diagnostics)
+	}
+	diagnostic := response.Diagnostics[0]
+	if diagnostic.ID == "" || diagnostic.Stage != "Worker Pass 1 Response Normalized" || diagnostic.Project != "Demo" {
+		t.Fatalf("diagnostic identity=%+v", diagnostic)
+	}
+	if !strings.Contains(diagnostic.Details, "ignored 1 unreferenced artifact") {
+		t.Fatalf("diagnostic details=%s", diagnostic.Details)
+	}
+	if strings.Contains(diagnostic.Response, "not a requested file") {
+		t.Fatalf("artifact data leaked into normalization diagnostic: %s", diagnostic.Response)
+	}
+	app.mu.Lock()
+	diagnosticCount := app.diagSubscriberTopID
+	app.mu.Unlock()
+	if diagnosticCount != 1 {
+		t.Fatalf("successful normalization recorded %d diagnostic event(s), want 1", diagnosticCount)
+	}
+}
+
+func TestHandleWorkModeSendMovesSuccessfulJSONRepairDetailsToDiagnostics(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if calls == 1 {
+			writeJSON(w, http.StatusOK, map[string]any{"text": `not valid Work Mode JSON`})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"text": `{"reply":"Repaired response.","files":[],"artifacts":[],"memory":"","warnings":[]}`})
+	}))
+	defer server.Close()
+
+	app := newAgenticHandlerTestApp(t, server.URL)
+	body, _ := json.Marshal(map[string]any{"modelId": "1", "prompt": "test repair"})
+	rr := httptest.NewRecorder()
+	app.handleWorkModeSend(rr, httptest.NewRequest(http.MethodPost, "/api/work-mode/send", strings.NewReader(string(body))))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if calls != 2 {
+		t.Fatalf("provider calls=%d, want original plus repair", calls)
+	}
+	var response workModeResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if response.Reply != "Repaired response." || !response.Normalized || len(response.RepairDetails) != 0 {
+		t.Fatalf("response=%+v", response)
+	}
+	if len(response.Diagnostics) != 1 {
+		t.Fatalf("normalization diagnostics=%d, want 1: %+v", len(response.Diagnostics), response.Diagnostics)
+	}
+	diagnostic := response.Diagnostics[0]
+	for _, required := range []string{`"automatic_json_repair"`, `"original_parse_error"`, `not valid Work Mode JSON`} {
+		if !strings.Contains(diagnostic.Details, required) {
+			t.Fatalf("repair diagnostic missing %q: %s", required, diagnostic.Details)
+		}
+	}
+}
+
+func TestHandleWorkModeSendPublishesDiagnosticForNoVisibleReply(t *testing.T) {
+	rawEnvelope := `{"reply":"","files":[],"artifacts":[],"memory":"","warnings":[]}`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"text":           rawEnvelope,
+			"provider_trace": "answer-may-be-in-the-wrong-location",
+		})
+	}))
+	defer server.Close()
+
+	app := newAgenticHandlerTestApp(t, server.URL)
+	body, _ := json.Marshal(map[string]any{"modelId": "1", "prompt": "Show a PHP array example."})
+	rr := httptest.NewRecorder()
+	app.handleWorkModeSend(rr, httptest.NewRequest(http.MethodPost, "/api/work-mode/send", strings.NewReader(string(body))))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var response workModeResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if response.Reply != workModeNoVisibleReplyMessage {
+		t.Fatalf("reply=%q, want diagnostic guidance", response.Reply)
+	}
+	if response.Normalized {
+		t.Fatal("empty-response diagnostic incorrectly marked the AI response as normalized")
+	}
+	if len(response.Diagnostics) != 1 {
+		t.Fatalf("diagnostics=%d, want 1: %+v", len(response.Diagnostics), response.Diagnostics)
+	}
+	diagnostic := response.Diagnostics[0]
+	if diagnostic.ID == "" || diagnostic.Stage != "Work Mode returned no visible reply" || diagnostic.Project != "Demo" {
+		t.Fatalf("diagnostic identity=%+v", diagnostic)
+	}
+	for _, required := range []string{"Provider: custom", "Adapter: custom_json", "Model: test-builder", "Request ID: workmode-"} {
+		if !strings.Contains(diagnostic.StatusMessage, required) {
+			t.Fatalf("status message missing %q: %s", required, diagnostic.StatusMessage)
+		}
+	}
+	for _, required := range []string{"Show a PHP array example.", `"expect_json": true`, `"json_schema"`} {
+		if !strings.Contains(diagnostic.Request, required) {
+			t.Fatalf("request diagnostic missing %q: %s", required, diagnostic.Request)
+		}
+	}
+	for _, required := range []string{`"ai_response_text"`, `"provider_raw_body"`, "answer-may-be-in-the-wrong-location"} {
+		if !strings.Contains(diagnostic.Response, required) {
+			t.Fatalf("response diagnostic missing %q: %s", required, diagnostic.Response)
+		}
+	}
+	for _, required := range []string{`"response_stage": "Builder pass 1"`, `"builder_pass": 1`, `"file_operations": 0`, `"status_code": 200`} {
+		if !strings.Contains(diagnostic.Details, required) {
+			t.Fatalf("details missing %q: %s", required, diagnostic.Details)
+		}
+	}
+}
+
+func TestHandleWorkModeSendForcesSmallModelPolishPassOff(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		writeJSON(w, http.StatusOK, map[string]any{"text": `{"reply":"Draft response.","files":[],"artifacts":[],"memory":"","warnings":[]}`})
+	}))
+	defer server.Close()
+
+	app := newAgenticHandlerTestApp(t, server.URL)
+	body, _ := json.Marshal(map[string]any{"modelId": "1", "prompt": "Polish this response.", "smallModelPolishPass": true})
+	rr := httptest.NewRecorder()
+	app.handleWorkModeSend(rr, httptest.NewRequest(http.MethodPost, "/api/work-mode/send", strings.NewReader(string(body))))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if calls != 1 {
+		t.Fatalf("provider calls=%d, want one Builder call while polish is forced off", calls)
+	}
+	var response workModeResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if response.Reply != "Draft response." || len(response.Diagnostics) != 0 {
+		t.Fatalf("response=%+v", response)
+	}
+}
+
+func TestNoVisibleReplyDiagnosticIgnoresFileAndAgenticActions(t *testing.T) {
+	if workModeResponseNeedsNoVisibleReplyDiagnostic(workModeAIResponse{Files: []builderFileOp{{Path: "created.txt", Action: "create"}}}, nil) {
+		t.Fatal("file operation was treated as an empty Work Mode result")
+	}
+	if workModeResponseNeedsNoVisibleReplyDiagnostic(workModeAIResponse{}, &workModeAgenticResult{Status: workModeAgenticStatusComplete}) {
+		t.Fatal("meaningful agentic status was treated as an empty Work Mode result")
+	}
+}
+
+func TestNoVisibleReplyDiagnosticIncludesOllamaCompletionDetails(t *testing.T) {
+	details := formatWorkModeNoVisibleReplyDetails(ModelConfig{Provider: "ollama", Adapter: "ollama_generate"}, "Builder pass 1", 1, workModeAIResponse{}, adapters.Response{
+		Status:     "200 OK",
+		StatusCode: http.StatusOK,
+		RawBody:    `{"done":true,"done_reason":"stop","total_duration":5000,"load_duration":100,"prompt_eval_count":321,"prompt_eval_duration":200,"eval_count":44,"eval_duration":400,"context":[1,2,3]}`,
+	})
+	for _, required := range []string{`"done": true`, `"done_reason": "stop"`, `"prompt_eval_count": 321`, `"eval_count": 44`, `"context_tokens_returned": 3`} {
+		if !strings.Contains(details, required) {
+			t.Fatalf("Ollama completion details missing %q: %s", required, details)
+		}
+	}
+}
+
+func TestNoVisibleReplyDiagnosticSanitizesNestedProviderResponse(t *testing.T) {
+	inner := `{"reply":"","files":[],"artifacts":[{"id":"hidden","data":"top-secret-artifact-data"}],"api_key":"inline-secret-key"}`
+	raw, _ := json.Marshal(map[string]any{"response": inner, "authorization": "Bearer abcdefghijklmnop", "configured": "configured-secret-key"})
+	diagnostic := formatWorkModeNoVisibleReplyResponseDiagnostic(ModelConfig{APIKey: "configured-secret-key"}, adapters.Response{
+		Text:    inner,
+		RawBody: string(raw),
+	})
+	for _, secret := range []string{"top-secret-artifact-data", "inline-secret-key", "abcdefghijklmnop", "configured-secret-key"} {
+		if strings.Contains(diagnostic, secret) {
+			t.Fatalf("empty-response diagnostic leaked %q: %s", secret, diagnostic)
+		}
+	}
+	if !strings.Contains(diagnostic, "omitted from diagnostic") || !strings.Contains(diagnostic, "[REDACTED]") {
+		t.Fatalf("empty-response diagnostic did not preserve sanitization markers: %s", diagnostic)
+	}
+}
+
+func TestHandleWorkModeSendReturnsSanitizedDiagnosticForInvalidReferencedArtifact(t *testing.T) {
+	calls := 0
+	invalid := `{"reply":"Created the file.","files":[{"path":"output.bin","action":"create","content":"","artifact_ref":"bad-artifact"}],"artifacts":[{"id":"bad-artifact","encoding":"hex","mime_type":"application/octet-stream","data":"top-secret-artifact-data"}],"memory":"","warnings":[]}`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		writeJSON(w, http.StatusOK, map[string]any{"text": invalid})
+	}))
+	defer server.Close()
+
+	app := newAgenticHandlerTestApp(t, server.URL)
+	body, _ := json.Marshal(map[string]any{"modelId": "1", "prompt": "Create output.bin."})
+	rr := httptest.NewRecorder()
+	app.handleWorkModeSend(rr, httptest.NewRequest(http.MethodPost, "/api/work-mode/send", strings.NewReader(string(body))))
+	if rr.Code != http.StatusBadGateway {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if calls != 2 {
+		t.Fatalf("provider calls=%d, want original plus repair", calls)
+	}
+	var response workModeJSONErrorResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if response.Diagnostic == nil {
+		t.Fatalf("missing diagnostic: %#v", response)
+	}
+	diagnostic := response.Diagnostic
+	if diagnostic.ID == "" || diagnostic.Mode != "work_mode" || diagnostic.Project != "Demo" {
+		t.Fatalf("diagnostic identity=%+v", diagnostic)
+	}
+	for _, required := range []string{"request_id", "expect_json", "json_schema", "Create output.bin."} {
+		if !strings.Contains(diagnostic.Request, required) {
+			t.Fatalf("sanitized request missing %q: %s", required, diagnostic.Request)
+		}
+	}
+	for _, required := range []string{`"id": "bad-artifact"`, `"encoding": "hex"`, `"referenced_by_files"`} {
+		if !strings.Contains(diagnostic.Details, required) {
+			t.Fatalf("artifact details missing %q: %s", required, diagnostic.Details)
+		}
+	}
+	if strings.Contains(diagnostic.Response, "top-secret-artifact-data") {
+		t.Fatalf("artifact data leaked into diagnostic response: %s", diagnostic.Response)
+	}
+	if !strings.Contains(diagnostic.Response, "omitted from diagnostic") {
+		t.Fatalf("diagnostic response did not mark artifact data omitted: %s", diagnostic.Response)
 	}
 }
 
@@ -769,5 +1026,94 @@ func TestModelUggProtocolAllowsAgentGOHighlighterMarkup(t *testing.T) {
 	}
 	if strings.Contains(modelUggProtocolPrompt, "Absolute literal output inside code blocks") {
 		t.Fatal("model Ugg protocol still contains conflicting absolute-code wording")
+	}
+}
+
+func TestHandleWorkModeSendIgnoresSavedSmallModelPolishPassSetting(t *testing.T) {
+	calls := 0
+	firstResponse := `{"reply":"Plain first reply.","files":[{"path":"notes.txt","action":"create","content":"preserved file content","artifact_ref":""}],"artifacts":[],"memory":"","warnings":["Preserve this warning."]}`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		writeJSON(w, http.StatusOK, map[string]any{"text": firstResponse})
+	}))
+	defer server.Close()
+
+	app := newAgenticHandlerTestApp(t, server.URL)
+	body, _ := json.Marshal(map[string]any{
+		"modelId":              "1",
+		"prompt":               "Create the note and reply.",
+		"agentGOStyling":       true,
+		"smallModelPolishPass": true,
+	})
+	rr := httptest.NewRecorder()
+	app.handleWorkModeSend(rr, httptest.NewRequest(http.MethodPost, "/api/work-mode/send", strings.NewReader(string(body))))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if calls != 1 {
+		t.Fatalf("provider calls=%d, want one Builder call", calls)
+	}
+	var response workModeResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if response.Reply != "Plain first reply." || len(response.Warnings) != 1 || response.Warnings[0] != "Preserve this warning." {
+		t.Fatalf("final response=%+v", response)
+	}
+	if len(response.ChangedFiles) != 1 || response.ChangedFiles[0] != "notes.txt" {
+		t.Fatalf("changed files=%v", response.ChangedFiles)
+	}
+}
+
+func TestHandleWorkModeSendDoesNotCallHiddenSmallModelPolishPass(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		writeJSON(w, http.StatusOK, map[string]any{"text": `{"reply":"Original usable reply.","files":[],"artifacts":[],"memory":"","warnings":[]}`})
+	}))
+	defer server.Close()
+
+	app := newAgenticHandlerTestApp(t, server.URL)
+	body, _ := json.Marshal(map[string]any{"modelId": "1", "prompt": "Answer.", "smallModelPolishPass": true})
+	rr := httptest.NewRecorder()
+	app.handleWorkModeSend(rr, httptest.NewRequest(http.MethodPost, "/api/work-mode/send", strings.NewReader(string(body))))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if calls != 1 {
+		t.Fatalf("provider calls=%d, want 1", calls)
+	}
+	var response workModeResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if response.Reply != "Original usable reply." || response.AgentMessage != "" {
+		t.Fatalf("response=%+v", response)
+	}
+}
+
+func TestHandleWorkModeSendAgenticDoesNotRunSmallModelPolishPass(t *testing.T) {
+	calls := 0
+	responseText := agenticEnvelope(workModeAgenticStatusNeedsUserInput, emptyAgenticCommand(), "Waiting for user input.", "Which target should I use?")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		writeJSON(w, http.StatusOK, map[string]any{"text": responseText})
+	}))
+	defer server.Close()
+
+	app := newAgenticHandlerTestApp(t, server.URL)
+	body, _ := json.Marshal(map[string]any{
+		"modelId":              "1",
+		"prompt":               "Start the task.",
+		"smallModelPolishPass": true,
+		"agentic":              map[string]any{"enabled": true, "mode": "manual", "maxRuns": 50},
+	})
+	rr := httptest.NewRecorder()
+	app.handleWorkModeSend(rr, httptest.NewRequest(http.MethodPost, "/api/work-mode/send", strings.NewReader(string(body))))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if calls != 1 {
+		t.Fatalf("agentic provider calls=%d, want 1 without a polish pass", calls)
 	}
 }

@@ -29,6 +29,7 @@ type TransportProfile struct {
 type ModelConfig struct {
 	Label                  string            `json:"label"`
 	StrictStructuredOutput *bool             `json:"strict_structured_output,omitempty"`
+	PromptEnforcedJSON     bool              `json:"prompt_enforced_json,omitempty"`
 	VideoGeneration        bool              `json:"video_generation,omitempty"`
 	VideoPromptOnly        bool              `json:"video_prompt_only,omitempty"`
 	VideoStartFrame        bool              `json:"video_start_frame,omitempty"`

@@ -93,7 +93,7 @@ func (anthropicMessagesAdapter) Execute(ctx context.Context, model ModelConfig, 
 	if len(payload.Messages) == 0 {
 		return Response{}, errors.New("request contained no messages")
 	}
-	body, err := json.Marshal(payload)
+	body, err := marshalProviderRequestJSON(payload)
 	if err != nil {
 		return Response{}, err
 	}

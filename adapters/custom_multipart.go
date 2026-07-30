@@ -3,7 +3,6 @@ package adapters
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -294,7 +293,7 @@ func writeCustomMultipartBody(writer *multipart.Writer, model ModelConfig, req R
 		}
 	}
 	if strings.TrimSpace(messagesField) != "" {
-		encoded, err := json.Marshal(buildMultipartMessages(req))
+		encoded, err := marshalProviderRequestJSON(buildMultipartMessages(req))
 		if err != nil {
 			return err
 		}
@@ -303,7 +302,7 @@ func writeCustomMultipartBody(writer *multipart.Writer, model ModelConfig, req R
 		}
 	}
 	if strings.TrimSpace(metadataField) != "" {
-		encoded, err := json.Marshal(buildMultipartMetadata(req))
+		encoded, err := marshalProviderRequestJSON(buildMultipartMetadata(req))
 		if err != nil {
 			return err
 		}

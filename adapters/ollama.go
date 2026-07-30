@@ -14,6 +14,11 @@ import (
 
 type ollamaGenerateAdapter struct{}
 
+const (
+	defaultOllamaContextTokens = 16384
+	defaultOllamaOutputTokens  = 2048
+)
+
 type ollamaGenerateRequest struct {
 	Model   string         `json:"model"`
 	Prompt  string         `json:"prompt,omitempty"`
@@ -25,19 +30,16 @@ type ollamaGenerateRequest struct {
 }
 
 func ollamaRequestOptions(model ModelConfig) map[string]any {
-	options := map[string]any{}
+	options := map[string]any{
+		"num_ctx":     defaultOllamaContextTokens,
+		"num_predict": defaultOllamaOutputTokens,
+	}
 	if nested := providerOptionMap(model, "options"); len(nested) > 0 {
 		for key, value := range nested {
 			options[key] = value
 		}
 	}
-	// num_predict is controlled by AgentGO's shared Max Output setting so the
-	// advanced provider-options JSON cannot silently override the official control.
-	delete(options, "num_predict")
-	for _, key := range []string{"num_ctx", "temperature", "top_k", "top_p", "repeat_penalty", "repeat_last_n", "seed", "min_p", "tfs_z", "num_gpu"} {
-		if _, exists := options[key]; exists {
-			continue
-		}
+	for _, key := range []string{"num_ctx", "num_predict", "temperature", "top_k", "top_p", "repeat_penalty", "repeat_last_n", "seed", "min_p", "tfs_z", "num_gpu"} {
 		if value, ok := ollamaTopLevelProviderOption(model, key); ok {
 			options[key] = value
 		}
@@ -45,11 +47,10 @@ func ollamaRequestOptions(model ModelConfig) map[string]any {
 	if _, exists := options["temperature"]; !exists && model.RequestDefaults.Temperature > 0 {
 		options["temperature"] = model.RequestDefaults.Temperature
 	}
+	// AgentGO's explicit Maximum Output control remains the final authority when
+	// the user selects a custom shared output limit.
 	if model.MaxOutputTokens > 0 {
 		options["num_predict"] = model.MaxOutputTokens
-	}
-	if len(options) == 0 {
-		return nil
 	}
 	return options
 }
@@ -156,7 +157,7 @@ func (ollamaGenerateAdapter) Execute(ctx context.Context, model ModelConfig, req
 		apiModel = "phi3.5:latest"
 	}
 	var format any
-	if req.ExpectJSON {
+	if req.ExpectJSON && !model.PromptEnforcedJSON {
 		if ollamaStrictStructuredOutputEnabled(model) && len(req.JSONSchema) > 0 {
 			format = req.JSONSchema
 		} else {
@@ -173,7 +174,7 @@ func (ollamaGenerateAdapter) Execute(ctx context.Context, model ModelConfig, req
 		Stream:  false,
 		Options: ollamaRequestOptions(model),
 	}
-	body, err := json.Marshal(payload)
+	body, err := marshalProviderRequestJSON(payload)
 	if err != nil {
 		return Response{}, err
 	}

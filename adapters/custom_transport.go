@@ -39,6 +39,9 @@ func cloneAnyValue(value any) any {
 }
 
 func strictStructuredOutputEnabled(model ModelConfig) bool {
+	if model.PromptEnforcedJSON {
+		return false
+	}
 	if model.StrictStructuredOutput != nil {
 		return *model.StrictStructuredOutput
 	}
