@@ -898,7 +898,7 @@ func TestHandleWorkModeSendAgenticIgnoresNormalWorkModeContextAndPreservesMemory
 		memorySentinel,
 		memoryContent,
 		"ROLE CONTEXT\n- AgentGO included",
-		"MEMORY\n- AgentGO included memory.md",
+		"MEMORY\n- Read memory.md before answering",
 		"RESPONSE MODE",
 		"AGENTGO STYLING",
 		"SYSTEM INSTRUCTION: UGG PROTOCOL",
@@ -993,7 +993,11 @@ func TestHandleWorkModeSendNormalModeKeepsConfiguredContextFeatures(t *testing.T
 		roleSentinel,
 		memorySentinel,
 		"ROLE CONTEXT",
-		"MEMORY\n- AgentGO included memory.md",
+		"MEMORY\n- Read memory.md before answering and apply relevant established facts, preferences, and decisions.",
+		"Actively save new durable facts, preferences, decisions, constraints, and follow-up context that may be useful later.",
+		"Return the complete updated compact memory.md in the JSON memory field, never in reply.",
+		"Remove stale, duplicate or rejected notes.",
+		"Use Ugg Protocol only for memory; keep the reply in the requested style.",
 		"RESPONSE MODE",
 		"Challenge weak assumptions",
 		"AGENTGO STYLING",
@@ -1115,5 +1119,162 @@ func TestHandleWorkModeSendAgenticDoesNotRunSmallModelPolishPass(t *testing.T) {
 	}
 	if calls != 1 {
 		t.Fatalf("agentic provider calls=%d, want 1 without a polish pass", calls)
+	}
+}
+
+func TestFreshWorkModeFirstSuccessfulResponseWithoutMemoryRetiresPreviousContinuedMemory(t *testing.T) {
+	var receivedMessages string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		var providerPayload map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&providerPayload); err != nil {
+			t.Errorf("decode provider request: %v", err)
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		messagesJSON, _ := json.Marshal(providerPayload["messages"])
+		receivedMessages = string(messagesJSON)
+		writeJSON(w, http.StatusOK, map[string]any{"text": `{"reply":"Fresh reply","files":[],"artifacts":[],"memory":"","warnings":[]}`})
+	}))
+	defer server.Close()
+
+	app := newAgenticHandlerTestApp(t, server.URL)
+	if err := app.ensureProjectWorkModeSettings("Demo"); err != nil {
+		t.Fatal(err)
+	}
+	continuedPath, err := app.workModeContinuedMemoryPath("Demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const previous = "PREVIOUS CONTINUED MEMORY MUST NOT ENTER FRESH REQUEST"
+	if err := writeWorkModeMemoryFile(continuedPath, previous); err != nil {
+		t.Fatal(err)
+	}
+	body, _ := json.Marshal(workModeRequest{
+		ModelID:     "1",
+		Prompt:      "Start fresh.",
+		UseMemory:   true,
+		FreshMemory: true,
+	})
+	rr := httptest.NewRecorder()
+	app.handleWorkModeSend(rr, httptest.NewRequest(http.MethodPost, "/api/work-mode/send", strings.NewReader(string(body))))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if strings.Contains(receivedMessages, previous) {
+		t.Fatalf("fresh Work Mode request included previous continued memory: %s", receivedMessages)
+	}
+	if !strings.Contains(receivedMessages, "(empty)") {
+		t.Fatalf("fresh Work Mode request did not identify its memory as empty: %s", receivedMessages)
+	}
+	continued, err := os.ReadFile(continuedPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.TrimSpace(string(continued)) != "" {
+		t.Fatalf("first successful fresh response without memory left previous continued memory: %q", string(continued))
+	}
+	var response workModeResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if !response.MemoryUpdated {
+		t.Fatal("fresh Work Mode response did not report the continued-memory retirement")
+	}
+}
+
+func TestFreshWorkModeFirstSuccessfulResponseReplacesPreviousContinuedMemory(t *testing.T) {
+	var receivedMessages string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		var providerPayload map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&providerPayload); err != nil {
+			t.Errorf("decode provider request: %v", err)
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		messagesJSON, _ := json.Marshal(providerPayload["messages"])
+		receivedMessages = string(messagesJSON)
+		writeJSON(w, http.StatusOK, map[string]any{"text": `{"reply":"Fresh reply","files":[],"artifacts":[],"memory":"NEW FRESH MEMORY","warnings":[]}`})
+	}))
+	defer server.Close()
+
+	app := newAgenticHandlerTestApp(t, server.URL)
+	if err := app.ensureProjectWorkModeSettings("Demo"); err != nil {
+		t.Fatal(err)
+	}
+	continuedPath, err := app.workModeContinuedMemoryPath("Demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const previous = "PREVIOUS CONTINUED MEMORY MUST NOT ENTER FRESH REQUEST"
+	if err := writeWorkModeMemoryFile(continuedPath, previous); err != nil {
+		t.Fatal(err)
+	}
+	body, _ := json.Marshal(workModeRequest{
+		ModelID:     "1",
+		Prompt:      "Start fresh.",
+		UseMemory:   true,
+		FreshMemory: true,
+	})
+	rr := httptest.NewRecorder()
+	app.handleWorkModeSend(rr, httptest.NewRequest(http.MethodPost, "/api/work-mode/send", strings.NewReader(string(body))))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if strings.Contains(receivedMessages, previous) {
+		t.Fatalf("fresh Work Mode request included previous continued memory: %s", receivedMessages)
+	}
+	continued, err := os.ReadFile(continuedPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.TrimSpace(string(continued)) != "NEW FRESH MEMORY" {
+		t.Fatalf("first successful fresh response did not replace previous continued memory: %q", string(continued))
+	}
+	var response workModeResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if !response.MemoryUpdated || strings.TrimSpace(response.Memory) != "NEW FRESH MEMORY" {
+		t.Fatalf("fresh Work Mode response memory state = %+v", response)
+	}
+}
+
+func TestFreshWorkModeFailedResponsePreservesPreviousContinuedMemory(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "provider unavailable", http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+
+	app := newAgenticHandlerTestApp(t, server.URL)
+	if err := app.ensureProjectWorkModeSettings("Demo"); err != nil {
+		t.Fatal(err)
+	}
+	continuedPath, err := app.workModeContinuedMemoryPath("Demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const previous = "RECOVER THIS MEMORY AFTER FAILED FRESH CALL"
+	if err := writeWorkModeMemoryFile(continuedPath, previous); err != nil {
+		t.Fatal(err)
+	}
+	body, _ := json.Marshal(workModeRequest{
+		ModelID:     "1",
+		Prompt:      "Start fresh.",
+		UseMemory:   true,
+		FreshMemory: true,
+	})
+	rr := httptest.NewRecorder()
+	app.handleWorkModeSend(rr, httptest.NewRequest(http.MethodPost, "/api/work-mode/send", strings.NewReader(string(body))))
+	if rr.Code == http.StatusOK {
+		t.Fatalf("provider failure unexpectedly returned success: %s", rr.Body.String())
+	}
+	continued, err := os.ReadFile(continuedPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(continued) != previous {
+		t.Fatalf("failed fresh Work Mode response changed recoverable continued memory to %q", string(continued))
 	}
 }

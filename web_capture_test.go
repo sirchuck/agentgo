@@ -965,7 +965,7 @@ func TestAgentGOStylingPaletteAndWorkModeWebshotUI(t *testing.T) {
 	if prompt != strings.TrimSpace(defaultAgentGOStylingPrompt) {
 		t.Fatal("built-in styling prompt and system_prompts/agentgo_styling.txt are out of sync")
 	}
-	for _, required := range []string{"green #7EE7A8", "yellow #FFE27C", "orange #FF9900", "red #FF9696", `<span style="color:#RRGGBB">`, `Wrap only the corrected text in <span class="agentgo-code-change">...</span>, whether the correction appears inside a <pre><code> block or in ordinary prose outside a code block.`, `Render prose as normal prose, never inside <pre><code>. Use <pre><code>`, `only for code.`} {
+	for _, required := range []string{"green #7EE7A8", "yellow #FFE27C", "orange #FF9900", "red #FF9696", `<span style="color:#RRGGBB">`, `Whenever you return any user-provided prose or code, always wrap only the changes or modifications you make in <span class="agentgo-code-change">...</span>. Always apply this rule so users can quickly identify your edits, whether inside a <pre><code> block or in ordinary prose outside a code block.`, `Render prose as normal prose, never inside <pre><code>. Use <pre><code>`, `only for code.`} {
 		if !strings.Contains(prompt, required) {
 			t.Fatalf("styling prompt missing %q", required)
 		}
@@ -1140,6 +1140,11 @@ func TestWorkModeMemoryDefaultsAndActiveSessionTemplateHooks(t *testing.T) {
 		`/api/work-mode/settings`,
 		`/api/work-mode/memory/new`,
 		`syncContinuedWorkModeMemory`,
+		`workModeMemoryFreshPending`,
+		`freshMemory`,
+		`if (workModeSettings.useMemory && !workModeMemoryFreshPending)`,
+		`tab.memoryFreshPending = true;`,
+		`The previous continued memory remains available until the first successful AI response.`,
 		`workModeSettings.useMemory = true;`,
 		`let agentGOActiveSessionId = '';`,
 		`headers['X-AgentGO-Session-ID'] = agentGOActiveSessionId`,
@@ -1158,6 +1163,7 @@ func TestWorkModeMemoryDefaultsAndActiveSessionTemplateHooks(t *testing.T) {
 		`memoryContent: memoryEnabled && !memoryName ? memoryContent : undefined`,
 		`window.sessionStorage.getItem(AGENTGO_SESSION_STORAGE_KEY)`,
 		`window.sessionStorage.setItem(AGENTGO_SESSION_STORAGE_KEY`,
+		`The continued memory was cleared.`,
 	} {
 		if strings.Contains(templateText, forbidden) {
 			t.Fatalf("B-series template still contains obsolete behavior %q", forbidden)

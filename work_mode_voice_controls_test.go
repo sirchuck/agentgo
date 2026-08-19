@@ -133,6 +133,11 @@ func TestWorkModeVoiceControlsTemplate(t *testing.T) {
 		`findWorkModeVoiceCommand(workModeHandsFreeBuffer, workModeVoiceSendCommand)`,
 		`findWorkModeVoiceCommand(value, workModeVoiceRepeatCommand)`,
 		`findWorkModeVoiceCommand(value, workModeVoiceReadCommand)`,
+		`::highlight(agentgo-spoken-word)`,
+		`.work-mode-speaking-word{color:#fff!important`,
+		`utterance.onboundary = event => updateWorkModeReplySpeechHighlight(event, utterance)`,
+		`utterance.onpause = () => clearWorkModeReplySpeechHighlightVisual()`,
+		`utterance.onresume = () => clearWorkModeReplySpeechHighlightVisual()`,
 		`AgentGO couldn't understand your request.`,
 	} {
 		if !strings.Contains(source, required) {
@@ -154,6 +159,83 @@ func TestWorkModeVoiceControlsTemplate(t *testing.T) {
 	}
 	if strings.Contains(source[speechStart:speechStart+speechEnd], "setWorkModeStatus(") {
 		t.Fatal("microphone speech functions still overwrite the Work Mode status area")
+	}
+}
+
+func TestWorkModeSpokenWordHighlightJavaScriptFlow(t *testing.T) {
+	if _, err := exec.LookPath("node"); err != nil {
+		t.Skip("node is unavailable")
+	}
+	data, err := os.ReadFile(filepath.Join("templates", "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(data)
+	start := strings.Index(source, "function workModeSpeechTokenCharacter")
+	end := strings.Index(source[start:], "function stopWorkModeReplySpeech")
+	if start < 0 || end < 0 {
+		t.Fatal("could not isolate spoken-word highlight JavaScript")
+	}
+	highlightJS := source[start : start+end]
+	testJS := `
+const assert = require('node:assert/strict');
+let workModeReplySpeechHighlightState = null;
+let workModeReplySpeechHighlightSpans = [];
+const WORK_MODE_SPEECH_HIGHLIGHT_NAME = 'agentgo-spoken-word';
+const visibleText = 'The server received the request yesterday. Next sentence follows.';
+const parentElement = {closest(){return null;}};
+const textNode = {nodeType:3,textContent:visibleText,parentElement,isConnected:true};
+const body = {nodeType:1,childNodes:[textNode],isConnected:true};
+const registry = new Map();
+const createdRanges = [];
+globalThis.document = {
+  querySelector(selector){
+    assert.equal(selector,'.work-mode-message-body[data-work-message-body="4"]');
+    return body;
+  },
+  createRange(){
+    const range = {
+      setStart(node,offset){this.startNode=node;this.startOffset=offset;},
+      setEnd(node,offset){this.endNode=node;this.endOffset=offset;}
+    };
+    createdRanges.push(range);
+    return range;
+  },
+  createElement(){throw new Error('CSS Highlight API should be used in this test');}
+};
+globalThis.CSS = {highlights:{set(name,value){registry.set(name,value);},delete(name){return registry.delete(name);}}};
+globalThis.Highlight = class Highlight {constructor(...ranges){this.ranges=ranges;}};
+` + highlightJS + `
+const tokens = workModeSpeechTokens(visibleText);
+assert.deepEqual(tokens.slice(0,6).map(token=>token.raw),['The','server','received','the','request','yesterday']);
+const receivedIndex = visibleText.indexOf('received');
+assert.deepEqual(workModeSpeechBoundaryTokenIndexes(visibleText,tokens,{name:'word',charIndex:receivedIndex,charLength:8}),[2]);
+const firstSentenceIndexes = workModeSpeechBoundaryTokenIndexes(visibleText,tokens,{name:'sentence',charIndex:0,charLength:0});
+assert.deepEqual(firstSentenceIndexes,[0,1,2,3,4,5]);
+
+const utterance = {};
+assert.ok(prepareWorkModeReplySpeechHighlight(4,visibleText,utterance));
+assert.equal(updateWorkModeReplySpeechHighlight({name:'word',charIndex:receivedIndex,charLength:8},utterance),true);
+let highlight = registry.get(WORK_MODE_SPEECH_HIGHLIGHT_NAME);
+assert.ok(highlight);
+let range = highlight.ranges[0];
+assert.equal(range.startNode,textNode);
+assert.equal(range.endNode,textNode);
+assert.equal(visibleText.slice(range.startOffset,range.endOffset),'received');
+
+assert.equal(updateWorkModeReplySpeechHighlight({name:'sentence',charIndex:0,charLength:0},utterance),true);
+highlight = registry.get(WORK_MODE_SPEECH_HIGHLIGHT_NAME);
+range = highlight.ranges[0];
+assert.equal(visibleText.slice(range.startOffset,range.endOffset),'The server received the request yesterday');
+clearWorkModeReplySpeechHighlightVisual();
+assert.equal(registry.has(WORK_MODE_SPEECH_HIGHLIGHT_NAME),false);
+resetWorkModeReplySpeechHighlight();
+assert.equal(workModeReplySpeechHighlightState,null);
+assert.equal(prepareWorkModeReplySpeechHighlight(null,'No visible message',{}),null);
+`
+	cmd := exec.Command("node", "-e", testJS)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("spoken-word highlight JavaScript flow failed: %v\n%s", err, output)
 	}
 }
 

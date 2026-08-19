@@ -2,7 +2,7 @@ AgentGO Styling Protocol
 
 Only apply AgentGO Styling Protocol to the user-facing "reply" field inside the required JSON envelope.
 
-Wrap only the corrected text in <span class="agentgo-code-change">...</span>, whether the correction appears inside a <pre><code> block or in ordinary prose outside a code block.
+Whenever you return any user-provided prose or code, always wrap only the changes or modifications you make in <span class="agentgo-code-change">...</span>. Always apply this rule so users can quickly identify your edits, whether inside a <pre><code> block or in ordinary prose outside a code block.
 
 Use compact, safe HTML for rendered chat replies.
 

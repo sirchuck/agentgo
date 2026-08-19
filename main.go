@@ -1237,6 +1237,7 @@ type workModeRequest struct {
 	UseMemory            bool                       `json:"useMemory,omitempty"`
 	MemoryName           string                     `json:"memoryName,omitempty"`
 	MemoryContent        *string                    `json:"memoryContent,omitempty"`
+	FreshMemory          bool                       `json:"freshMemory,omitempty"`
 	UseAgentGOStyling    bool                       `json:"agentGOStyling,omitempty"`
 	SmallModelPolishPass bool                       `json:"smallModelPolishPass,omitempty"`
 	AllowCreate          bool                       `json:"allowCreate,omitempty"`
@@ -4537,6 +4538,9 @@ func resolveWorkModeRequestMemory(metaRoot, continuedPath string, req workModeRe
 		}
 		return data, displayName, full, true, nil
 	}
+	if req.FreshMemory {
+		return []byte{}, "", continuedPath, true, nil
+	}
 	data, err := os.ReadFile(continuedPath)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, "", "", false, err
@@ -4652,16 +4656,12 @@ func (a *App) handleWorkModeMemoryNew(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	if err := a.clearContinuedWorkModeMemory(projectName); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 	continuedPath, err := a.workModeContinuedMemoryPath(projectName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	resp, err := a.workModeMemoryResponse(metaRoot, continuedPath, "New Work Mode memory started.")
+	resp, err := a.workModeMemoryResponse(metaRoot, continuedPath, "New Work Mode memory started. Previous continued memory remains available until the first successful AI response.")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -6408,7 +6408,7 @@ CONTEXT LIMITS
 		instructions += "\n\nROLE CONTEXT\n- AgentGO included this Builder's role/user context. Use it when relevant."
 	}
 	if useMemory {
-		instructions += "\n\nMEMORY\n- AgentGO included memory.md for this Builder/project. Use it when relevant.\n- Return the complete updated compact memory.md content in the JSON memory field. Do not put memory content in reply.\n- Use memory.md for durable Work Mode/session facts likely needed for follow-up. Remove stale, duplicate, rejected, or low-value notes.\n- Leave memory empty only when there is truly no useful durable update for this message.\n- Use Ugg Protocol only for the memory field; keep the visible reply in the requested response style.\n\n" + chatMemoryUggProtocolPrompt
+		instructions += "\n\nMEMORY\n- Read memory.md before answering and apply relevant established facts, preferences, and decisions.\n- Actively save new durable facts, preferences, decisions, constraints, and follow-up context that may be useful later.\n- Return the complete updated compact memory.md in the JSON memory field, never in reply.\n- Remove stale, duplicate or rejected notes.\n- Use Ugg Protocol only for memory; keep the reply in the requested style.\n\n" + chatMemoryUggProtocolPrompt
 	}
 	if modeInstruction := chatResponseModeInstruction(responseMode); modeInstruction != "" {
 		instructions += "\n\nRESPONSE MODE\n- " + modeInstruction
@@ -7882,6 +7882,7 @@ func (a *App) handleWorkModeObserverReviewSend(w http.ResponseWriter, req workMo
 	latestWorkerFiles := []string{}
 	memoryUpdated := false
 	memoryWarning := ""
+	workerResponseAccepted := false
 	agentMessages := []string{}
 	urlCaptureWarnings := []string{}
 
@@ -7904,6 +7905,18 @@ func (a *App) handleWorkModeObserverReviewSend(w http.ResponseWriter, req workMo
 		return workModePrefixedTmpWorkState(rels)
 	}
 	writeFinal := func(reply, agentMessage string) {
+		if req.UseMemory && req.FreshMemory && workerResponseAccepted && !memoryUpdated {
+			if err := writeWorkModeRequestMemory(memoryWritePath, memoryPersist, ""); err != nil {
+				memoryWarning = "Could not retire the previous Work Mode continued memory."
+				a.logf(modelIDString(worker.ID), "warn", "Could not retire previous Observer Review continued memory: %v", err)
+			} else {
+				chatMemory = nil
+				memoryUpdated = true
+				if strings.Contains(memoryWarning, "non-string format") {
+					memoryWarning = "AI returned Work Mode memory in a non-string format. The previous continued memory was cleared because the New Memory session completed."
+				}
+			}
+		}
 		if strings.TrimSpace(reply) == "" {
 			reply = latestWorkerReply
 		}
@@ -8136,6 +8149,7 @@ func (a *App) handleWorkModeObserverReviewSend(w http.ResponseWriter, req workMo
 		allInline = append(allInline, inlineFiles...)
 		latestWorkerReply = strings.TrimSpace(parsed.Reply)
 		latestWorkerFiles = currentTmpState()
+		workerResponseAccepted = true
 		if req.UseMemory {
 			memoryText, memoryParseWarning := workModeMemoryUpdate(parsed)
 			if memoryParseWarning != "" {
@@ -8755,6 +8769,18 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 			} else {
 				chatMemory = []byte(memoryText)
 				memoryUpdated = true
+			}
+		}
+		if req.FreshMemory && !memoryUpdated {
+			if err := writeWorkModeRequestMemory(memoryWritePath, memoryPersist, ""); err != nil {
+				memoryWarning = "Could not retire the previous Work Mode continued memory."
+				a.logf(modelIDString(model.ID), "warn", "Could not retire previous Work Mode continued memory: %v", err)
+			} else {
+				chatMemory = nil
+				memoryUpdated = true
+				if memoryParseWarning != "" {
+					memoryWarning = "AI returned Work Mode memory in a non-string format. The previous continued memory was cleared because the New Memory session completed."
+				}
 			}
 		}
 	}
@@ -25265,7 +25291,7 @@ const defaultAgentGOStylingPrompt = `AgentGO Styling Protocol
 
 Only apply AgentGO Styling Protocol to the user-facing "reply" field inside the required JSON envelope.
 
-Wrap only the corrected text in <span class="agentgo-code-change">...</span>, whether the correction appears inside a <pre><code> block or in ordinary prose outside a code block.
+Whenever you return any user-provided prose or code, always wrap only the changes or modifications you make in <span class="agentgo-code-change">...</span>. Always apply this rule so users can quickly identify your edits, whether inside a <pre><code> block or in ordinary prose outside a code block.
 
 Use compact, safe HTML for rendered chat replies.
 

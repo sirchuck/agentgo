@@ -136,3 +136,69 @@ function showToast(...args){ toastArgs=args; }
 		t.Fatalf("manual screen capture JavaScript flow failed: %v\n%s", err, output)
 	}
 }
+
+func TestWorkModeImageCompressionPreservesTransparency(t *testing.T) {
+	if _, err := exec.LookPath("node"); err != nil {
+		t.Skip("node is unavailable")
+	}
+	data, err := os.ReadFile(filepath.Join("templates", "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(data)
+	start := strings.Index(source, "function workModeCanvasHasTransparency(ctx, width, height)")
+	if start < 0 {
+		t.Fatal("transparent-image detection helper is missing")
+	}
+	endRel := strings.Index(source[start:], "async function prepareWorkModeImageAttachment")
+	if endRel < 0 {
+		t.Fatal("could not isolate Work Mode image compression JavaScript")
+	}
+	compressionJS := source[start : start+endRel]
+	testJS := `
+const assert = require('node:assert/strict');
+let alpha = 0;
+let encodedTypes = [];
+const ctx = {
+  drawImage() {},
+  getImageData() { return { data: new Uint8ClampedArray([10, 20, 30, alpha, 40, 50, 60, 255]) }; }
+};
+const canvas = {
+  width: 0,
+  height: 0,
+  getContext() { return ctx; },
+  toBlob(callback, mimeType) {
+    encodedTypes.push(mimeType);
+    callback({ size: 120000, type: mimeType });
+  }
+};
+global.document = { createElement() { return canvas; } };
+async function imageElementFromDataURL() { return { naturalWidth: 2048, naturalHeight: 1208 }; }
+async function readFileAsDataURL(blob) { return 'data:' + blob.type + ';base64,QQ=='; }
+function workModeAttachmentBase64() { return 'QQ=='; }
+` + compressionJS + `
+(async () => {
+  alpha = 0;
+  encodedTypes = [];
+  const transparent = await compressWorkModeImageDataURL('data:image/png;base64,AA==', 'rafi.png', 'transparent');
+  assert.equal(transparent.mime_type, 'image/png');
+  assert.equal(transparent.name, 'rafi.png');
+  assert.deepEqual(encodedTypes, ['image/png']);
+
+  alpha = 255;
+  encodedTypes = [];
+  const opaque = await compressWorkModeImageDataURL('data:image/png;base64,AA==', 'opaque.png', 'opaque');
+  assert.equal(opaque.mime_type, 'image/jpeg');
+  assert.equal(opaque.name, 'opaque.jpg');
+  assert.deepEqual(encodedTypes, ['image/jpeg']);
+})().catch(err => { console.error(err); process.exit(1); });
+`
+	path := filepath.Join(t.TempDir(), "work-mode-image-compression-test.js")
+	if err := os.WriteFile(path, []byte(testJS), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	output, err := exec.Command("node", path).CombinedOutput()
+	if err != nil {
+		t.Fatalf("transparent Work Mode image compression test failed: %v\n%s", err, string(output))
+	}
+}

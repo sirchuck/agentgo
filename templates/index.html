@@ -3438,6 +3438,7 @@ body.deaddrop-popover-open {
 .work-mode-message-actions{display:inline-flex;align-items:center;gap:7px;margin-top:8px;vertical-align:middle}
 .work-mode-message-action-btn{appearance:none;width:30px;height:30px;border-radius:999px;border:1px solid rgba(74,163,255,.30);background:rgba(74,163,255,.10);color:#d9eeff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
 .work-mode-message-action-btn:hover{background:rgba(74,163,255,.18);color:#fff}.work-mode-message-action-btn.is-speaking{background:rgba(74,163,255,.24);color:#fff;box-shadow:0 0 0 1px rgba(74,163,255,.32)}
+::highlight(agentgo-spoken-word){color:#fff;text-shadow:0 0 3px rgba(255,255,255,.72),0 0 7px rgba(255,255,255,.28)}.work-mode-speaking-word{color:#fff!important;text-shadow:0 0 3px rgba(255,255,255,.72),0 0 7px rgba(255,255,255,.28)}
 .work-mode-message-action-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9}
 .work-mode-ai-speak-btn{margin:0}
 .work-mode-reset-btn{color:rgba(245,247,251,.74)}.work-mode-reset-btn:hover{background:rgba(209,75,160,.14);color:#fff}.work-mode-reset-btn svg{stroke-width:2.2}
@@ -7984,6 +7985,9 @@ let workModeHandsFreeBuffer = '';
 let workModeHandsFreePromptBase = '';
 let workModeReplySpeechMessageIndex = null;
 let workModeReplySpeechUtterance = null;
+let workModeReplySpeechHighlightState = null;
+let workModeReplySpeechHighlightSpans = [];
+const WORK_MODE_SPEECH_HIGHLIGHT_NAME = 'agentgo-spoken-word';
 let workModeFileTree = null;
 let workModeTmpWorkTree = null;
 let workModeTreeLoadedProject = "";
@@ -8059,6 +8063,7 @@ let workModeTerminalEnvEditingName = '';
 let workModeAgenticAuditPollTimer = null;
 let workModeMemoryContent = '';
 let workModeMemoryName = '';
+let workModeMemoryFreshPending = false;
 let workModeAllowAIHTMLReplies = false;
 let workModeSettings = createDefaultWorkModeSettings ? createDefaultWorkModeSettings() : { includeRoleContext: false, useMemory: false, responseMode: 'auto', autoReadReplies: false, agentGOStyling: true, autoCompressImages: true, smallModelPolishPass: false };
 let workModeMemoryMenuOpen = '';
@@ -13543,6 +13548,16 @@ function serializeWorkModeAttachmentsForRequest(items) {
     size_bytes: Number((item && item.size_bytes) || 0) || 0
   }));
 }
+function workModeCanvasHasTransparency(ctx, width, height) {
+  const pixels = ctx.getImageData(0, 0, width, height).data;
+  for (let index = 3; index < pixels.length; index += 4) {
+    if (pixels[index] < 255) return true;
+  }
+  return false;
+}
+function workModeCanvasToBlob(canvas, mimeType, quality) {
+  return new Promise(resolve => canvas.toBlob(resolve, mimeType, quality));
+}
 async function compressWorkModeImageDataURL(source, originalName, id) {
   const img = await imageElementFromDataURL(source);
   const maxDim = 1200;
@@ -13557,19 +13572,28 @@ async function compressWorkModeImageDataURL(source, originalName, id) {
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Could not prepare image compression.');
   ctx.drawImage(img, 0, 0, width, height);
-  const qualities = [0.72, 0.6, 0.48, 0.38, 0.3];
+  const hasTransparency = workModeCanvasHasTransparency(ctx, width, height);
   let blob = null;
-  for (const quality of qualities) {
-    blob = await canvasToBlob(canvas, quality);
-    if (!blob || blob.size <= 150000) break;
+  let mimeType = 'image/jpeg';
+  let extension = '.jpg';
+  if (hasTransparency) {
+    mimeType = 'image/png';
+    extension = '.png';
+    blob = await workModeCanvasToBlob(canvas, mimeType);
+  } else {
+    const qualities = [0.72, 0.6, 0.48, 0.38, 0.3];
+    for (const quality of qualities) {
+      blob = await workModeCanvasToBlob(canvas, mimeType, quality);
+      if (!blob || blob.size <= 150000) break;
+    }
   }
   if (!blob) throw new Error('Could not compress image attachment.');
   const dataUrl = await readFileAsDataURL(blob);
   return {
     id,
-    name: String(originalName || 'image').replace(/\.[^.]+$/, '') + '.jpg',
+    name: String(originalName || 'image').replace(/\.[^.]+$/, '') + extension,
     kind: 'image',
-    mime_type: 'image/jpeg',
+    mime_type: mimeType,
     data: workModeAttachmentBase64(dataUrl),
     text: '',
     size_bytes: blob.size
@@ -18084,6 +18108,7 @@ function createWorkModeConversationTab(options = {}) {
     settings: inherited,
     memoryContent: '',
     memoryName: '',
+    memoryFreshPending: false,
     memoryDefaultApplied: false,
     selectedFiles: new Set(),
     temporaryAttachments: [],
@@ -18131,6 +18156,7 @@ function saveActiveWorkModeTabState() {
   tab.settings = cloneWorkModeSettings(workModeSettings);
   tab.memoryContent = String(workModeMemoryContent || '');
   tab.memoryName = String(workModeMemoryName || '');
+  tab.memoryFreshPending = !!workModeMemoryFreshPending;
   tab.memoryDefaultApplied = !!tab.memoryDefaultApplied;
   tab.selectedFiles = new Set(workModeSelectedFiles || []);
   tab.temporaryAttachments = Array.isArray(workModeTemporaryAttachments) ? workModeTemporaryAttachments : [];
@@ -18153,6 +18179,7 @@ function loadWorkModeTabState(tab, options = {}) {
   workModeSettings = cloneWorkModeSettings(tab.settings);
   workModeMemoryContent = String(tab.memoryContent || '');
   workModeMemoryName = String(tab.memoryName || '');
+  workModeMemoryFreshPending = !!tab.memoryFreshPending;
   workModeSelectedFiles = new Set(tab.selectedFiles || []);
   workModeTemporaryAttachments = Array.isArray(tab.temporaryAttachments) ? tab.temporaryAttachments : [];
   workModeActiveFile = tab.activeFile || null;
@@ -19309,9 +19336,9 @@ function syncNamedWorkModeMemory(name, content) {
 }
 function syncContinuedWorkModeMemory(content) {
   workModeTabs.forEach(tab => {
-    if (tab.settings && tab.settings.useMemory && !String(tab.memoryName || '').trim()) tab.memoryContent = String(content || '');
+    if (tab.settings && tab.settings.useMemory && !String(tab.memoryName || '').trim() && !tab.memoryFreshPending) tab.memoryContent = String(content || '');
   });
-  if (workModeSettings.useMemory && !String(workModeMemoryName || '').trim()) workModeMemoryContent = String(content || '');
+  if (workModeSettings.useMemory && !String(workModeMemoryName || '').trim() && !workModeMemoryFreshPending) workModeMemoryContent = String(content || '');
 }
 function getWorkModeSpeechRecognitionCtor() {
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
@@ -19433,13 +19460,249 @@ function restoreWorkModeReplyScrolling() {
     updateWorkModeScrollButton();
   });
 }
+function workModeSpeechTokenCharacter(character) {
+  return !!character && !/[\s.,!?;:()[\]{}"“”`*_~<>\\/|@#$%^&+=]/.test(character);
+}
+function workModeSpeechTokenKey(value) {
+  return String(value || '').toLocaleLowerCase().replace(/^[-'’]+|[-'’]+$/g, '');
+}
+function workModeSpeechTokens(value) {
+  const text = String(value || '');
+  const tokens = [];
+  let start = -1;
+  for (let index = 0; index <= text.length; index++) {
+    const tokenCharacter = index < text.length && workModeSpeechTokenCharacter(text[index]);
+    if (tokenCharacter && start < 0) start = index;
+    if (tokenCharacter || start < 0) continue;
+    const raw = text.slice(start, index);
+    const key = workModeSpeechTokenKey(raw);
+    if (key) tokens.push({ start, end:index, raw, key });
+    start = -1;
+  }
+  return tokens;
+}
+function workModeSpeechHighlightSkipsNode(node) {
+  const parent = node && node.parentElement;
+  if (!parent || typeof parent.closest !== 'function') return false;
+  return !!parent.closest('button,script,style,textarea,select,option,iframe,.work-mode-code-toolbar,.work-mode-html-preview-controls,.work-mode-html-preview-caption,.work-mode-html-preview-notice');
+}
+function workModeSpeechDOMTextNodes(root) {
+  const nodes = [];
+  const visit = node => {
+    if (!node) return;
+    if (node.nodeType === 3) {
+      if (String(node.textContent || '').trim() && !workModeSpeechHighlightSkipsNode(node)) nodes.push(node);
+      return;
+    }
+    if (node !== root && node.nodeType !== 1) return;
+    Array.from(node.childNodes || []).forEach(visit);
+  };
+  visit(root);
+  return nodes;
+}
+function workModeSpeechDOMTokens(root) {
+  const tokens = [];
+  workModeSpeechDOMTextNodes(root).forEach(node => {
+    workModeSpeechTokens(node.textContent || '').forEach(token => tokens.push({ ...token, node }));
+  });
+  return tokens;
+}
+function workModeSpeechTokenAlignment(spokenTokens, bodyTokens) {
+  const empty = new Array(spokenTokens.length).fill(-1);
+  if (!spokenTokens.length || !bodyTokens.length) return empty;
+  const candidates = [];
+  const seedCount = Math.min(6, spokenTokens.length);
+  for (let spokenIndex = 0; spokenIndex < seedCount; spokenIndex++) {
+    for (let bodyIndex = 0; bodyIndex < bodyTokens.length; bodyIndex++) {
+      if (spokenTokens[spokenIndex].key === bodyTokens[bodyIndex].key) candidates.push({ spokenIndex, bodyIndex });
+    }
+  }
+  if (!candidates.length) return empty;
+  const maxCandidates = 512;
+  const selectedCandidates = candidates.length <= maxCandidates
+    ? candidates
+    : Array.from({ length:maxCandidates }, (_, index) => candidates[Math.floor(index * (candidates.length - 1) / (maxCandidates - 1))]);
+  let best = null;
+  selectedCandidates.forEach(candidate => {
+    const mapping = new Array(spokenTokens.length).fill(-1);
+    mapping[candidate.spokenIndex] = candidate.bodyIndex;
+    let cursor = candidate.bodyIndex + 1;
+    for (let spokenIndex = candidate.spokenIndex + 1; spokenIndex < spokenTokens.length; spokenIndex++) {
+      const end = Math.min(bodyTokens.length, cursor + 64);
+      let match = -1;
+      for (let bodyIndex = cursor; bodyIndex < end; bodyIndex++) {
+        if (spokenTokens[spokenIndex].key === bodyTokens[bodyIndex].key) { match = bodyIndex; break; }
+      }
+      if (match >= 0) {
+        mapping[spokenIndex] = match;
+        cursor = match + 1;
+      }
+    }
+    cursor = candidate.bodyIndex - 1;
+    for (let spokenIndex = candidate.spokenIndex - 1; spokenIndex >= 0; spokenIndex--) {
+      const start = Math.max(0, cursor - 63);
+      let match = -1;
+      for (let bodyIndex = cursor; bodyIndex >= start; bodyIndex--) {
+        if (spokenTokens[spokenIndex].key === bodyTokens[bodyIndex].key) { match = bodyIndex; break; }
+      }
+      if (match >= 0) {
+        mapping[spokenIndex] = match;
+        cursor = match - 1;
+      }
+    }
+    const mapped = mapping.filter(index => index >= 0);
+    const count = mapped.length;
+    const first = count ? Math.min(...mapped) : Number.MAX_SAFE_INTEGER;
+    const last = count ? Math.max(...mapped) : -1;
+    const span = count ? last - first + 1 : Number.MAX_SAFE_INTEGER;
+    const gaps = count ? span - count : Number.MAX_SAFE_INTEGER;
+    const score = { mapping, count, gaps, seed: candidate.spokenIndex, first };
+    if (!best || score.count > best.count ||
+        (score.count === best.count && score.gaps < best.gaps) ||
+        (score.count === best.count && score.gaps === best.gaps && score.seed < best.seed) ||
+        (score.count === best.count && score.gaps === best.gaps && score.seed === best.seed && score.first < best.first)) best = score;
+  });
+  return best ? best.mapping : empty;
+}
+function workModeSpeechSentenceRange(text, charIndex, charLength) {
+  const value = String(text || '');
+  let start = Math.max(0, Math.min(value.length, Number.isFinite(Number(charIndex)) ? Number(charIndex) : 0));
+  while (start < value.length && /\s/.test(value[start])) start += 1;
+  if (Number.isFinite(Number(charLength)) && Number(charLength) > 0) {
+    return { start, end:Math.min(value.length, start + Number(charLength)) };
+  }
+  let end = start;
+  while (end < value.length && !/[.!?]/.test(value[end])) end += 1;
+  while (end < value.length && /[.!?"'”’\)\]]/.test(value[end])) end += 1;
+  return { start, end:Math.max(start, end) };
+}
+function workModeSpeechBoundaryTokenIndexes(spokenText, spokenTokens, event) {
+  if (!spokenTokens.length || !event) return [];
+  const name = String(event.name || '').toLowerCase();
+  if (name && name !== 'word' && name !== 'sentence') return [];
+  const charIndex = Math.max(0, Number.isFinite(Number(event.charIndex)) ? Number(event.charIndex) : 0);
+  if (name === 'sentence') {
+    const range = workModeSpeechSentenceRange(spokenText, charIndex, event.charLength);
+    return spokenTokens.map((token, index) => token.end > range.start && token.start < range.end ? index : -1).filter(index => index >= 0);
+  }
+  for (let index = 0; index < spokenTokens.length; index++) {
+    const token = spokenTokens[index];
+    if (charIndex >= token.start && charIndex < token.end) return [index];
+    if (token.start >= charIndex) return [index];
+  }
+  return [];
+}
+function findWorkModeSpeechMessageBody(index) {
+  if (index === null || index === undefined || index === '') return null;
+  const numericIndex = Number(index);
+  if (!Number.isFinite(numericIndex) || !document || typeof document.querySelector !== 'function') return null;
+  return document.querySelector(`.work-mode-message-body[data-work-message-body="${numericIndex}"]`);
+}
+function clearWorkModeReplySpeechHighlightVisual() {
+  if (typeof CSS !== 'undefined' && CSS.highlights && typeof CSS.highlights.delete === 'function') {
+    try { CSS.highlights.delete(WORK_MODE_SPEECH_HIGHLIGHT_NAME); } catch (_) {}
+  }
+  const spans = workModeReplySpeechHighlightSpans.splice(0);
+  const parents = new Set();
+  spans.forEach(span => {
+    if (!span || !span.parentNode) return;
+    const parent = span.parentNode;
+    while (span.firstChild) parent.insertBefore(span.firstChild, span);
+    parent.removeChild(span);
+    parents.add(parent);
+  });
+  parents.forEach(parent => {
+    try { if (typeof parent.normalize === 'function') parent.normalize(); } catch (_) {}
+  });
+}
+function resetWorkModeReplySpeechHighlight() {
+  clearWorkModeReplySpeechHighlightVisual();
+  workModeReplySpeechHighlightState = null;
+}
+function prepareWorkModeReplySpeechHighlight(index, spokenText, utterance) {
+  resetWorkModeReplySpeechHighlight();
+  const body = findWorkModeSpeechMessageBody(index);
+  const spokenTokens = workModeSpeechTokens(spokenText);
+  if (!body || !spokenTokens.length) return null;
+  const bodyTokens = workModeSpeechDOMTokens(body);
+  const mapping = workModeSpeechTokenAlignment(spokenTokens, bodyTokens);
+  workModeReplySpeechHighlightState = { index:Number(index), spokenText:String(spokenText || ''), utterance, body, spokenTokens, bodyTokens, mapping };
+  return workModeReplySpeechHighlightState;
+}
+function refreshWorkModeReplySpeechHighlightState(state) {
+  if (!state) return null;
+  const currentBody = findWorkModeSpeechMessageBody(state.index);
+  const hasConnectedTokens = state.body === currentBody && state.body && state.body.isConnected !== false && state.bodyTokens.every(token => token.node && token.node.isConnected !== false);
+  if (hasConnectedTokens) return state;
+  const body = currentBody;
+  if (!body) return null;
+  const bodyTokens = workModeSpeechDOMTokens(body);
+  state.body = body;
+  state.bodyTokens = bodyTokens;
+  state.mapping = workModeSpeechTokenAlignment(state.spokenTokens, bodyTokens);
+  return state;
+}
+function workModeSpeechHighlightRange(firstToken, lastToken = firstToken) {
+  if (!firstToken || !lastToken || !document || typeof document.createRange !== 'function') return null;
+  try {
+    const range = document.createRange();
+    range.setStart(firstToken.node, firstToken.start);
+    range.setEnd(lastToken.node, lastToken.end);
+    return range;
+  } catch (_) {
+    return null;
+  }
+}
+function applyWorkModeSpeechFallbackHighlight(bodyTokens) {
+  if (!document || typeof document.createElement !== 'function') return false;
+  let applied = false;
+  [...bodyTokens].sort((a, b) => b.order - a.order).forEach(item => {
+    const range = workModeSpeechHighlightRange(item.token);
+    if (!range || typeof range.surroundContents !== 'function') return;
+    try {
+      const span = document.createElement('span');
+      span.className = 'work-mode-speaking-word';
+      range.surroundContents(span);
+      workModeReplySpeechHighlightSpans.push(span);
+      applied = true;
+    } catch (_) {}
+  });
+  return applied;
+}
+function updateWorkModeReplySpeechHighlight(event, utterance) {
+  let state = workModeReplySpeechHighlightState;
+  if (!state || state.utterance !== utterance) return false;
+  state = refreshWorkModeReplySpeechHighlightState(state);
+  if (!state) return false;
+  const spokenIndexes = workModeSpeechBoundaryTokenIndexes(state.spokenText, state.spokenTokens, event);
+  const bodyIndexes = [...new Set(spokenIndexes.map(index => state.mapping[index]).filter(index => Number.isFinite(index) && index >= 0))].sort((a, b) => a - b);
+  if (!bodyIndexes.length) return false;
+  clearWorkModeReplySpeechHighlightVisual();
+  const selected = bodyIndexes.map(order => ({ order, token:state.bodyTokens[order] })).filter(item => item.token && item.token.node && item.token.node.isConnected !== false);
+  if (!selected.length) return false;
+  const first = selected[0].token;
+  const last = selected[selected.length - 1].token;
+  const range = workModeSpeechHighlightRange(first, last);
+  const HighlightClass = typeof globalThis !== 'undefined' ? globalThis.Highlight : null;
+  if (range && typeof CSS !== 'undefined' && CSS.highlights && typeof CSS.highlights.set === 'function' && typeof HighlightClass === 'function') {
+    try {
+      CSS.highlights.set(WORK_MODE_SPEECH_HIGHLIGHT_NAME, new HighlightClass(range));
+      return true;
+    } catch (_) {}
+  }
+  return applyWorkModeSpeechFallbackHighlight(selected);
+}
 function stopWorkModeReplySpeech(options = {}) {
   const utterance = workModeReplySpeechUtterance;
   if (utterance) {
     utterance.onstart = null;
+    utterance.onboundary = null;
+    utterance.onpause = null;
+    utterance.onresume = null;
     utterance.onend = null;
     utterance.onerror = null;
   }
+  resetWorkModeReplySpeechHighlight();
   if (isWorkModeReplySpeechSupported()) {
     try { window.speechSynthesis.resume(); } catch (_) {}
     try { window.speechSynthesis.cancel(); } catch (_) {}
@@ -19471,10 +19734,14 @@ function speakWorkModeReplyText(index, text, options = {}) {
     workModeReplySpeechUtterance = utterance;
     updateWorkModeReplySpeechButtons();
   };
+  utterance.onboundary = event => updateWorkModeReplySpeechHighlight(event, utterance);
+  utterance.onpause = () => clearWorkModeReplySpeechHighlightVisual();
+  utterance.onresume = () => clearWorkModeReplySpeechHighlightVisual();
   utterance.onend = () => {
     if (workModeReplySpeechUtterance === utterance) {
       workModeReplySpeechMessageIndex = null;
       workModeReplySpeechUtterance = null;
+      resetWorkModeReplySpeechHighlight();
       updateWorkModeReplySpeechButtons();
       restoreWorkModeReplyScrolling();
     }
@@ -19483,6 +19750,7 @@ function speakWorkModeReplyText(index, text, options = {}) {
     if (workModeReplySpeechUtterance === utterance) {
       workModeReplySpeechMessageIndex = null;
       workModeReplySpeechUtterance = null;
+      resetWorkModeReplySpeechHighlight();
       updateWorkModeReplySpeechButtons();
       restoreWorkModeReplyScrolling();
     }
@@ -19490,6 +19758,7 @@ function speakWorkModeReplyText(index, text, options = {}) {
   };
   workModeReplySpeechMessageIndex = idx;
   workModeReplySpeechUtterance = utterance;
+  prepareWorkModeReplySpeechHighlight(idx, spokenText, utterance);
   updateWorkModeReplySpeechButtons();
   try {
     window.speechSynthesis.speak(utterance);
@@ -19497,6 +19766,7 @@ function speakWorkModeReplyText(index, text, options = {}) {
   } catch (err) {
     workModeReplySpeechMessageIndex = null;
     workModeReplySpeechUtterance = null;
+    resetWorkModeReplySpeechHighlight();
     updateWorkModeReplySpeechButtons();
     if (!options.silent) showToast('Could not read this reply aloud.', 'warning', 2800);
     return false;
@@ -22258,16 +22528,19 @@ async function resetWorkModeCurrentSession() {
   workModeSettings.autoCompressImages = true;
   workModeMemoryContent = '';
   workModeMemoryName = '';
+  workModeMemoryFreshPending = false;
   const resettingTab = getWorkModeTab();
   if (resettingTab) {
     resettingTab.memoryDefaultApplied = false;
     resettingTab.settings = cloneWorkModeSettings(workModeSettings);
     resettingTab.memoryContent = '';
     resettingTab.memoryName = '';
+    resettingTab.memoryFreshPending = false;
     await applyWorkModeMemoryDefaultToTab(resettingTab);
     workModeSettings = cloneWorkModeSettings(resettingTab.settings);
     workModeMemoryContent = String(resettingTab.memoryContent || '');
     workModeMemoryName = String(resettingTab.memoryName || '');
+    workModeMemoryFreshPending = !!resettingTab.memoryFreshPending;
   }
   workModeMemoryMenuOpen = '';
   workModeObserverPaused = false;
@@ -22546,22 +22819,25 @@ async function applyWorkModeMemoryDefaultToTab(tab) {
   tab.settings.useMemory = false;
   tab.memoryName = '';
   tab.memoryContent = '';
+  tab.memoryFreshPending = false;
   try {
     if (mode === 'new') {
-      const data = await postWorkModeMemoryAction('/api/work-mode/memory/new');
+      await postWorkModeMemoryAction('/api/work-mode/memory/new');
       tab.settings.useMemory = true;
-      tab.memoryContent = String(data.activeContent || '');
-      syncContinuedWorkModeMemory(tab.memoryContent);
+      tab.memoryContent = '';
+      tab.memoryFreshPending = true;
     } else if (mode === 'continue') {
       const memoryState = await refreshWorkModeMemoryState();
       tab.settings.useMemory = true;
       tab.memoryContent = String(memoryState.activeContent || '');
+      tab.memoryFreshPending = false;
       syncContinuedWorkModeMemory(tab.memoryContent);
     } else if (mode === 'named' && state.defaultMemoryFile) {
       const data = await postWorkModeMemoryAction('/api/work-mode/memory/load', { name:state.defaultMemoryFile, sessionOnly:true });
       tab.settings.useMemory = true;
       tab.memoryName = String(data.name || state.defaultMemoryFile).trim();
       tab.memoryContent = String(data.content || '');
+      tab.memoryFreshPending = false;
       syncNamedWorkModeMemory(tab.memoryName, tab.memoryContent);
     }
     tab.memoryDefaultApplied = true;
@@ -22569,6 +22845,7 @@ async function applyWorkModeMemoryDefaultToTab(tab) {
     tab.settings.useMemory = false;
     tab.memoryName = '';
     tab.memoryContent = '';
+    tab.memoryFreshPending = false;
     tab.memoryDefaultApplied = false;
     showToast(err.message || 'Could not apply the default Work Mode memory.', 'warning', 3800);
   }
@@ -22718,7 +22995,7 @@ function closeWorkModeMemoryMenu() {
 async function openWorkModeMemoryMenu() {
   if (!activeProject) return showToast('Select a project first before using Work Mode Memory.', 'warning', 3200);
   if (activeBuilderCount() !== 1) return showToast('Work Mode Memory requires exactly one active Builder AI.', 'warning', 3400);
-  if (workModeSettings.useMemory) {
+  if (workModeSettings.useMemory && !workModeMemoryFreshPending) {
     if (String(workModeMemoryName || '').trim()) {
       turnOffWorkModeMemoryWithoutSaving();
       return;
@@ -22749,15 +23026,15 @@ async function postWorkModeMemoryAction(url, body = {}) {
 }
 async function startNewWorkModeMemory() {
   try {
-    const data = await postWorkModeMemoryAction('/api/work-mode/memory/new');
-    workModeMemoryContent = String(data.activeContent || '');
+    await postWorkModeMemoryAction('/api/work-mode/memory/new');
+    workModeMemoryContent = '';
     workModeMemoryName = '';
+    workModeMemoryFreshPending = true;
     workModeSettings.useMemory = true;
-    syncContinuedWorkModeMemory(workModeMemoryContent);
     workModeMemoryMenuOpen = '';
     updateWorkModeSettingsStatus();
     saveActiveWorkModeTabState();
-    showToast('New Work Mode memory started. The continued memory was cleared.', 'success', 3000);
+    showToast('New Work Mode memory started. The previous continued memory remains available until the first successful AI response.', 'success', 3600);
   } catch (err) {
     showToast(err.message || 'Could not start a new Work Mode memory.', 'warning', 3600);
   }
@@ -22767,6 +23044,7 @@ async function continueLastWorkModeMemory() {
     const state = await refreshWorkModeMemoryState();
     workModeMemoryContent = String(state.activeContent || '');
     workModeMemoryName = '';
+    workModeMemoryFreshPending = false;
     workModeSettings.useMemory = true;
     syncContinuedWorkModeMemory(workModeMemoryContent);
     workModeMemoryMenuOpen = '';
@@ -22782,6 +23060,7 @@ async function loadWorkModeMemoryFile(name) {
     const data = await postWorkModeMemoryAction('/api/work-mode/memory/load', { name, sessionOnly: true });
     workModeMemoryName = String(data.name || name || '').trim();
     workModeMemoryContent = String(data.content || '');
+    workModeMemoryFreshPending = false;
     workModeSettings.useMemory = true;
     workModeMemoryMenuOpen = '';
     saveActiveWorkModeTabState();
@@ -22802,11 +23081,13 @@ async function deleteWorkModeMemoryFile(name) {
       if (String(tab.memoryName || '').trim() !== clean) return;
       tab.memoryName = '';
       tab.memoryContent = '';
+      tab.memoryFreshPending = false;
       if (tab.settings) tab.settings.useMemory = false;
     });
     if (String(workModeMemoryName || '').trim() === clean) {
       workModeMemoryName = '';
       workModeMemoryContent = '';
+      workModeMemoryFreshPending = false;
       workModeSettings.useMemory = false;
     }
     workModeMemoryMenuOpen = 'enable';
@@ -22830,6 +23111,7 @@ async function saveCurrentWorkModeMemory() {
     const data = await postWorkModeMemoryAction('/api/work-mode/memory/save', { name, content: String(workModeMemoryContent || '') });
     workModeMemoryName = String(data.name || name || '').trim();
     workModeMemoryContent = String(data.content || workModeMemoryContent || '');
+    workModeMemoryFreshPending = false;
     syncNamedWorkModeMemory(workModeMemoryName, workModeMemoryContent);
     workModeSettings.useMemory = true;
     workModeMemoryMenuOpen = '';
@@ -22846,6 +23128,7 @@ function cancelTurnOffWorkModeMemory() {
 }
 function turnOffWorkModeMemoryWithoutSaving() {
   workModeSettings.useMemory = false;
+  workModeMemoryFreshPending = false;
   workModeMemoryMenuOpen = '';
   saveActiveWorkModeTabState();
   updateWorkModeSettingsStatus();
@@ -24034,6 +24317,11 @@ function applyWorkModeResponseMemory(data) {
   const nextContent = String(data.memory || '');
   workModeMemoryName = nextName;
   workModeMemoryContent = nextContent;
+  if (!nextName) {
+    workModeMemoryFreshPending = false;
+    const tab = getWorkModeTab();
+    if (tab) tab.memoryFreshPending = false;
+  }
   if (nextName) syncNamedWorkModeMemory(nextName, nextContent);
   else syncContinuedWorkModeMemory(nextContent);
 }
@@ -24075,6 +24363,7 @@ async function sendWorkModePrompt(options = {}) {
   const memoryEnabled = !!workModeSettings.useMemory;
   const memoryName = memoryEnabled ? String(workModeMemoryName || '').trim() : '';
   const memoryContent = memoryEnabled ? String(workModeMemoryContent || '') : '';
+  const freshMemory = memoryEnabled && !memoryName && !!workModeMemoryFreshPending;
 
   if (observerReviewActive) {
     const observerModelId = getActiveObserverModelId();
@@ -24130,6 +24419,7 @@ async function sendWorkModePrompt(options = {}) {
           includeRoleContext: workModeSettings.includeRoleContext !== false,
           useMemory: memoryEnabled,
           memoryName,
+          freshMemory,
           responseMode: normalizeResponseMode(workModeSettings.responseMode),
           agentGOStyling: workModeSettings.agentGOStyling !== false,
           smallModelPolishPass: false
@@ -24228,6 +24518,7 @@ async function sendWorkModePrompt(options = {}) {
         includeRoleContext: agenticActive ? false : workModeSettings.includeRoleContext !== false,
         useMemory: agenticActive ? false : memoryEnabled,
         memoryName: agenticActive ? '' : memoryName,
+        freshMemory: agenticActive ? false : freshMemory,
         responseMode: agenticActive ? 'auto' : normalizeResponseMode(workModeSettings.responseMode),
         agentGOStyling: agenticActive ? false : workModeSettings.agentGOStyling !== false,
         smallModelPolishPass: false,
@@ -24439,6 +24730,7 @@ function resetWorkModeState() {
   closeWorkModeAgenticRecoveryModal();
   workModeMemoryContent = '';
   workModeMemoryName = '';
+  workModeMemoryFreshPending = false;
   workModeMemoryDefaultState = { memoryDefault:'off', defaultMemoryFile:'', defaultMemoryModelId:'', saved:[], continuedExists:false, continuedContent:'', message:'' };
   workModeMemoryMenuOpen = '';
   workModePromptDraft = '';

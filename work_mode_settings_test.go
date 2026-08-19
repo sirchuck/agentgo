@@ -269,3 +269,69 @@ func TestDeletingNamedDefaultResetsProjectDefaultOff(t *testing.T) {
 		t.Fatalf("memory default = %q, want off", settings.MemoryDefault)
 	}
 }
+
+func TestFreshWorkModeMemoryStartsEmptyWithoutClearingContinuedMemory(t *testing.T) {
+	app := newWorkModeSettingsTestApp(t)
+	_, metaRoot, err := app.projectPaths(app.cfg.Models[0], "Demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	continuedPath, err := app.workModeContinuedMemoryPath("Demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const previous = "RECOVERABLE PREVIOUS MEMORY"
+	if err := writeWorkModeMemoryFile(continuedPath, previous); err != nil {
+		t.Fatal(err)
+	}
+
+	data, name, writePath, persist, err := resolveWorkModeRequestMemory(metaRoot, continuedPath, workModeRequest{UseMemory: true, FreshMemory: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(data) != 0 || name != "" || writePath != continuedPath || !persist {
+		t.Fatalf("fresh memory resolved data=%q name=%q path=%q persist=%v", string(data), name, writePath, persist)
+	}
+	preserved, err := os.ReadFile(continuedPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(preserved) != previous {
+		t.Fatalf("starting fresh memory changed recoverable continued memory to %q", string(preserved))
+	}
+}
+
+func TestHandleWorkModeMemoryNewPreservesContinueLastMemory(t *testing.T) {
+	app := newWorkModeSettingsTestApp(t)
+	session, err := app.rotateActiveSession("Demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	continuedPath, err := app.workModeContinuedMemoryPath("Demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const previous = "CONTINUE THIS AFTER RECONNECT"
+	if err := writeWorkModeMemoryFile(continuedPath, previous); err != nil {
+		t.Fatal(err)
+	}
+
+	request := httptest.NewRequest(http.MethodPost, "/api/work-mode/memory/new", strings.NewReader(`{"modelId":"1"}`))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set(activeSessionHeader, session.SessionID)
+	recorder := httptest.NewRecorder()
+	app.handleWorkModeMemoryNew(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	preserved, err := os.ReadFile(continuedPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(preserved) != previous {
+		t.Fatalf("New Memory erased Continue Last Memory: %q", string(preserved))
+	}
+	if !strings.Contains(recorder.Body.String(), previous) {
+		t.Fatalf("New Memory response no longer reports the recoverable continued memory: %s", recorder.Body.String())
+	}
+}
