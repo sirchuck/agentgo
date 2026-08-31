@@ -136,8 +136,12 @@ func TestWorkModeVoiceControlsTemplate(t *testing.T) {
 		`::highlight(agentgo-spoken-word)`,
 		`.work-mode-speaking-word{color:#fff!important`,
 		`utterance.onboundary = event => updateWorkModeReplySpeechHighlight(event, utterance)`,
-		`utterance.onpause = () => clearWorkModeReplySpeechHighlightVisual()`,
-		`utterance.onresume = () => clearWorkModeReplySpeechHighlightVisual()`,
+		`utterance.onpause = () => {`,
+		`utterance.onresume = () => {`,
+		`data-work-pause-message`,
+		`function toggleWorkModeReplySpeechPause(index)`,
+		`window.speechSynthesis.pause()`,
+		`window.speechSynthesis.resume()`,
 		`AgentGO couldn't understand your request.`,
 	} {
 		if !strings.Contains(source, required) {
@@ -181,6 +185,7 @@ func TestWorkModeSpokenWordHighlightJavaScriptFlow(t *testing.T) {
 const assert = require('node:assert/strict');
 let workModeReplySpeechHighlightState = null;
 let workModeReplySpeechHighlightSpans = [];
+let agentGOTTSHighlightEnabled = true;
 const WORK_MODE_SPEECH_HIGHLIGHT_NAME = 'agentgo-spoken-word';
 const visibleText = 'The server received the request yesterday. Next sentence follows.';
 const parentElement = {closest(){return null;}};

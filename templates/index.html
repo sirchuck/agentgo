@@ -3352,6 +3352,7 @@ body.deaddrop-popover-open {
 
 .risk-indicator{position:fixed;right:56px;bottom:170px;z-index:22;display:none;width:min(320px,calc(100vw - 40px));max-width:min(320px,calc(100vw - 40px));box-sizing:border-box;padding:12px 14px;border-radius:22px 22px 8px 22px;background:rgba(255,255,255,.97);color:#17355f;border:1px solid rgba(209,75,160,.22);box-shadow:0 18px 34px rgba(23,53,95,.18);overflow:visible}
 .risk-indicator.open{display:block}
+.risk-indicator.is-work-mode-menu{z-index:2190}
 .risk-indicator::before{content:"";position:absolute;right:20px;bottom:-15px;width:28px;height:18px;background:rgba(209,75,160,.22);clip-path:polygon(0 0,100% 0,84% 100%)}
 .risk-indicator::after{content:"";position:absolute;right:21px;bottom:-13px;width:26px;height:16px;background:rgba(255,255,255,.97);clip-path:polygon(0 0,100% 0,84% 100%);filter:drop-shadow(0 8px 10px rgba(23,53,95,.08))}
 .risk-indicator.is-ended{border-color:rgba(209,75,160,.34);background:rgba(255,247,252,.98)}
@@ -3365,7 +3366,7 @@ body.deaddrop-popover-open {
 .yeti-menu-risk-btn{background:linear-gradient(180deg,var(--frost-magenta-top),var(--frost-magenta-bottom));color:#fff;box-shadow:0 10px 24px var(--frost-magenta-shadow)}
 .yeti-menu-work-btn{background:linear-gradient(180deg,rgba(106,188,255,1),rgba(35,128,245,.98));color:#fff;box-shadow:0 10px 24px rgba(74,163,255,.34),inset 0 1px 0 rgba(255,255,255,.36)}
 .yeti-menu-work-status{margin:-2px 2px 2px;padding:8px 10px;border-radius:13px;background:rgba(255,255,255,.78);border:1px solid rgba(23,53,95,.10);display:grid;gap:4px;color:#17355f;box-shadow:inset 0 1px 0 rgba(255,255,255,.82)}.yeti-menu-work-status-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:.76rem;line-height:1.2}.yeti-menu-work-status-row strong{font-weight:950;color:#17355f}.yeti-menu-work-status-row span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;font-weight:850;color:#46627f}.yeti-menu-work-status-row.is-ready span{color:#0b6f8c}.yeti-menu-work-status-row.is-missing span{color:#8d2c68}
-.yeti-menu-voice{margin-top:10px;padding:9px 10px;border-radius:14px;background:rgba(255,255,255,.80);border:1px solid rgba(23,53,95,.10);display:grid;gap:7px;color:#17355f;box-shadow:inset 0 1px 0 rgba(255,255,255,.82);box-sizing:border-box;min-width:0;max-width:100%;overflow:hidden}.yeti-menu-voice-title{font-size:.72rem;font-weight:950;letter-spacing:.08em;text-transform:uppercase;color:#d14ba0}.yeti-menu-voice-row{display:grid;grid-template-columns:minmax(0,1fr) 34px;align-items:center;gap:7px;min-width:0;max-width:100%}.yeti-menu-voice-select{min-width:0;width:100%;max-width:100%;box-sizing:border-box;border:1px solid rgba(23,53,95,.14);border-radius:12px;background:rgba(255,255,255,.96);color:#17355f;font:inherit;font-size:.78rem;font-weight:850;padding:8px 9px;outline:none;overflow:hidden;text-overflow:ellipsis}.yeti-menu-voice-select:focus{border-color:rgba(74,163,255,.45);box-shadow:0 0 0 3px rgba(74,163,255,.12)}.yeti-menu-voice-test{appearance:none;width:34px;height:34px;border-radius:999px;border:1px solid rgba(74,163,255,.30);background:rgba(74,163,255,.12);color:#17355f;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;box-sizing:border-box}.yeti-menu-voice-test:hover{background:rgba(74,163,255,.20);color:#0c2344}.yeti-menu-voice-test svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9}.yeti-menu-voice-note{font-size:.70rem;line-height:1.25;color:#61748b;font-weight:750}
+.yeti-menu-voice{margin-top:10px;padding:9px 10px;border-radius:14px;background:rgba(255,255,255,.80);border:1px solid rgba(23,53,95,.10);display:grid;gap:7px;color:#17355f;box-shadow:inset 0 1px 0 rgba(255,255,255,.82);box-sizing:border-box;min-width:0;max-width:100%;overflow:hidden}.yeti-menu-voice-title{font-size:.72rem;font-weight:950;letter-spacing:.08em;text-transform:uppercase;color:#d14ba0}.yeti-menu-voice-row{display:grid;grid-template-columns:minmax(0,1fr) 34px;align-items:center;gap:7px;min-width:0;max-width:100%}.yeti-menu-voice-select{min-width:0;width:100%;max-width:100%;box-sizing:border-box;border:1px solid rgba(23,53,95,.14);border-radius:12px;background:rgba(255,255,255,.96);color:#17355f;font:inherit;font-size:.78rem;font-weight:850;padding:8px 9px;outline:none;overflow:hidden;text-overflow:ellipsis}.yeti-menu-voice-select:focus{border-color:rgba(74,163,255,.45);box-shadow:0 0 0 3px rgba(74,163,255,.12)}.yeti-menu-voice-test{appearance:none;width:34px;height:34px;border-radius:999px;border:1px solid rgba(74,163,255,.30);background:rgba(74,163,255,.12);color:#17355f;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;box-sizing:border-box}.yeti-menu-voice-test:hover{background:rgba(74,163,255,.20);color:#0c2344}.yeti-menu-voice-test svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9}.yeti-menu-voice-note{font-size:.70rem;line-height:1.25;color:#61748b;font-weight:750}.yeti-menu-voice-status{font-size:.70rem;line-height:1.3;color:#49637f;font-weight:800;padding:7px 8px;border-radius:10px;background:rgba(23,53,95,.055)}.yeti-menu-voice-speed{display:grid;grid-template-columns:auto minmax(80px,1fr) 42px;align-items:center;gap:7px;font-size:.70rem;font-weight:850;color:#49637f}.yeti-menu-voice-speed input{width:100%;min-width:0}.yeti-menu-voice-speed output{text-align:right;color:#17355f;font-variant-numeric:tabular-nums}.yeti-menu-voice-options{display:grid;grid-template-columns:1fr 1fr;gap:7px}.yeti-menu-voice-toggle{display:flex;align-items:center;gap:6px;font-size:.69rem;font-weight:850;color:#49637f;min-width:0}.yeti-menu-voice-toggle input{margin:0}.yeti-menu-voice-advanced{border-top:1px solid rgba(23,53,95,.10);padding-top:6px}.yeti-menu-voice-advanced summary{cursor:pointer;font-size:.69rem;font-weight:900;color:#49637f;user-select:none}.yeti-menu-voice-advanced-body{display:grid;gap:7px;padding-top:7px}.yeti-menu-voice-field{display:grid;gap:4px;font-size:.67rem;font-weight:850;color:#61748b}.yeti-menu-voice-field .yeti-menu-voice-select{font-size:.72rem;padding:7px 8px}.yeti-menu-voice-readme{font-size:.67rem;line-height:1.25;color:#61748b;font-weight:750;overflow-wrap:anywhere}
 .work-mode-overlay{--work-pink:#f5a6d7;--work-pink-strong:#d14ba0;--work-blue:#4aa3ff;--work-yellow:#ffe27c;position:fixed;inset:0;z-index:2100;display:none;background:#0b0d12;color:#f5f7fb;overflow:hidden}
 .work-mode-overlay.open{display:block}
 .work-mode-shell{height:100%;display:grid;grid-template-columns:minmax(250px,320px) minmax(0,1fr);background:radial-gradient(circle at 78% 16%,rgba(209,75,160,.18),transparent 30%),radial-gradient(circle at 24% 78%,rgba(74,163,255,.12),transparent 28%),linear-gradient(180deg,#10131b,#080a0f 62%);overflow:auto;scrollbar-width:none}.work-mode-shell::-webkit-scrollbar{width:0;height:0}
@@ -3437,10 +3438,11 @@ body.deaddrop-popover-open {
 .work-mode-ai-file-toggle.is-open svg{transform:rotate(180deg)}
 .work-mode-message-actions{display:inline-flex;align-items:center;gap:7px;margin-top:8px;vertical-align:middle}
 .work-mode-message-action-btn{appearance:none;width:30px;height:30px;border-radius:999px;border:1px solid rgba(74,163,255,.30);background:rgba(74,163,255,.10);color:#d9eeff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
-.work-mode-message-action-btn:hover{background:rgba(74,163,255,.18);color:#fff}.work-mode-message-action-btn.is-speaking{background:rgba(74,163,255,.24);color:#fff;box-shadow:0 0 0 1px rgba(74,163,255,.32)}
+.work-mode-message-action-btn:hover{background:rgba(74,163,255,.18);color:#fff}.work-mode-message-action-btn.is-speaking{background:rgba(74,163,255,.24);color:#fff;box-shadow:0 0 0 1px rgba(74,163,255,.32)}.work-mode-message-action-btn.is-preparing{color:#fff;background:rgba(74,163,255,.16)}.work-mode-message-action-btn.is-paused{background:rgba(255,255,255,.10);color:#fff}
 ::highlight(agentgo-spoken-word){color:#fff;text-shadow:0 0 3px rgba(255,255,255,.72),0 0 7px rgba(255,255,255,.28)}.work-mode-speaking-word{color:#fff!important;text-shadow:0 0 3px rgba(255,255,255,.72),0 0 7px rgba(255,255,255,.28)}
-.work-mode-message-action-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9}
-.work-mode-ai-speak-btn{margin:0}
+.work-mode-message-action-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9}.work-mode-speech-countdown{color:#fff;font-size:.82rem;font-weight:950;line-height:1;font-variant-numeric:tabular-nums}
+.work-mode-ai-speak-btn{margin:0}.work-mode-ai-speak-btn.is-speaking svg{animation:agentgo-speaker-breathe 1.25s ease-in-out infinite;transform-origin:center}.work-mode-ai-pause-btn[hidden]{display:none!important}.work-mode-ai-pause-btn.is-paused{background:rgba(74,163,255,.20);color:#fff}
+@keyframes agentgo-speaker-breathe{0%,100%{transform:scale(.92);opacity:.72}50%{transform:scale(1.08);opacity:1}}@media (prefers-reduced-motion:reduce){.work-mode-ai-speak-btn.is-speaking svg{animation:none;opacity:1;transform:none}}
 .work-mode-reset-btn{color:rgba(245,247,251,.74)}.work-mode-reset-btn:hover{background:rgba(209,75,160,.14);color:#fff}.work-mode-reset-btn svg{stroke-width:2.2}
 .work-mode-file-outputs{margin-top:12px;display:grid;gap:10px;border:1px solid rgba(74,163,255,.28);border-radius:16px;background:rgba(74,163,255,.08);padding:10px}
 .work-mode-file-output-head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#d9eeff;font-size:.82rem;font-weight:900}
@@ -3567,6 +3569,8 @@ body.deaddrop-popover-open {
 .log-line.is-toast{color:#0b3f8a;font-weight:700}
 .log-line.is-error{font-weight:700}
 .log-line strong{font-weight:800}
+.yeti-menu-voice-head{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}.yeti-menu-phonetics-link{appearance:none;border:0;background:transparent;padding:0;color:#49637f;font:inherit;font-size:.64rem;font-weight:950;letter-spacing:.065em;text-transform:uppercase;cursor:pointer;white-space:nowrap}.yeti-menu-phonetics-link:hover,.yeti-menu-phonetics-link:focus-visible{color:#d14ba0;text-decoration:underline;text-underline-offset:2px}.yeti-menu-phonetics-link:focus-visible{outline:2px solid rgba(209,75,160,.25);outline-offset:3px;border-radius:4px}
+.phonetics-modal{position:fixed;inset:0;z-index:4300;display:none;align-items:center;justify-content:center;padding:22px}.phonetics-modal.open{display:flex}.phonetics-backdrop{position:absolute;inset:0;background:rgba(6,9,16,.60);backdrop-filter:blur(4px)}.phonetics-dialog{position:relative;width:min(760px,94vw);max-height:min(82vh,820px);display:flex;flex-direction:column;overflow:hidden;border-radius:24px;background:linear-gradient(180deg,rgba(255,255,255,.995),rgba(243,248,253,.99));border:1px solid rgba(111,134,171,.18);box-shadow:0 32px 84px rgba(13,21,39,.34);padding:22px;color:#17304d}.phonetics-head{padding-right:84px}.phonetics-head h3{margin:0;color:#17304d;font-size:1.25rem}.phonetics-head p{margin:6px 0 0;color:#536b88;font-weight:700;line-height:1.45}.phonetics-path{margin-top:10px;font:700 .74rem/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#61748b;overflow-wrap:anywhere}.phonetics-editor{width:100%;min-height:340px;box-sizing:border-box;margin-top:14px;border-radius:16px;border:1px solid rgba(39,77,129,.18);background:#fff;color:#142d51;padding:14px;font:500 .86rem/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;resize:vertical;outline:none}.phonetics-editor:focus{border-color:rgba(74,163,255,.48);box-shadow:0 0 0 4px rgba(74,163,255,.10)}.phonetics-editor:disabled{opacity:.65}.phonetics-status{min-height:20px;margin-top:8px;font-size:.78rem;font-weight:750;color:#5b7092}.phonetics-status.is-warning{color:#a06016}.phonetics-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:12px;flex-wrap:wrap}.phonetics-actions button{appearance:none;border:0;border-radius:12px;padding:10px 16px;font-weight:900;cursor:pointer}.phonetics-cancel{background:rgba(27,54,91,.10);color:#203e68}.phonetics-save{background:#193d6b;color:#fff}.phonetics-actions button:disabled{opacity:.55;cursor:not-allowed}@media(max-width:620px){.phonetics-dialog{padding:18px}.phonetics-head{padding-right:70px}.phonetics-editor{min-height:300px}}
 .settings-dialog{width:min(880px,calc(100vw - 32px));max-height:min(82vh,860px)}.settings-meta-tabs{display:flex;gap:8px;margin:8px 0 12px;flex-wrap:wrap}.meta-tab{padding:10px 14px;border:none;border-radius:14px;font-weight:800;background:linear-gradient(180deg,rgba(241,246,252,1),rgba(215,226,239,.96));color:#17304d;cursor:pointer}.meta-tab.is-active{background:linear-gradient(180deg,var(--frost-magenta-top),var(--frost-magenta-bottom));color:white}.meta-editor{width:100%;min-height:340px;border-radius:16px;border:1px solid rgba(106,142,182,.28);padding:14px}.meta-save-row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:10px}.meta-save-btn{padding:10px 16px;font-weight:800;border:none;border-radius:14px;background:var(--frost-blue);color:#fff;box-shadow:0 10px 24px var(--frost-blue-shadow)}.risk-select{width:100%;border-radius:14px;border:1px solid rgba(106,142,182,.28);padding:12px 14px}.risk-modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}.risk-cancel-btn,.risk-confirm-btn{padding:10px 16px;border:none;border-radius:14px;font-weight:800;cursor:pointer}.risk-cancel-btn{background:linear-gradient(180deg,rgba(241,246,252,1),rgba(215,226,239,.96));color:#10203a}.risk-confirm-btn{background:linear-gradient(180deg,var(--frost-magenta-top),var(--frost-magenta-bottom));color:#fff;box-shadow:0 10px 24px var(--frost-magenta-shadow)}.risk-modal-card{width:min(540px,94vw);height:auto}.risk-modal-body{padding:18px;color:#12233e;display:grid;gap:14px}.risk-modal-body p{margin:0;line-height:1.55}.confirm-modal-card{width:min(520px,92vw);height:auto}.confirm-modal-body{padding:18px;color:#12233e;display:grid;gap:12px}.confirm-modal-copy{margin:0;line-height:1.58;color:#21344f;white-space:pre-wrap}.confirm-modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:4px}.rename-file-modal-card{width:min(560px,92vw);height:auto}.rename-file-modal-body{padding:18px;color:#12233e;display:grid;gap:12px}.rename-file-copy{margin:0;line-height:1.5;color:#21344f;font-weight:700}.rename-file-input{width:100%;border:1px solid rgba(23,53,95,.18);border-radius:14px;padding:12px 14px;font:inherit;font-weight:700;color:#17325c;background:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.92)}.rename-file-input:focus{outline:none;border-color:rgba(23,53,95,.36);box-shadow:0 0 0 4px rgba(23,53,95,.10)}.rename-file-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:4px}
 
 
@@ -7460,7 +7464,7 @@ body.deaddrop-popover-open {
 </div>
 </main>
 </div>
-<img alt="Hide Work Mode" class="work-mode-yeti" id="workModeYeti" src="/assets/fc_agentgo_yetti.png" title="Hide Work Mode"/>
+<img alt="Yeti menu" aria-controls="riskIndicator" aria-expanded="false" class="work-mode-yeti" id="workModeYeti" src="/assets/fc_agentgo_yetti.png" tabindex="0" title="Open Yeti menu"/>
 <div class="work-mode-context-menu" hidden id="workModeFolderContextMenu">
 <button type="button" data-work-create-folder>Create Folder</button>
 <button type="button" data-work-create-file>Create File</button>
@@ -7965,7 +7969,16 @@ let masterMindReturnFocus = null;
 let riskState = { enabled: false, iterationsRemaining: 0, iterationsTotal: 0, originalPrompt: '', currentIteration: 0, statusTitle: '', statusLines: [], stopReason: '', showBubble: false };
 const AGENTGO_HTTP_PORT = Number({{.HTTPPort}} || 0);
 const AGENTGO_HTTPS_PORT = Number({{.HTTPSPort}} || 0);
-let agentGOTTSVoice = String({{.TTSVoiceJSON}} || '').trim();
+let agentGOTTSEnabled = {{if .TTSEnabledJSON}}Boolean({{.TTSEnabledJSON}}){{else}}true{{end}};
+let agentGOTTSVoice = String({{if .TTSVoiceJSON}}{{.TTSVoiceJSON}}{{else}}""{{end}} || '').trim();
+let agentGOTTSLegacyVoice = String({{if .TTSLegacyVoiceJSON}}{{.TTSLegacyVoiceJSON}}{{else}}""{{end}} || '').trim();
+let agentGOTTSSpeed = Number({{if .TTSSpeedJSON}}{{.TTSSpeedJSON}}{{else}}1{{end}} || 1);
+if (!Number.isFinite(agentGOTTSSpeed)) agentGOTTSSpeed = 1;
+agentGOTTSSpeed = Math.min(1.5, Math.max(0.75, agentGOTTSSpeed));
+let agentGOTTSHighlightEnabled = {{if .TTSHighlightJSON}}Boolean({{.TTSHighlightJSON}}){{else}}true{{end}};
+let agentGOTTSEngine = String({{if .TTSEngineJSON}}{{.TTSEngineJSON}}{{else}}"auto"{{end}} || 'auto').trim().toLowerCase() === 'legacy' ? 'legacy' : 'auto';
+let agentGOKokoroStatus = {{if .KokoroStatusJSON}}{{.KokoroStatusJSON}}{{else}}{}{{end}} || {};
+let agentGOPhoneticsReturnFocus = null;
 let workModeVoiceStartCommand = String({{.VoiceStartCommandJSON}} || 'AgentGO Start').trim() || 'AgentGO Start';
 let workModeVoiceSendCommand = String({{.VoiceSendCommandJSON}} || 'AgentGO Send').trim() || 'AgentGO Send';
 let workModeVoiceRepeatCommand = String({{.VoiceRepeatCommandJSON}} || 'AgentGO Repeat').trim() || 'AgentGO Repeat';
@@ -7985,9 +7998,16 @@ let workModeHandsFreeBuffer = '';
 let workModeHandsFreePromptBase = '';
 let workModeReplySpeechMessageIndex = null;
 let workModeReplySpeechUtterance = null;
+let workModeReplySpeechPaused = false;
+let workModeKokoroSpeechSession = null;
+let workModeKokoroSpeechGeneration = 0;
+let workModeKokoroAudioContext = null;
 let workModeReplySpeechHighlightState = null;
 let workModeReplySpeechHighlightSpans = [];
 const WORK_MODE_SPEECH_HIGHLIGHT_NAME = 'agentgo-spoken-word';
+const WORK_MODE_KOKORO_PREBUFFER_SECONDS = 5;
+const WORK_MODE_KOKORO_FIRST_REQUEST_TARGET_RUNES = 100;
+const WORK_MODE_KOKORO_REQUEST_TARGET_RUNES = 180;
 let workModeFileTree = null;
 let workModeTmpWorkTree = null;
 let workModeTreeLoadedProject = "";
@@ -17875,8 +17895,11 @@ function renderYetiWorkModeStatus() {
   </div>`;
 }
 function isYetiVoiceSelectActive() {
-  const select = document.getElementById('yetiTTSVoiceSelect');
-  return !!(select && document.activeElement === select);
+  const ids = ['yetiTTSVoiceSelect', 'yetiTTSSpeedRange'];
+  return ids.some(id => {
+    const node = document.getElementById(id);
+    return !!(node && document.activeElement === node);
+  });
 }
 function refreshYetiWorkModeStatusInPlace() {
   const bubble = document.getElementById('riskIndicator');
@@ -17909,6 +17932,41 @@ function refreshYetiMenuInPlace(options = {}) {
 }
 function isAgentGOTTSSupported() {
   return !!(window.speechSynthesis && window.SpeechSynthesisUtterance);
+}
+function agentGOKokoroVoices() {
+  const voices = Array.isArray(agentGOKokoroStatus && agentGOKokoroStatus.voices) ? agentGOKokoroStatus.voices : [];
+  return voices.map(value => String(value || '').trim()).filter(Boolean);
+}
+function agentGOKokoroVoiceLabel(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return 'Unknown voice';
+  const body = raw.replace(/^[a-z]{2}_/i, '').replace(/[_-]+/g, ' ').trim();
+  if (!body) return raw;
+  return body.replace(/\b\w/g, ch => ch.toUpperCase());
+}
+const AGENTGO_KOKORO_VOICE_PREFIX = 'kokoro:';
+const AGENTGO_OTHER_VOICE_PREFIX = 'other:';
+function agentGOKokoroVoiceChoice(value) {
+  return AGENTGO_KOKORO_VOICE_PREFIX + String(value || '').trim();
+}
+function agentGOOtherVoiceChoice(value) {
+  return AGENTGO_OTHER_VOICE_PREFIX + String(value || '').trim();
+}
+function parseAgentGOVoiceChoice(value) {
+  const raw = String(value || '');
+  if (raw.startsWith(AGENTGO_KOKORO_VOICE_PREFIX)) return { provider:'kokoro', voice:raw.slice(AGENTGO_KOKORO_VOICE_PREFIX.length).trim() };
+  if (raw.startsWith(AGENTGO_OTHER_VOICE_PREFIX)) return { provider:'other', voice:raw.slice(AGENTGO_OTHER_VOICE_PREFIX.length).trim() };
+  return { provider:'', voice:'' };
+}
+function agentGOKokoroReadmePath() {
+  return String((agentGOKokoroStatus && agentGOKokoroStatus.readme_path) || 'assets/kokoro/Kokoro.md');
+}
+function agentGOKokoroAvailable() {
+  return !!(agentGOKokoroStatus && agentGOKokoroStatus.available && agentGOKokoroVoices().length);
+}
+function effectiveAgentGOTTSEngine() {
+  if (agentGOTTSEngine === 'legacy') return 'legacy';
+  return agentGOKokoroAvailable() ? 'kokoro' : 'legacy';
 }
 function agentGOTTSVoiceKey(voice) {
   if (!voice) return '';
@@ -17945,7 +18003,7 @@ function refreshAgentGOTTSVoices(options = {}) {
   }
   return changed;
 }
-function findAgentGOTTSVoice(value = agentGOTTSVoice) {
+function findAgentGOTTSVoice(value = agentGOTTSLegacyVoice) {
   const target = String(value || '').trim();
   if (!target || !isAgentGOTTSSupported()) return null;
   if (!agentGOTTSVoices.length) refreshAgentGOTTSVoices();
@@ -17954,72 +18012,278 @@ function findAgentGOTTSVoice(value = agentGOTTSVoice) {
 }
 function applyAgentGOTTSVoiceToUtterance(utterance) {
   if (!utterance) return utterance;
-  const voice = findAgentGOTTSVoice();
+  const voice = findAgentGOTTSVoice(agentGOTTSLegacyVoice);
   if (voice) {
     utterance.voice = voice;
     if (voice.lang) utterance.lang = voice.lang;
   } else {
     utterance.lang = navigator.language || 'en-US';
   }
+  utterance.rate = Math.min(1.5, Math.max(0.75, Number(agentGOTTSSpeed) || 1));
   return utterance;
 }
-function renderYetiVoiceSection() {
-  const supported = isAgentGOTTSSupported();
-  if (!supported) {
-    return `<div class="yeti-menu-voice"><div class="yeti-menu-voice-title">AgentGO Voice</div><div class="yeti-menu-voice-note">Text-to-speech is not supported in this browser.</div></div>`;
-  }
-  refreshAgentGOTTSVoices();
-  const selected = String(agentGOTTSVoice || '').trim();
-  let matched = !selected;
-  const options = [`<option value="" ${selected ? '' : 'selected'}>Default browser voice</option>`];
-  agentGOTTSVoices.forEach(voice => {
-    const key = agentGOTTSVoiceKey(voice);
-    const isSelected = !!selected && (key === selected || String(voice.name || '').trim() === selected);
-    if (isSelected) matched = true;
-    options.push(`<option value="${escapeHtml(key)}" ${isSelected ? 'selected' : ''}>${escapeHtml(agentGOTTSVoiceLabel(voice))}</option>`);
-  });
-  if (selected && !matched) {
-    options.push(`<option value="${escapeHtml(selected)}" selected>Saved voice unavailable</option>`);
-  }
-  const note = agentGOTTSVoices.length ? '' : '<div class="yeti-menu-voice-note">Chrome may still be loading available voices. Reopen this menu in a moment if the list is empty.</div>';
-  return `<div class="yeti-menu-voice"><div class="yeti-menu-voice-title">AgentGO Voice</div><div class="yeti-menu-voice-row"><select class="yeti-menu-voice-select" id="yetiTTSVoiceSelect" aria-label="AgentGO text-to-speech voice">${options.join('')}</select><button class="yeti-menu-voice-test" id="yetiTestVoiceBtn" type="button" aria-label="Test selected AgentGO voice" title="Test selected voice">${renderWorkModeSpeakerIcon()}</button></div>${note}</div>`;
+function applyAgentGOTTSConfigResponse(resp) {
+  if (!resp || typeof resp !== 'object') return;
+  if (typeof resp.tts_enabled === 'boolean') agentGOTTSEnabled = resp.tts_enabled;
+  if (typeof resp.tts_voice === 'string') agentGOTTSVoice = String(resp.tts_voice || '').trim();
+  if (typeof resp.tts_legacy_voice === 'string') agentGOTTSLegacyVoice = String(resp.tts_legacy_voice || '').trim();
+  if (Number.isFinite(Number(resp.tts_speed))) agentGOTTSSpeed = Math.min(1.5, Math.max(0.75, Number(resp.tts_speed)));
+  if (typeof resp.tts_highlight === 'boolean') agentGOTTSHighlightEnabled = resp.tts_highlight;
+  if (typeof resp.tts_engine === 'string') agentGOTTSEngine = String(resp.tts_engine).toLowerCase() === 'legacy' ? 'legacy' : 'auto';
+  if (resp.kokoro && typeof resp.kokoro === 'object') agentGOKokoroStatus = resp.kokoro;
 }
-async function saveAgentGOTTSVoice(value) {
-  const previous = agentGOTTSVoice;
-  const next = String(value || '').trim();
-  if (previous === next) return;
-  agentGOTTSVoice = next;
+function agentGOTTSConfigSnapshot() {
+  return {
+    enabled: agentGOTTSEnabled,
+    voice: agentGOTTSVoice,
+    legacyVoice: agentGOTTSLegacyVoice,
+    speed: agentGOTTSSpeed,
+    highlight: agentGOTTSHighlightEnabled,
+    engine: agentGOTTSEngine,
+    kokoro: agentGOKokoroStatus,
+  };
+}
+function restoreAgentGOTTSConfigSnapshot(snapshot) {
+  if (!snapshot) return;
+  agentGOTTSEnabled = !!snapshot.enabled;
+  agentGOTTSVoice = String(snapshot.voice || '').trim();
+  agentGOTTSLegacyVoice = String(snapshot.legacyVoice || '').trim();
+  agentGOTTSSpeed = Math.min(1.5, Math.max(0.75, Number(snapshot.speed) || 1));
+  agentGOTTSHighlightEnabled = !!snapshot.highlight;
+  agentGOTTSEngine = snapshot.engine === 'legacy' ? 'legacy' : 'auto';
+  agentGOKokoroStatus = snapshot.kokoro || {};
+}
+function applyAgentGOTTSLocalPatch(patch = {}) {
+  if (Object.prototype.hasOwnProperty.call(patch, 'tts_enabled')) agentGOTTSEnabled = !!patch.tts_enabled;
+  if (Object.prototype.hasOwnProperty.call(patch, 'tts_voice')) agentGOTTSVoice = String(patch.tts_voice || '').trim();
+  if (Object.prototype.hasOwnProperty.call(patch, 'tts_legacy_voice')) agentGOTTSLegacyVoice = String(patch.tts_legacy_voice || '').trim();
+  if (Object.prototype.hasOwnProperty.call(patch, 'tts_speed')) agentGOTTSSpeed = Math.min(1.5, Math.max(0.75, Number(patch.tts_speed) || 1));
+  if (Object.prototype.hasOwnProperty.call(patch, 'tts_highlight')) agentGOTTSHighlightEnabled = !!patch.tts_highlight;
+  if (Object.prototype.hasOwnProperty.call(patch, 'tts_engine')) agentGOTTSEngine = String(patch.tts_engine || '').toLowerCase() === 'legacy' ? 'legacy' : 'auto';
+}
+async function saveAgentGOTTSConfig(patch, options = {}) {
+  const snapshot = agentGOTTSConfigSnapshot();
+  applyAgentGOTTSLocalPatch(patch);
+  const audioChanged = ['tts_enabled','tts_voice','tts_legacy_voice','tts_speed','tts_engine'].some(key => Object.prototype.hasOwnProperty.call(patch || {}, key));
+  if (audioChanged) discardWorkModePreparedKokoroSpeech();
+  if (!agentGOTTSEnabled) stopWorkModeReplySpeech({ silent: true });
+  if (!agentGOTTSHighlightEnabled) clearWorkModeReplySpeechHighlightVisual();
+  updateWorkModeSpeechUI();
   const seq = ++agentGOTTSVoiceSaveSeq;
   refreshYetiVoiceSectionInPlace({ force: false });
   try {
-    const resp = await api('/api/config/tts', { method: 'POST', body: JSON.stringify({ tts_voice: next }) });
-    if (resp && typeof resp.tts_voice === 'string') agentGOTTSVoice = String(resp.tts_voice || '').trim();
+    const resp = await api('/api/config/tts', { method: 'POST', body: JSON.stringify(patch || {}) });
+    applyAgentGOTTSConfigResponse(resp);
     if (seq === agentGOTTSVoiceSaveSeq) {
       refreshYetiVoiceSectionInPlace({ force: false });
-      showToast(agentGOTTSVoice ? 'AgentGO voice saved.' : 'AgentGO voice reset to default.');
+      updateWorkModeSpeechUI();
+      if (!options.silent) showToast(options.message || 'AgentGO speech settings saved.');
     }
+    return resp;
   } catch (err) {
-    agentGOTTSVoice = previous;
+    restoreAgentGOTTSConfigSnapshot(snapshot);
     refreshYetiVoiceSectionInPlace({ force: true });
-    showToast((err && err.message) || 'Could not save AgentGO voice.', 'warning', 3400);
+    updateWorkModeSpeechUI();
+    if (!options.silent) showToast((err && err.message) || 'Could not save AgentGO speech settings.', 'warning', 3400);
+    throw err;
   }
+}
+async function saveAgentGOTTSUnifiedVoice(value) {
+  const choice = parseAgentGOVoiceChoice(value);
+  if (choice.provider === 'kokoro' && choice.voice) {
+    return saveAgentGOTTSConfig({ tts_voice: choice.voice, tts_engine: 'auto' }, { message: 'AgentGO Kokoro voice saved.' });
+  }
+  if (choice.provider === 'other') {
+    return saveAgentGOTTSConfig({ tts_legacy_voice: choice.voice, tts_engine: 'legacy' }, { message: 'AgentGO system voice saved.' });
+  }
+  throw new Error('Unknown AgentGO voice selection.');
+}
+async function reconcileAgentGOKokoroVoice() {
+  const voices = agentGOKokoroVoices();
+  if (agentGOTTSEngine === 'legacy' || !agentGOKokoroAvailable() || !voices.length) return false;
+  if (voices.includes(String(agentGOTTSVoice || '').trim())) return false;
+  await saveAgentGOTTSConfig({ tts_voice: voices[0] }, { silent: true });
+  return true;
+}
+async function refreshAgentGOKokoroStatus(options = {}) {
+  try {
+    const resp = await api('/api/tts/status');
+    applyAgentGOTTSConfigResponse(resp);
+    await reconcileAgentGOKokoroVoice();
+    if (options.render !== false && yetiMenuOpen) refreshYetiVoiceSectionInPlace({ force: false });
+    updateWorkModeSpeechUI();
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+function scheduleAgentGOKokoroStartupRefresh(attempt = 0) {
+  refreshAgentGOKokoroStatus({ render:false }).then(() => {
+    const status = agentGOKokoroStatus || {};
+    const state = String(status.state || '').toLowerCase();
+    const installed = !!(status.model_present && status.voices_present && status.helper_present);
+    const initializing = ['not-started','checking','starting','initializing'].includes(state);
+    if (installed && !status.available && initializing && attempt < 120) {
+      setTimeout(() => scheduleAgentGOKokoroStartupRefresh(attempt + 1), 1000);
+    }
+  }).catch(() => {});
+}
+async function openAgentGOPhonetics() {
+  const modal = document.getElementById('phoneticsModal');
+  const editor = document.getElementById('phoneticsEditor');
+  const status = document.getElementById('phoneticsStatus');
+  const path = document.getElementById('phoneticsPath');
+  const saveBtn = document.getElementById('phoneticsSaveBtn');
+  if (!modal || !editor || !status || !path || !saveBtn) return false;
+  agentGOPhoneticsReturnFocus = document.activeElement;
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden', 'false');
+  editor.disabled = true;
+  saveBtn.disabled = true;
+  status.classList.remove('is-warning');
+  status.textContent = 'Loading custom phonetics…';
+  try {
+    const resp = await api('/api/config/tts/phonetics');
+    editor.value = String(resp.content || '');
+    path.textContent = String(resp.path || 'system_prompts/phonetics.md');
+    const count = Math.max(0, Number(resp.rule_count) || 0);
+    const ignored = Math.max(0, Number(resp.ignored_lines) || 0);
+    status.textContent = ignored
+      ? `${count} pronunciation rule${count === 1 ? '' : 's'} loaded · ${ignored} malformed line${ignored === 1 ? '' : 's'} ignored.`
+      : `${count} pronunciation rule${count === 1 ? '' : 's'} loaded.`;
+    status.classList.toggle('is-warning', ignored > 0);
+    editor.disabled = false;
+    saveBtn.disabled = false;
+    editor.focus();
+    return true;
+  } catch (err) {
+    status.classList.add('is-warning');
+    status.textContent = (err && err.message) || 'Could not load custom phonetics.';
+    return false;
+  }
+}
+function closeAgentGOPhonetics() {
+  const modal = document.getElementById('phoneticsModal');
+  if (!modal || !modal.classList.contains('open')) return;
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden', 'true');
+  const focus = agentGOPhoneticsReturnFocus;
+  agentGOPhoneticsReturnFocus = null;
+  try { if (focus && focus.isConnected !== false && typeof focus.focus === 'function') focus.focus(); } catch (_) {}
+}
+async function saveAgentGOPhonetics() {
+  const editor = document.getElementById('phoneticsEditor');
+  const status = document.getElementById('phoneticsStatus');
+  const saveBtn = document.getElementById('phoneticsSaveBtn');
+  if (!editor || !status || !saveBtn) return false;
+  saveBtn.disabled = true;
+  editor.disabled = true;
+  status.classList.remove('is-warning');
+  status.textContent = 'Saving custom phonetics…';
+  try {
+    const resp = await api('/api/config/tts/phonetics', {
+      method:'POST',
+      body:JSON.stringify({ content:String(editor.value || '') }),
+    });
+    const count = Math.max(0, Number(resp.rule_count) || 0);
+    const ignored = Math.max(0, Number(resp.ignored_lines) || 0);
+    discardWorkModePreparedKokoroSpeech();
+    if (ignored) {
+      editor.value = String(resp.content || editor.value || '');
+      editor.disabled = false;
+      saveBtn.disabled = false;
+      status.classList.add('is-warning');
+      status.textContent = `Saved ${count} pronunciation rule${count === 1 ? '' : 's'}; ${ignored} malformed line${ignored === 1 ? '' : 's'} will be ignored.`;
+      editor.focus();
+      return true;
+    }
+    showToast(`Custom phonetics saved · ${count} rule${count === 1 ? '' : 's'}.`);
+    closeAgentGOPhonetics();
+    return true;
+  } catch (err) {
+    editor.disabled = false;
+    saveBtn.disabled = false;
+    status.classList.add('is-warning');
+    status.textContent = (err && err.message) || 'Could not save custom phonetics.';
+    editor.focus();
+    return false;
+  }
+}
+function renderYetiVoiceSection() {
+  refreshAgentGOTTSVoices();
+  const kokoroVoices = agentGOKokoroVoices();
+  const kokoroReady = agentGOKokoroAvailable();
+  const legacySupported = isAgentGOTTSSupported();
+  const readmePath = agentGOKokoroReadmePath();
+  const speed = Math.min(1.5, Math.max(0.75, Number(agentGOTTSSpeed) || 1));
+  const selectedProvider = agentGOTTSEngine === 'legacy' || !kokoroReady ? 'other' : 'kokoro';
+  const selectedKokoro = String(agentGOTTSVoice || '').trim();
+  const selectedOther = String(agentGOTTSLegacyVoice || '').trim();
+  const groups = [];
+  if (kokoroReady) {
+    const options = kokoroVoices.map((voice, index) => {
+      const isSelected = selectedProvider === 'kokoro' && (selectedKokoro ? voice === selectedKokoro : index === 0);
+      return `<option value="${escapeHtml(agentGOKokoroVoiceChoice(voice))}" ${isSelected ? 'selected' : ''}>${escapeHtml(agentGOKokoroVoiceLabel(voice))}</option>`;
+    });
+    groups.push(`<optgroup label="Kokoro">${options.join('')}</optgroup>`);
+  }
+  if (legacySupported) {
+    let legacyMatched = !selectedOther;
+    const options = [`<option value="${escapeHtml(agentGOOtherVoiceChoice(''))}" ${selectedProvider === 'other' && !selectedOther ? 'selected' : ''}>Default browser/system voice</option>`];
+    agentGOTTSVoices.forEach(voice => {
+      const key = agentGOTTSVoiceKey(voice);
+      const isSaved = !!selectedOther && (key === selectedOther || String(voice.name || '').trim() === selectedOther);
+      const isSelected = selectedProvider === 'other' && isSaved;
+      if (isSaved) legacyMatched = true;
+      options.push(`<option value="${escapeHtml(agentGOOtherVoiceChoice(key))}" ${isSelected ? 'selected' : ''}>${escapeHtml(agentGOTTSVoiceLabel(voice))}</option>`);
+    });
+    if (selectedOther && !legacyMatched) {
+      options.push(`<option value="${escapeHtml(agentGOOtherVoiceChoice(selectedOther))}" ${selectedProvider === 'other' ? 'selected' : ''}>Saved system voice unavailable</option>`);
+    }
+    groups.push(`<optgroup label="Other">${options.join('')}</optgroup>`);
+  }
+  if (!groups.length) groups.push('<option value="" selected disabled>No speech voices available</option>');
+  const voiceDisabled = groups.length === 1 && groups[0].startsWith('<option');
+  const testSupported = selectedProvider === 'kokoro'
+    ? kokoroReady && isAgentGOKokoroPlaybackSupported()
+    : legacySupported;
+  const kokoroStatus = kokoroReady ? '' : `<div class="yeti-menu-voice-status">${escapeHtml(String((agentGOKokoroStatus && agentGOKokoroStatus.message) || 'Local Kokoro voices are not installed. Using system speech.'))} See <strong>${escapeHtml(readmePath)}</strong> for installation instructions.</div>`;
+  const legacyNote = !legacySupported && !kokoroReady
+    ? '<div class="yeti-menu-voice-note">Browser/system speech is not supported in this browser.</div>'
+    : (legacySupported && !agentGOTTSVoices.length ? '<div class="yeti-menu-voice-note">System voices may still be loading; the default browser/system voice remains available.</div>' : '');
+  return `<div class="yeti-menu-voice">
+    <div class="yeti-menu-voice-head"><div class="yeti-menu-voice-title">AgentGO Voice</div><button class="yeti-menu-phonetics-link" id="yetiPhoneticsBtn" type="button">Custom Phonetics</button></div>
+    <div class="yeti-menu-voice-row"><select class="yeti-menu-voice-select" id="yetiTTSVoiceSelect" ${voiceDisabled ? 'disabled' : ''} aria-label="AgentGO preferred voice">${groups.join('')}</select><button class="yeti-menu-voice-test" id="yetiTestVoiceBtn" type="button" ${agentGOTTSEnabled && testSupported ? '' : 'disabled'} aria-label="Test selected AgentGO voice" title="Test selected AgentGO voice">${renderWorkModeSpeakerIcon()}</button></div>
+    ${kokoroStatus}
+    ${legacyNote}
+    <div class="yeti-menu-voice-speed"><label for="yetiTTSSpeedRange">Speech Speed</label><input id="yetiTTSSpeedRange" type="range" min="0.75" max="1.50" step="0.05" value="${speed.toFixed(2)}" aria-label="AgentGO speech speed"><output id="yetiTTSSpeedValue">${speed.toFixed(2)}×</output></div>
+    <div class="yeti-menu-voice-options">
+      <label class="yeti-menu-voice-toggle"><input id="yetiTTSEnabledToggle" type="checkbox" ${agentGOTTSEnabled ? 'checked' : ''}>Speech enabled</label>
+      <label class="yeti-menu-voice-toggle"><input id="yetiTTSHighlightToggle" type="checkbox" ${agentGOTTSHighlightEnabled ? 'checked' : ''}>Word highlight</label>
+    </div>
+    <div class="yeti-menu-voice-readme">Kokoro files are never downloaded automatically. Manual setup: ${escapeHtml(readmePath)}</div>
+    <div class="yeti-menu-voice-readme">When Kokoro is installed, AgentGO loads the model into memory at startup and keeps it ready until AgentGO quits.</div>
+  </div>`;
 }
 function testAgentGOTTSVoice() {
-  if (!isAgentGOTTSSupported()) {
-    showToast('Text-to-speech is not supported in this browser.', 'warning', 3200);
+  if (!agentGOTTSEnabled) {
+    showToast('AgentGO speech is disabled.', 'warning', 2800);
     return;
   }
-  refreshAgentGOTTSVoices();
-  stopWorkModeReplySpeech({ silent: true });
-  const utterance = applyAgentGOTTSVoiceToUtterance(new SpeechSynthesisUtterance('This is the selected AgentGO voice.'));
-  utterance.onerror = () => showToast('Could not test this voice.', 'warning', 2800);
-  try { window.speechSynthesis.speak(utterance); } catch (_) { showToast('Could not test this voice.', 'warning', 2800); }
+  if (!isWorkModeReplySpeechSupported()) {
+    showToast('The selected AgentGO voice is not available in this browser.', 'warning', 3200);
+    return;
+  }
+  if (!speakWorkModeReplyText(null, 'This is the selected agent go voice.', { restart:true })) {
+    showToast('Could not test this voice.', 'warning', 2800);
+  }
 }
 function renderYetiMenuBubble() {
+  const workModeButtonLabel = workModeOpen ? 'DESKTOP' : 'Work-Mode';
   return `<div class="risk-indicator-title">YETI MENU</div>
     <div class="risk-indicator-line">What would you like to start?</div>
     <div class="yeti-menu-actions">
-      <button class="yeti-menu-btn yeti-menu-work-btn" id="yetiStartWorkBtn" type="button">Work-Mode</button>
+      <button class="yeti-menu-btn yeti-menu-work-btn" id="yetiStartWorkBtn" type="button">${workModeButtonLabel}</button>
       ${renderYetiWorkModeStatus()}
       <button class="yeti-menu-btn yeti-menu-risk-btn" id="yetiStartRiskBtn" type="button">Risk-Mode</button>
     </div>
@@ -18028,16 +18292,20 @@ function renderYetiMenuBubble() {
 function updateRiskUI() {
   const bubble = document.getElementById('riskIndicator');
   const yeti = document.getElementById('riskYeti');
+  const workModeYeti = document.getElementById('workModeYeti');
   if (!bubble || !yeti) return;
   const title = String(riskState.statusTitle || (riskState.enabled ? 'RISK MODE' : '')).trim();
   const lines = Array.isArray(riskState.statusLines) ? riskState.statusLines.filter(Boolean) : [];
   const showMenuBubble = !!(yetiMenuOpen && !riskState.enabled);
   const showStatusBubble = !!(!showMenuBubble && (riskState.showBubble || riskState.enabled || title || lines.length));
   const showBubble = showMenuBubble || showStatusBubble;
+  const showWorkModeMenu = !!(showMenuBubble && workModeOpen);
   bubble.classList.toggle('open', showBubble);
   bubble.classList.toggle('is-ended', showStatusBubble && !riskState.enabled);
+  bubble.classList.toggle('is-work-mode-menu', showWorkModeMenu);
   yeti.classList.toggle('risk-active', !!riskState.enabled);
-  yeti.setAttribute('aria-expanded', showBubble ? 'true' : 'false');
+  yeti.setAttribute('aria-expanded', showBubble && !workModeOpen ? 'true' : 'false');
+  if (workModeYeti) workModeYeti.setAttribute('aria-expanded', showWorkModeMenu ? 'true' : 'false');
   if (!showBubble) {
     bubble.dataset.view = '';
     bubble.innerHTML = '';
@@ -18062,7 +18330,10 @@ function updateRiskUI() {
 }
 function toggleYetiMenu() {
   yetiMenuOpen = !yetiMenuOpen;
-  if (yetiMenuOpen) refreshAgentGOTTSVoices();
+  if (yetiMenuOpen) {
+    refreshAgentGOTTSVoices();
+    refreshAgentGOKokoroStatus({ render: true });
+  }
   updateRiskUI();
 }
 function closeYetiMenu() {
@@ -19343,8 +19614,14 @@ function syncContinuedWorkModeMemory(content) {
 function getWorkModeSpeechRecognitionCtor() {
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
 }
+function isAgentGOKokoroPlaybackSupported() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  return typeof window.fetch === 'function' && typeof AudioContextClass === 'function';
+}
 function isWorkModeReplySpeechSupported() {
-  return !!(window.speechSynthesis && window.SpeechSynthesisUtterance);
+  if (!agentGOTTSEnabled) return false;
+  if (effectiveAgentGOTTSEngine() === 'kokoro' && isAgentGOKokoroPlaybackSupported()) return true;
+  return isAgentGOTTSSupported();
 }
 function updateWorkModeSpeechUI() {
   const micBtn = document.getElementById('workModeMicBtn');
@@ -19369,27 +19646,89 @@ function updateWorkModeSpeechUI() {
   if (autoReadBtn) {
     const supported = isWorkModeReplySpeechSupported();
     const enabled = supported && !!workModeSettings.autoReadReplies;
+    const unavailableText = !agentGOTTSEnabled ? 'AgentGO speech is disabled' : 'Text-to-speech is not supported in this browser';
     autoReadBtn.disabled = !supported;
     autoReadBtn.classList.toggle('is-auto-read', enabled);
     autoReadBtn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
-    autoReadBtn.title = supported ? (enabled ? 'Auto-read is on' : 'Auto-read AI replies') : 'Text-to-speech is not supported in this browser';
-    autoReadBtn.setAttribute('aria-label', supported ? (enabled ? 'Turn off auto-read AI replies' : 'Turn on auto-read AI replies') : 'Text-to-speech is not supported in this browser');
+    autoReadBtn.title = supported ? (enabled ? 'Auto-read is on' : 'Auto-read AI replies') : unavailableText;
+    autoReadBtn.setAttribute('aria-label', supported ? (enabled ? 'Turn off auto-read AI replies' : 'Turn on auto-read AI replies') : unavailableText);
   }
+  updateWorkModeReplySpeechButtons();
+}
+function workModeKokoroSessionForIndex(index) {
+  const session = workModeKokoroSpeechSession;
+  const idx = Number(index);
+  return session && !session.stopped && Number.isFinite(idx) && Number(session.index) === idx ? session : null;
+}
+function workModeReplySpeechButtonState(index) {
+  const idx = Number(index);
+  const session = workModeKokoroSessionForIndex(idx);
+  if (session) {
+    const countdown = Number.isFinite(Number(session.countdownValue)) ? Number(session.countdownValue) : null;
+    return {
+      session,
+      preparing: countdown !== null && countdown > 0,
+      playing: !!session.playing && !session.paused,
+      paused: !!session.playing && !!session.paused,
+      playRequested: !!session.playRequested,
+      countdown,
+    };
+  }
+  const legacyActive = Number.isFinite(idx) && idx === workModeReplySpeechMessageIndex && !!workModeReplySpeechUtterance;
+  return {
+    session:null,
+    preparing:false,
+    playing:legacyActive && !workModeReplySpeechPaused,
+    paused:legacyActive && workModeReplySpeechPaused,
+    playRequested:legacyActive,
+    countdown:null,
+  };
 }
 function updateWorkModeReplySpeechButtons() {
   const feed = document.getElementById('workModeChatFeed');
   if (!feed) return;
   feed.querySelectorAll('[data-work-speak-message]').forEach(btn => {
     const idx = Number(btn.getAttribute('data-work-speak-message'));
-    const speaking = Number.isFinite(idx) && idx === workModeReplySpeechMessageIndex;
-    btn.classList.toggle('is-speaking', speaking);
-    btn.title = speaking ? 'Stop reading this reply' : 'Read this reply aloud';
-    btn.setAttribute('aria-label', speaking ? 'Stop reading this reply' : 'Read this reply aloud');
-    btn.setAttribute('aria-pressed', speaking ? 'true' : 'false');
+    const state = workModeReplySpeechButtonState(idx);
+    const supported = isWorkModeReplySpeechSupported();
+    const active = state.preparing || state.playing || state.paused || state.playRequested;
+    btn.disabled = !supported && !active;
+    btn.classList.toggle('is-speaking', state.playing);
+    btn.classList.toggle('is-preparing', state.preparing);
+    btn.classList.toggle('is-paused', state.paused);
+    btn.innerHTML = state.preparing
+      ? `<span class="work-mode-speech-countdown" aria-hidden="true">${Math.max(1, Math.min(5, Math.round(state.countdown)))}</span>`
+      : renderWorkModeSpeakerIcon();
+    const unavailableText = !agentGOTTSEnabled ? 'AgentGO speech is disabled' : 'Text-to-speech is unavailable';
+    let label = supported ? 'Read this reply aloud' : unavailableText;
+    if (state.preparing) label = state.playRequested ? 'Preparing this reply for playback' : 'Preparing this reply for instant playback';
+    else if (state.playing || state.paused) label = 'Restart this reply from the beginning';
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+    btn.setAttribute('aria-pressed', state.playing || state.paused || state.playRequested ? 'true' : 'false');
+  });
+  feed.querySelectorAll('[data-work-pause-message]').forEach(btn => {
+    const idx = Number(btn.getAttribute('data-work-pause-message'));
+    const state = workModeReplySpeechButtonState(idx);
+    const visible = state.playing || state.paused;
+    btn.hidden = !visible;
+    btn.disabled = !visible;
+    btn.classList.toggle('is-paused', state.paused);
+    btn.innerHTML = state.paused ? renderWorkModePlayIcon() : renderWorkModePauseIcon();
+    const label = state.paused ? 'Resume this reply' : 'Pause this reply';
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+    btn.setAttribute('aria-pressed', state.paused ? 'true' : 'false');
   });
 }
 function renderWorkModeSpeakerIcon() {
   return '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4.75 10.25v3.5h3.1L12 17.5v-11l-4.15 3.75h-3.1Z"/><path d="M15.25 9.25a4 4 0 0 1 0 5.5M17.75 7a7 7 0 0 1 0 10" stroke-linecap="round"/></svg>';
+}
+function renderWorkModePauseIcon() {
+  return '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8.25 6.5v11M15.75 6.5v11" stroke-linecap="round"/></svg>';
+}
+function renderWorkModePlayIcon() {
+  return '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="m8.5 6.75 9 5.25-9 5.25V6.75Z" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 }
 function renderWorkModeCopyIcon() {
   return '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8.25 8.25h8.25a1.5 1.5 0 0 1 1.5 1.5V18a1.5 1.5 0 0 1-1.5 1.5H8.25a1.5 1.5 0 0 1-1.5-1.5V9.75a1.5 1.5 0 0 1 1.5-1.5Z"/><path d="M6.75 15.75H5.5A1.5 1.5 0 0 1 4 14.25V6a1.5 1.5 0 0 1 1.5-1.5h8.25a1.5 1.5 0 0 1 1.5 1.5v1.25"/></svg>';
@@ -19406,8 +19745,10 @@ function renderWorkModeMessageActions(index, options = {}) {
   if (options.edit) buttons.push(`<button class="work-mode-message-action-btn work-mode-message-edit-btn" data-work-edit-message="${index}" type="button" aria-label="Edit this message" title="Edit this message">${renderWorkModeEditIcon()}</button>`);
   buttons.push(`<button class="work-mode-message-action-btn work-mode-message-copy-btn" data-work-copy-message="${index}" type="button" aria-label="Copy this message" title="Copy this message">${renderWorkModeCopyIcon()}</button>`);
   if (options.speak) {
-    const speaking = index === workModeReplySpeechMessageIndex;
-    buttons.push(`<button class="work-mode-message-action-btn work-mode-ai-speak-btn${speaking ? ' is-speaking' : ''}" data-work-speak-message="${index}" type="button" aria-pressed="${speaking ? 'true' : 'false'}" aria-label="${speaking ? 'Stop reading this reply' : 'Read this reply aloud'}" title="${speaking ? 'Stop reading this reply' : 'Read this reply aloud'}">${renderWorkModeSpeakerIcon()}</button>`);
+    const state = workModeReplySpeechButtonState(index);
+    const countdown = state.preparing ? `<span class="work-mode-speech-countdown" aria-hidden="true">${Math.max(1, Math.min(5, Math.round(state.countdown)))}</span>` : renderWorkModeSpeakerIcon();
+    buttons.push(`<button class="work-mode-message-action-btn work-mode-ai-speak-btn${state.playing ? ' is-speaking' : ''}${state.preparing ? ' is-preparing' : ''}${state.paused ? ' is-paused' : ''}" data-work-speak-message="${index}" type="button" aria-pressed="${state.playing || state.paused || state.playRequested ? 'true' : 'false'}" aria-label="${state.playing || state.paused ? 'Restart this reply from the beginning' : 'Read this reply aloud'}" title="${state.playing || state.paused ? 'Restart this reply from the beginning' : 'Read this reply aloud'}">${countdown}</button>`);
+    buttons.push(`<button class="work-mode-message-action-btn work-mode-ai-pause-btn${state.paused ? ' is-paused' : ''}" data-work-pause-message="${index}" type="button" ${state.playing || state.paused ? '' : 'hidden disabled'} aria-pressed="${state.paused ? 'true' : 'false'}" aria-label="${state.paused ? 'Resume this reply' : 'Pause this reply'}" title="${state.paused ? 'Resume this reply' : 'Pause this reply'}">${state.paused ? renderWorkModePlayIcon() : renderWorkModePauseIcon()}</button>`);
   }
   return `<div class="work-mode-message-actions">${buttons.join('')}</div>`;
 }
@@ -19621,6 +19962,7 @@ function resetWorkModeReplySpeechHighlight() {
 }
 function prepareWorkModeReplySpeechHighlight(index, spokenText, utterance) {
   resetWorkModeReplySpeechHighlight();
+  if (!agentGOTTSHighlightEnabled) return null;
   const body = findWorkModeSpeechMessageBody(index);
   const spokenTokens = workModeSpeechTokens(spokenText);
   if (!body || !spokenTokens.length) return null;
@@ -19692,7 +20034,696 @@ function updateWorkModeReplySpeechHighlight(event, utterance) {
   }
   return applyWorkModeSpeechFallbackHighlight(selected);
 }
+function workModeSpeechSourceSpanRange(state, start, end, spokenIndexes, selected, expandSource = false) {
+  if (!selected.length) return null;
+  const first = selected[0].token;
+  const last = selected[selected.length - 1].token;
+  if (!expandSource || !spokenIndexes.length || !document || typeof document.createRange !== 'function') {
+    return workModeSpeechHighlightRange(first, last);
+  }
+  const firstSpoken = state.spokenTokens[spokenIndexes[0]];
+  const lastSpoken = state.spokenTokens[spokenIndexes[spokenIndexes.length - 1]];
+  let startOffset = first.start;
+  let endOffset = last.end;
+  // Exact Kokoro timing spans refer to the original AgentGO speech string. When
+  // normalization maps several spoken words back to a source token such as
+  // "$42" or "e.g.", extend the DOM range over source punctuation only when
+  // the rendered text immediately around the mapped token is an exact match.
+  if (firstSpoken && start < firstSpoken.start) {
+    const prefix = state.spokenText.slice(start, firstSpoken.start);
+    const nodeText = String(first.node.textContent || '');
+    const prefixStart = first.start - prefix.length;
+    if (prefix && prefixStart >= 0 && nodeText.slice(prefixStart, first.start) === prefix) startOffset = prefixStart;
+  }
+  if (lastSpoken && end > lastSpoken.end) {
+    const suffix = state.spokenText.slice(lastSpoken.end, end);
+    const nodeText = String(last.node.textContent || '');
+    if (suffix && nodeText.slice(last.end, last.end + suffix.length) === suffix) endOffset = last.end + suffix.length;
+  }
+  try {
+    const range = document.createRange();
+    range.setStart(first.node, startOffset);
+    range.setEnd(last.node, endOffset);
+    return range;
+  } catch (_) {
+    return workModeSpeechHighlightRange(first, last);
+  }
+}
+function updateWorkModeReplySpeechSourceSpanHighlight(charStart, charEnd, session, expandSource = false) {
+  let state = workModeReplySpeechHighlightState;
+  if (!state || state.utterance !== session) return false;
+  state = refreshWorkModeReplySpeechHighlightState(state);
+  if (!state) return false;
+  const start = Math.max(0, Number.isFinite(Number(charStart)) ? Number(charStart) : 0);
+  const end = Math.max(start, Number.isFinite(Number(charEnd)) ? Number(charEnd) : start);
+  const spokenIndexes = state.spokenTokens.map((token, index) => token.end > start && token.start < end ? index : -1).filter(index => index >= 0);
+  const bodyIndexes = [...new Set(spokenIndexes.map(index => state.mapping[index]).filter(index => Number.isFinite(index) && index >= 0))].sort((a, b) => a - b);
+  if (!bodyIndexes.length) return false;
+  clearWorkModeReplySpeechHighlightVisual();
+  const selected = bodyIndexes.map(order => ({ order, token:state.bodyTokens[order] })).filter(item => item.token && item.token.node && item.token.node.isConnected !== false);
+  if (!selected.length) return false;
+  const range = workModeSpeechSourceSpanRange(state, start, end, spokenIndexes, selected, expandSource);
+  const HighlightClass = typeof globalThis !== 'undefined' ? globalThis.Highlight : null;
+  if (range && typeof CSS !== 'undefined' && CSS.highlights && typeof CSS.highlights.set === 'function' && typeof HighlightClass === 'function') {
+    try {
+      CSS.highlights.set(WORK_MODE_SPEECH_HIGHLIGHT_NAME, new HighlightClass(range));
+      return true;
+    } catch (_) {}
+  }
+  return applyWorkModeSpeechFallbackHighlight(selected);
+}
+function updateWorkModeReplySpeechChunkHighlight(charStart, charEnd, session) {
+  return updateWorkModeReplySpeechSourceSpanHighlight(charStart, charEnd, session, false);
+}
+function updateWorkModeReplySpeechExactHighlight(charStart, charEnd, session) {
+  return updateWorkModeReplySpeechSourceSpanHighlight(charStart, charEnd, session, true);
+}
+function workModeKokoroIsEngaged(session = workModeKokoroSpeechSession) {
+  return !!(session && !session.stopped && (session.generating || session.playRequested || session.playing || session.paused));
+}
+function clearWorkModeKokoroCountdown(session) {
+  if (!session) return;
+  if (session.countdownTimer) clearInterval(session.countdownTimer);
+  session.countdownTimer = null;
+}
+function startWorkModeKokoroCountdown(session) {
+  if (!session || session.stopped) return;
+  clearWorkModeKokoroCountdown(session);
+  session.countdownStartedAt = Date.now();
+  session.countdownValue = WORK_MODE_KOKORO_PREBUFFER_SECONDS;
+  updateWorkModeReplySpeechButtons();
+  session.countdownTimer = setInterval(() => {
+    if (session.stopped || workModeKokoroSpeechSession !== session || session.bufferReady) return;
+    const elapsed = Math.floor(Math.max(0, Date.now() - session.countdownStartedAt) / 1000);
+    const next = Math.max(1, WORK_MODE_KOKORO_PREBUFFER_SECONDS - elapsed);
+    if (next !== session.countdownValue) {
+      session.countdownValue = next;
+      updateWorkModeReplySpeechButtons();
+    }
+  }, 200);
+}
+function markWorkModeKokoroBufferReady(session) {
+  if (!session || session.stopped || session.bufferReady || workModeKokoroSpeechSession !== session) return;
+  session.bufferReady = true;
+  clearWorkModeKokoroCountdown(session);
+  // The visible countdown intentionally ends at 1. A ready buffer is represented
+  // by the speaker icon itself, avoiding a separate transient/sticky zero state.
+  session.countdownValue = null;
+  updateWorkModeReplySpeechButtons();
+  if (session.playRequested && !session.playing) {
+    startWorkModeKokoroPlayback(session).catch(err => handleWorkModeKokoroPlaybackError(session, err));
+  }
+}
+function stopWorkModeKokoroSession(session) {
+  if (!session) return;
+  session.stopped = true;
+  session.activeTimingKey = '';
+  clearWorkModeKokoroCountdown(session);
+  try { session.controller?.abort(); } catch (_) {}
+  (session.timers || new Set()).forEach(timer => clearTimeout(timer));
+  if (session.timers) session.timers.clear();
+  (session.sources || new Set()).forEach(source => {
+    try { source.onended = null; source.stop(); } catch (_) {}
+    try { source.disconnect(); } catch (_) {}
+  });
+  if (session.sources) session.sources.clear();
+  if (Array.isArray(session.bufferedFrames)) session.bufferedFrames.length = 0;
+  session.bufferedSeconds = 0;
+  session.generating = false;
+  session.playing = false;
+  session.paused = false;
+  session.playRequested = false;
+}
+function finishWorkModeKokoroSpeech(session) {
+  if (!session || workModeKokoroSpeechSession !== session) return;
+  stopWorkModeKokoroSession(session);
+  workModeKokoroSpeechSession = null;
+  if (workModeReplySpeechMessageIndex === session.index) workModeReplySpeechMessageIndex = null;
+  workModeReplySpeechPaused = false;
+  resetWorkModeReplySpeechHighlight();
+  updateWorkModeReplySpeechButtons();
+  restoreWorkModeReplyScrolling();
+}
+function discardWorkModePreparedKokoroSpeech() {
+  const session = workModeKokoroSpeechSession;
+  if (!session || session.stopped || session.playRequested || session.playing || session.paused) return false;
+  finishWorkModeKokoroSpeech(session);
+  return true;
+}
+async function ensureWorkModeKokoroAudioContext(options = {}) {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (typeof AudioContextClass !== 'function') throw new Error('Web Audio is not supported in this browser.');
+  if (!workModeKokoroAudioContext || workModeKokoroAudioContext.state === 'closed') workModeKokoroAudioContext = new AudioContextClass();
+  const shouldResume = options.resume !== false;
+  if (shouldResume && workModeKokoroAudioContext.state === 'suspended' && typeof workModeKokoroAudioContext.resume === 'function') {
+    await workModeKokoroAudioContext.resume();
+  }
+  if (shouldResume && workModeKokoroAudioContext.state === 'suspended') throw new Error('Browser audio playback is currently blocked.');
+  return workModeKokoroAudioContext;
+}
+function primeWorkModeKokoroAudioContext() {
+  if (!isAgentGOKokoroPlaybackSupported()) return;
+  ensureWorkModeKokoroAudioContext({ resume:true }).catch(() => {});
+}
+function workModeKokoroPCMFloat32(payload) {
+  const bytes = payload instanceof Uint8Array ? payload : new Uint8Array(payload || 0);
+  const sampleCount = Math.floor(bytes.byteLength / 4);
+  const samples = new Float32Array(sampleCount);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, sampleCount * 4);
+  for (let index = 0; index < sampleCount; index++) samples[index] = view.getFloat32(index * 4, true);
+  return samples;
+}
+function workModeKokoroFrameDuration(payload, sampleRate) {
+  const bytes = payload instanceof Uint8Array ? payload.byteLength : Number(payload && payload.byteLength) || 0;
+  const samples = Math.floor(bytes / 4);
+  return samples / Math.max(8000, Number(sampleRate) || 24000);
+}
+function maybeFinishWorkModeKokoroSpeech(session) {
+  if (!session || session.stopped || workModeKokoroSpeechSession !== session) return;
+  const buffered = Array.isArray(session.bufferedFrames) ? session.bufferedFrames.length : 0;
+  if (session.playRequested && session.networkDone && buffered === 0 && session.sources.size === 0) finishWorkModeKokoroSpeech(session);
+}
+function clearWorkModeKokoroHighlightTimers(session) {
+  if (!session) return;
+  (session.timers || new Set()).forEach(timer => clearTimeout(timer));
+  if (session.timers) session.timers.clear();
+  session.activeTimingKey = '';
+  (session.chunks || []).forEach(chunk => {
+    chunk.timingScheduled = false;
+    chunk.highlightScheduled = false;
+    chunk.fallbackEndTimer = null;
+  });
+  clearWorkModeReplySpeechHighlightVisual();
+}
+function scheduleWorkModeKokoroTimingHighlights(session, chunk, chunkStartAt, context) {
+  if (!session || !chunk || chunk.timingScheduled || !agentGOTTSHighlightEnabled || session.paused) return false;
+  const timings = Array.isArray(chunk.timings) ? chunk.timings : [];
+  if (!timings.length) return false;
+  const sampleRate = Math.max(8000, Number(session.sampleRate) || 24000);
+  chunk.timingScheduled = true;
+  let scheduled = false;
+  timings.forEach((timing, timingIndex) => {
+    const startSample = Math.max(0, Number(timing.start_sample) || 0);
+    const endSample = Math.max(startSample, Number(timing.end_sample) || startSample);
+    const charStart = Math.max(0, Number(timing.char_start) || 0);
+    const charEnd = Math.max(charStart, Number(timing.char_end) || charStart);
+    if (endSample <= startSample || charEnd <= charStart) return;
+    const startAt = chunkStartAt + startSample / sampleRate;
+    const endAt = chunkStartAt + endSample / sampleRate;
+    if (endAt <= context.currentTime) return;
+    scheduled = true;
+    const timingKey = `${session.generation}:${chunk.index}:${timingIndex}`;
+    const startDelay = Math.max(0, Math.round((startAt - context.currentTime) * 1000));
+    const startTimer = setTimeout(() => {
+      session.timers.delete(startTimer);
+      if (session.stopped || session.paused || workModeKokoroSpeechSession !== session) return;
+      session.activeTimingKey = timingKey;
+      if (!updateWorkModeReplySpeechExactHighlight(charStart, charEnd, session)) {
+        updateWorkModeReplySpeechChunkHighlight(chunk.charStart, chunk.charEnd, session);
+      }
+    }, startDelay);
+    session.timers.add(startTimer);
+    const endDelay = Math.max(0, Math.round((endAt - context.currentTime) * 1000));
+    const endTimer = setTimeout(() => {
+      session.timers.delete(endTimer);
+      if (session.stopped || session.paused || workModeKokoroSpeechSession !== session || session.activeTimingKey !== timingKey) return;
+      session.activeTimingKey = '';
+      clearWorkModeReplySpeechHighlightVisual();
+    }, endDelay);
+    session.timers.add(endTimer);
+  });
+  return scheduled;
+}
+function scheduleWorkModeKokoroFallbackHighlight(session, chunk, context) {
+  if (!session || !chunk || !agentGOTTSHighlightEnabled || session.paused) return false;
+  const startAt = Number(chunk.playbackStartTime) || 0;
+  const endAt = Number(chunk.playbackEndTime) || startAt;
+  if (!startAt || endAt <= context.currentTime) return false;
+  const key = `chunk:${session.generation}:${chunk.index}`;
+  if (!chunk.highlightScheduled) {
+    chunk.highlightScheduled = true;
+    const start = () => {
+      if (session.stopped || session.paused || workModeKokoroSpeechSession !== session) return;
+      session.activeTimingKey = key;
+      updateWorkModeReplySpeechChunkHighlight(chunk.charStart, chunk.charEnd, session);
+    };
+    if (startAt <= context.currentTime) start();
+    else {
+      const startTimer = setTimeout(() => {
+        session.timers.delete(startTimer);
+        start();
+      }, Math.max(0, Math.round((startAt - context.currentTime) * 1000)));
+      session.timers.add(startTimer);
+    }
+  }
+  if (chunk.fallbackEndTimer) {
+    clearTimeout(chunk.fallbackEndTimer);
+    session.timers.delete(chunk.fallbackEndTimer);
+  }
+  const endTimer = setTimeout(() => {
+    session.timers.delete(endTimer);
+    if (chunk.fallbackEndTimer === endTimer) chunk.fallbackEndTimer = null;
+    if (session.stopped || session.paused || workModeKokoroSpeechSession !== session || session.activeTimingKey !== key) return;
+    session.activeTimingKey = '';
+    clearWorkModeReplySpeechHighlightVisual();
+  }, Math.max(0, Math.round((endAt - context.currentTime) * 1000)));
+  chunk.fallbackEndTimer = endTimer;
+  session.timers.add(endTimer);
+  return true;
+}
+function rescheduleWorkModeKokoroHighlights(session, context) {
+  if (!session || !context || !agentGOTTSHighlightEnabled || session.paused) return;
+  clearWorkModeKokoroHighlightTimers(session);
+  (session.chunks || []).forEach(chunk => {
+    if (!chunk || !chunk.playbackStartTime || Number(chunk.playbackEndTime) <= context.currentTime) return;
+    if (!scheduleWorkModeKokoroTimingHighlights(session, chunk, chunk.playbackStartTime, context)) {
+      scheduleWorkModeKokoroFallbackHighlight(session, chunk, context);
+    }
+  });
+}
+async function scheduleWorkModeKokoroAudio(session, payload, chunk) {
+  if (!session || session.stopped || workModeKokoroSpeechSession !== session) return;
+  const samples = workModeKokoroPCMFloat32(payload);
+  if (!samples.length) return;
+  const context = await ensureWorkModeKokoroAudioContext({ resume:!session.paused });
+  if (session.stopped || workModeKokoroSpeechSession !== session) return;
+  const sampleRate = Math.max(8000, Number(session.sampleRate) || 24000);
+  const buffer = context.createBuffer(1, samples.length, sampleRate);
+  buffer.getChannelData(0).set(samples);
+  const source = context.createBufferSource();
+  source.buffer = buffer;
+  source.connect(context.destination);
+  const startAt = Math.max(context.currentTime + 0.025, Number(session.nextStartTime) || 0);
+  session.nextStartTime = startAt + buffer.duration;
+  session.sources.add(source);
+  session.hadAudio = true;
+  if (chunk) {
+    if (!chunk.playbackStartTime) chunk.playbackStartTime = startAt;
+    chunk.playbackEndTime = Math.max(Number(chunk.playbackEndTime) || 0, startAt + buffer.duration);
+    if (!session.paused && agentGOTTSHighlightEnabled) {
+      if (Array.isArray(chunk.timings) && chunk.timings.length) {
+        if (!chunk.highlightScheduled && scheduleWorkModeKokoroTimingHighlights(session, chunk, chunk.playbackStartTime || startAt, context)) {
+          chunk.highlightScheduled = true;
+        }
+      } else {
+        // Fallback chunks have no exact word timings. Extend their end timer as
+        // each streamed PCM frame lengthens the scheduled chunk playback.
+        scheduleWorkModeKokoroFallbackHighlight(session, chunk, context);
+      }
+    }
+  }
+  source.onended = () => {
+    session.sources.delete(source);
+    try { source.disconnect(); } catch (_) {}
+    maybeFinishWorkModeKokoroSpeech(session);
+  };
+  source.start(startAt);
+}
+function appendWorkModeKokoroBytes(left, right) {
+  if (!left || !left.length) return new Uint8Array(right);
+  const combined = new Uint8Array(left.length + right.length);
+  combined.set(left, 0);
+  combined.set(right, left.length);
+  return combined;
+}
+function workModeKokoroSplitText(value) {
+  const text = String(value || '').trim();
+  if (!text) return [];
+  const segments = [];
+  let start = 0;
+  let runeCount = 0;
+  let lastNaturalBreak = -1;
+  let lastSoftBreak = -1;
+  const currentTargetRunes = () => segments.length === 0
+    ? WORK_MODE_KOKORO_FIRST_REQUEST_TARGET_RUNES
+    : WORK_MODE_KOKORO_REQUEST_TARGET_RUNES;
+  const flush = end => {
+    if (end <= start) return;
+    const raw = text.slice(start, end);
+    const left = (raw.match(/^\s*/) || [''])[0].length;
+    const right = (raw.match(/\s*$/) || [''])[0].length;
+    const segmentStart = start + left;
+    const segmentEnd = Math.max(segmentStart, end - right);
+    if (segmentEnd > segmentStart) segments.push({ text:text.slice(segmentStart, segmentEnd), start:segmentStart, end:segmentEnd });
+    start = end;
+    runeCount = 0;
+    lastNaturalBreak = -1;
+    lastSoftBreak = -1;
+  };
+  for (let i = 0; i < text.length;) {
+    const codePoint = text.codePointAt(i);
+    const size = codePoint > 0xffff ? 2 : 1;
+    const character = text.slice(i, i + size);
+    const next = i + size;
+    runeCount += 1;
+    const targetRunes = currentTargetRunes();
+    const minBreakRunes = Math.floor(targetRunes / 2);
+    if (runeCount >= minBreakRunes) {
+      if (/[.!?;:\n—]/.test(character)) lastNaturalBreak = next;
+      else if (/[,\s]/.test(character)) lastSoftBreak = next;
+    }
+    if (runeCount >= targetRunes) {
+      const end = lastNaturalBreak > start ? lastNaturalBreak : lastSoftBreak;
+      if (end > start) {
+        flush(end);
+        if (end < next) {
+          i = end;
+          continue;
+        }
+      }
+    }
+    i = next;
+  }
+  flush(text.length);
+  return segments;
+}
+function createWorkModeKokoroSession(index, spokenText, options = {}) {
+  const segments = workModeKokoroSplitText(spokenText);
+  if (!segments.length) return null;
+  const session = {
+    generation:++workModeKokoroSpeechGeneration,
+    index,
+    text:spokenText,
+    segments,
+    nextSegmentIndex:0,
+    controller:new AbortController(),
+    sources:new Set(),
+    timers:new Set(),
+    chunks:[],
+    bufferedFrames:[],
+    bufferedSeconds:0,
+    currentChunk:null,
+    currentSegment:null,
+    currentRequestComplete:false,
+    nextStartTime:0,
+    sampleRate:24000,
+    voice:String(agentGOTTSVoice || '').trim(),
+    speed:Number(agentGOTTSSpeed) || 1,
+    networkDone:false,
+    hadAudio:false,
+    activeTimingKey:'',
+    stopped:false,
+    generating:false,
+    generationPromise:null,
+    bufferReady:false,
+    playRequested:!!options.playRequested,
+    playing:false,
+    paused:false,
+    playbackStarting:false,
+    countdownValue:WORK_MODE_KOKORO_PREBUFFER_SECONDS,
+    countdownStartedAt:0,
+    countdownTimer:null,
+    chunkSequence:0,
+  };
+  workModeKokoroSpeechSession = session;
+  workModeReplySpeechMessageIndex = index;
+  workModeReplySpeechUtterance = null;
+  workModeReplySpeechPaused = false;
+  startWorkModeKokoroCountdown(session);
+  return session;
+}
+async function handleWorkModeKokoroAudioFrame(session, payload, chunk) {
+  if (!session || session.stopped || workModeKokoroSpeechSession !== session) return;
+  const frame = { payload:new Uint8Array(payload), chunk };
+  const duration = workModeKokoroFrameDuration(frame.payload, session.sampleRate);
+  session.hadAudio = session.hadAudio || duration > 0;
+  if (!session.playing || session.playbackStarting) {
+    session.bufferedFrames.push(frame);
+    session.bufferedSeconds += duration;
+    if (!session.bufferReady && session.bufferedSeconds + 0.001 >= WORK_MODE_KOKORO_PREBUFFER_SECONDS) markWorkModeKokoroBufferReady(session);
+    return;
+  }
+  await scheduleWorkModeKokoroAudio(session, frame.payload, frame.chunk);
+}
+async function consumeWorkModeKokoroStreamFrame(session, segment, kind, payload) {
+  if (!session || session.stopped || workModeKokoroSpeechSession !== session) return;
+  if (kind === 2) {
+    await handleWorkModeKokoroAudioFrame(session, payload, session.currentChunk);
+    return;
+  }
+  if (kind !== 1) throw new Error(`Unsupported Kokoro stream frame ${kind}.`);
+  let message;
+  try { message = JSON.parse(new TextDecoder().decode(payload)); }
+  catch (_) { throw new Error('AgentGO received invalid Kokoro stream metadata.'); }
+  const type = String((message && message.type) || '').toLowerCase();
+  if (type === 'audio_start') {
+    if (Number.isFinite(Number(message.sample_rate))) session.sampleRate = Number(message.sample_rate);
+    return;
+  }
+  if (type === 'chunk_start') {
+    const offset = Math.max(0, Number(segment && segment.start) || 0);
+    const chunk = {
+      index:session.chunkSequence++,
+      helperIndex:Number(message.chunk_index) || 0,
+      charStart:offset + Math.max(0, Number(message.char_start) || 0),
+      charEnd:offset + Math.max(0, Number(message.char_end) || 0),
+      timings:[],
+      timingScheduled:false,
+      highlightScheduled:false,
+      playbackStartTime:0,
+      playbackEndTime:0,
+      fallbackEndTimer:null,
+    };
+    session.currentChunk = chunk;
+    session.chunks.push(chunk);
+    return;
+  }
+  if (type === 'chunk_timing') {
+    const chunk = session.currentChunk;
+    if (!chunk || chunk.helperIndex !== (Number(message.chunk_index) || 0)) return;
+    const offset = Math.max(0, Number(segment && segment.start) || 0);
+    chunk.timings = (Array.isArray(message.timings) ? message.timings : []).filter(timing => {
+      if (!timing || String(timing.kind || '').toLowerCase() !== 'word') return false;
+      const startSample = Number(timing.start_sample);
+      const endSample = Number(timing.end_sample);
+      const charStart = Number(timing.char_start);
+      const charEnd = Number(timing.char_end);
+      return Number.isFinite(startSample) && Number.isFinite(endSample) && endSample > startSample && Number.isFinite(charStart) && Number.isFinite(charEnd) && charEnd > charStart;
+    }).map(timing => ({ ...timing, char_start:offset + Number(timing.char_start), char_end:offset + Number(timing.char_end) }));
+    return;
+  }
+  if (type === 'chunk_end') {
+    session.currentChunk = null;
+    return;
+  }
+  if (type === 'complete') {
+    session.currentRequestComplete = true;
+    return;
+  }
+  if (type === 'cancelled') throw new DOMException('Kokoro speech was cancelled.', 'AbortError');
+  if (type === 'error') throw new Error(String(message.error || message.message || 'Kokoro synthesis failed.'));
+}
+async function readWorkModeKokoroStream(session, segment, response) {
+  if (!response.body || typeof response.body.getReader !== 'function') throw new Error('Streaming audio is not supported by this browser.');
+  const reader = response.body.getReader();
+  let pending = new Uint8Array(0);
+  while (true) {
+    const result = await reader.read();
+    if (result.done) break;
+    pending = appendWorkModeKokoroBytes(pending, result.value || new Uint8Array(0));
+    let offset = 0;
+    while (pending.length - offset >= 5) {
+      const view = new DataView(pending.buffer, pending.byteOffset + offset, 5);
+      const kind = view.getUint8(0);
+      const size = view.getUint32(1, false);
+      if (size <= 0 || size > 64 * 1024 * 1024) throw new Error('AgentGO received an invalid Kokoro audio frame.');
+      if (pending.length - offset < 5 + size) break;
+      const payload = pending.slice(offset + 5, offset + 5 + size);
+      offset += 5 + size;
+      await consumeWorkModeKokoroStreamFrame(session, segment, kind, payload);
+    }
+    if (offset > 0) pending = pending.slice(offset);
+  }
+  if (pending.length) throw new Error('Kokoro audio stream ended with an incomplete frame.');
+  if (!session.currentRequestComplete) throw new Error('Kokoro audio stream ended before completion.');
+}
+async function synthesizeWorkModeKokoroSegment(session, segment) {
+  if (!session || session.stopped) return;
+  session.currentSegment = segment;
+  session.currentRequestComplete = false;
+  const response = await fetch('/api/tts/kokoro/synthesize', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body:JSON.stringify({ text:segment.text, voice:session.voice, speed:session.speed }),
+    signal:session.controller.signal,
+  });
+  if (!response.ok) {
+    const detail = String(await response.text().catch(() => '') || '').trim();
+    throw new Error(detail || `Kokoro synthesis failed (${response.status}).`);
+  }
+  await readWorkModeKokoroStream(session, segment, response);
+  session.currentSegment = null;
+}
+function handleWorkModeKokoroPlaybackError(session, err, options = {}) {
+  if (!session || session.stopped || workModeKokoroSpeechSession !== session) return;
+  const text = session.text;
+  const index = session.index;
+  const canFallback = !session.hadAudio && session.playRequested && isAgentGOTTSSupported();
+  finishWorkModeKokoroSpeech(session);
+  refreshAgentGOKokoroStatus({ render:true }).catch(() => {});
+  if (canFallback) {
+    speakWorkModeReplyTextLegacy(index, text, { ...options, restart:true });
+    return;
+  }
+  if (session.playRequested && !options.silent) showToast((err && err.message) || 'Could not read this reply aloud.', 'warning', 3200);
+}
+function runWorkModeKokoroGeneration(session, options = {}) {
+  if (!session || session.stopped || workModeKokoroSpeechSession !== session) return Promise.resolve(false);
+  if (session.generating && session.generationPromise) return session.generationPromise;
+  session.generating = true;
+  const task = (async () => {
+    try {
+      while (!session.stopped && session.nextSegmentIndex < session.segments.length) {
+        const segment = session.segments[session.nextSegmentIndex];
+        await synthesizeWorkModeKokoroSegment(session, segment);
+        session.nextSegmentIndex += 1;
+        if (!session.playRequested && session.bufferReady) break;
+      }
+      if (session.nextSegmentIndex >= session.segments.length) {
+        session.networkDone = true;
+        if (!session.bufferReady) markWorkModeKokoroBufferReady(session);
+      }
+      maybeFinishWorkModeKokoroSpeech(session);
+      return true;
+    } catch (err) {
+      if (session.stopped || session.controller.signal.aborted || workModeKokoroSpeechSession !== session) return false;
+      handleWorkModeKokoroPlaybackError(session, err, options);
+      return false;
+    } finally {
+      if (workModeKokoroSpeechSession === session && !session.stopped) {
+        session.generating = false;
+        session.generationPromise = null;
+        updateWorkModeReplySpeechButtons();
+      }
+    }
+  })();
+  session.generationPromise = task;
+  return task;
+}
+async function startWorkModeKokoroPlayback(session) {
+  if (!session || session.stopped || workModeKokoroSpeechSession !== session || session.playing || !session.bufferReady) return false;
+  session.playRequested = true;
+  session.playing = true;
+  session.paused = false;
+  session.playbackStarting = true;
+  workModeReplySpeechMessageIndex = session.index;
+  workModeReplySpeechUtterance = null;
+  workModeReplySpeechPaused = false;
+  prepareWorkModeReplySpeechHighlight(session.index, session.text, session);
+  updateWorkModeReplySpeechButtons();
+  await ensureWorkModeKokoroAudioContext({ resume:true });
+  while (!session.stopped && workModeKokoroSpeechSession === session && session.bufferedFrames.length) {
+    const frame = session.bufferedFrames.shift();
+    await scheduleWorkModeKokoroAudio(session, frame.payload, frame.chunk);
+  }
+  session.bufferedSeconds = 0;
+  session.playbackStarting = false;
+  if (session.stopped || workModeKokoroSpeechSession !== session) return false;
+  updateWorkModeReplySpeechButtons();
+  if (!session.networkDone && session.nextSegmentIndex < session.segments.length) runWorkModeKokoroGeneration(session);
+  maybeFinishWorkModeKokoroSpeech(session);
+  return true;
+}
+async function pauseWorkModeKokoroSession(session) {
+  if (!session || session.stopped || !session.playing || session.paused || workModeKokoroSpeechSession !== session) return false;
+  session.paused = true;
+  workModeReplySpeechPaused = true;
+  clearWorkModeKokoroHighlightTimers(session);
+  const context = workModeKokoroAudioContext;
+  if (context && context.state === 'running' && typeof context.suspend === 'function') {
+    try { await context.suspend(); } catch (_) {}
+  }
+  updateWorkModeReplySpeechButtons();
+  return true;
+}
+async function resumeWorkModeKokoroSession(session) {
+  if (!session || session.stopped || !session.playing || !session.paused || workModeKokoroSpeechSession !== session) return false;
+  try {
+    const context = await ensureWorkModeKokoroAudioContext({ resume:true });
+    session.paused = false;
+    workModeReplySpeechPaused = false;
+    rescheduleWorkModeKokoroHighlights(session, context);
+    updateWorkModeReplySpeechButtons();
+    return true;
+  } catch (err) {
+    showToast((err && err.message) || 'Could not resume this reply.', 'warning', 3000);
+    return false;
+  }
+}
+function toggleWorkModeReplySpeechPause(index) {
+  const idx = Number(index);
+  if (!Number.isFinite(idx)) return false;
+  const session = workModeKokoroSessionForIndex(idx);
+  if (session && session.playing) {
+    if (session.paused) resumeWorkModeKokoroSession(session);
+    else pauseWorkModeKokoroSession(session);
+    return true;
+  }
+  if (workModeReplySpeechMessageIndex === idx && workModeReplySpeechUtterance && isAgentGOTTSSupported()) {
+    try {
+      const resume = workModeReplySpeechPaused || window.speechSynthesis.paused;
+      workModeReplySpeechPaused = !resume;
+      clearWorkModeReplySpeechHighlightVisual();
+      updateWorkModeReplySpeechButtons();
+      if (resume) window.speechSynthesis.resume();
+      else window.speechSynthesis.pause();
+      return true;
+    } catch (_) {}
+  }
+  return false;
+}
+function requestWorkModeKokoroPlayback(index, spokenText, options = {}) {
+  if (!isAgentGOKokoroPlaybackSupported() || !agentGOKokoroAvailable()) return false;
+  if (workModeReplySpeechUtterance) stopWorkModeReplySpeech({ silent:true });
+  const existing = workModeKokoroSpeechSession;
+  if (existing && !existing.stopped && existing.index === index) {
+    if (existing.playing || existing.paused || options.restart) {
+      stopWorkModeReplySpeech({ silent:true });
+    } else {
+      existing.playRequested = true;
+      workModeReplySpeechMessageIndex = index;
+      primeWorkModeKokoroAudioContext();
+      updateWorkModeReplySpeechButtons();
+      if (existing.bufferReady) {
+        startWorkModeKokoroPlayback(existing).catch(err => handleWorkModeKokoroPlaybackError(existing, err, options));
+      }
+      if (!existing.networkDone) runWorkModeKokoroGeneration(existing, options);
+      return true;
+    }
+  } else if (existing) {
+    stopWorkModeReplySpeech({ silent:true });
+  }
+  const session = createWorkModeKokoroSession(index, spokenText, { playRequested:true });
+  if (!session) return false;
+  primeWorkModeKokoroAudioContext();
+  runWorkModeKokoroGeneration(session, options);
+  return true;
+}
+function speakWorkModeReplyTextKokoro(index, spokenText, options = {}) {
+  return requestWorkModeKokoroPlayback(index, spokenText, options);
+}
+function prebufferWorkModeReplyTextKokoro(index, spokenText) {
+  if (!agentGOTTSEnabled || effectiveAgentGOTTSEngine() !== 'kokoro' || !isAgentGOKokoroPlaybackSupported() || !agentGOKokoroAvailable()) return false;
+  if (workModeKokoroIsEngaged() || workModeReplySpeechUtterance) return false;
+  if (workModeKokoroSpeechSession) discardWorkModePreparedKokoroSpeech();
+  if (workModeKokoroSpeechSession) return false;
+  const session = createWorkModeKokoroSession(index, spokenText, { playRequested:false });
+  if (!session) return false;
+  runWorkModeKokoroGeneration(session, { silent:true, prebuffer:true });
+  return true;
+}
+function prebufferWorkModeReplyMessage(index) {
+  const idx = Number(index);
+  const msg = Number.isFinite(idx) ? workModeMessages[idx] : null;
+  if (!msg || msg.role !== 'ai') return false;
+  return prebufferWorkModeReplyTextKokoro(idx, workModeReplySpeechText(msg.text || ''));
+}
 function stopWorkModeReplySpeech(options = {}) {
+  const kokoroSession = workModeKokoroSpeechSession;
+  if (kokoroSession) {
+    stopWorkModeKokoroSession(kokoroSession);
+    workModeKokoroSpeechSession = null;
+  }
   const utterance = workModeReplySpeechUtterance;
   if (utterance) {
     utterance.onstart = null;
@@ -19703,44 +20734,42 @@ function stopWorkModeReplySpeech(options = {}) {
     utterance.onerror = null;
   }
   resetWorkModeReplySpeechHighlight();
-  if (isWorkModeReplySpeechSupported()) {
+  if (isAgentGOTTSSupported()) {
     try { window.speechSynthesis.resume(); } catch (_) {}
     try { window.speechSynthesis.cancel(); } catch (_) {}
   }
   workModeReplySpeechMessageIndex = null;
   workModeReplySpeechUtterance = null;
+  workModeReplySpeechPaused = false;
   updateWorkModeReplySpeechButtons();
   restoreWorkModeReplyScrolling();
   if (!options.silent && workModeOpen) updateWorkModeSettingsStatus();
 }
-function speakWorkModeReplyText(index, text, options = {}) {
-  if (!isWorkModeReplySpeechSupported()) {
-    if (!options.silent) showToast('Text-to-speech is not supported in this browser.', 'warning', 3200);
-    updateWorkModeSpeechUI();
-    return false;
-  }
-  const spokenText = String(text || '').trim();
-  if (!spokenText) return false;
-  const numericIndex = Number(index);
-  const idx = index === null || index === undefined || index === '' || !Number.isFinite(numericIndex) ? null : numericIndex;
-  if (!options.restart && idx !== null && workModeReplySpeechMessageIndex === idx && window.speechSynthesis.speaking) {
-    stopWorkModeReplySpeech({ silent: true });
-    return false;
-  }
-  stopWorkModeReplySpeech({ silent: true });
+function speakWorkModeReplyTextLegacy(index, spokenText, options = {}) {
+  if (!isAgentGOTTSSupported()) return false;
   const utterance = applyAgentGOTTSVoiceToUtterance(new SpeechSynthesisUtterance(spokenText));
   utterance.onstart = () => {
-    workModeReplySpeechMessageIndex = idx;
+    workModeReplySpeechMessageIndex = index;
     workModeReplySpeechUtterance = utterance;
+    workModeReplySpeechPaused = false;
     updateWorkModeReplySpeechButtons();
   };
   utterance.onboundary = event => updateWorkModeReplySpeechHighlight(event, utterance);
-  utterance.onpause = () => clearWorkModeReplySpeechHighlightVisual();
-  utterance.onresume = () => clearWorkModeReplySpeechHighlightVisual();
+  utterance.onpause = () => {
+    workModeReplySpeechPaused = true;
+    clearWorkModeReplySpeechHighlightVisual();
+    updateWorkModeReplySpeechButtons();
+  };
+  utterance.onresume = () => {
+    workModeReplySpeechPaused = false;
+    clearWorkModeReplySpeechHighlightVisual();
+    updateWorkModeReplySpeechButtons();
+  };
   utterance.onend = () => {
     if (workModeReplySpeechUtterance === utterance) {
       workModeReplySpeechMessageIndex = null;
       workModeReplySpeechUtterance = null;
+      workModeReplySpeechPaused = false;
       resetWorkModeReplySpeechHighlight();
       updateWorkModeReplySpeechButtons();
       restoreWorkModeReplyScrolling();
@@ -19750,15 +20779,17 @@ function speakWorkModeReplyText(index, text, options = {}) {
     if (workModeReplySpeechUtterance === utterance) {
       workModeReplySpeechMessageIndex = null;
       workModeReplySpeechUtterance = null;
+      workModeReplySpeechPaused = false;
       resetWorkModeReplySpeechHighlight();
       updateWorkModeReplySpeechButtons();
       restoreWorkModeReplyScrolling();
     }
     if (!options.silent) showToast('Could not read this reply aloud.', 'warning', 2800);
   };
-  workModeReplySpeechMessageIndex = idx;
+  workModeReplySpeechMessageIndex = index;
   workModeReplySpeechUtterance = utterance;
-  prepareWorkModeReplySpeechHighlight(idx, spokenText, utterance);
+  workModeReplySpeechPaused = false;
+  prepareWorkModeReplySpeechHighlight(index, spokenText, utterance);
   updateWorkModeReplySpeechButtons();
   try {
     window.speechSynthesis.speak(utterance);
@@ -19766,11 +20797,31 @@ function speakWorkModeReplyText(index, text, options = {}) {
   } catch (err) {
     workModeReplySpeechMessageIndex = null;
     workModeReplySpeechUtterance = null;
+    workModeReplySpeechPaused = false;
     resetWorkModeReplySpeechHighlight();
     updateWorkModeReplySpeechButtons();
     if (!options.silent) showToast('Could not read this reply aloud.', 'warning', 2800);
     return false;
   }
+}
+function speakWorkModeReplyText(index, text, options = {}) {
+  if (!agentGOTTSEnabled) {
+    if (!options.silent) showToast('AgentGO speech is disabled.', 'warning', 3000);
+    updateWorkModeSpeechUI();
+    return false;
+  }
+  if (!isWorkModeReplySpeechSupported()) {
+    if (!options.silent) showToast('Text-to-speech is not supported in this browser.', 'warning', 3200);
+    updateWorkModeSpeechUI();
+    return false;
+  }
+  const spokenText = String(text || '').trim();
+  if (!spokenText) return false;
+  const numericIndex = Number(index);
+  const idx = index === null || index === undefined || index === '' || !Number.isFinite(numericIndex) ? null : numericIndex;
+  if (effectiveAgentGOTTSEngine() === 'kokoro' && speakWorkModeReplyTextKokoro(idx, spokenText, options)) return true;
+  stopWorkModeReplySpeech({ silent:true });
+  return speakWorkModeReplyTextLegacy(idx, spokenText, options);
 }
 function speakWorkModeReplyMessage(index, options = {}) {
   const idx = Number(index);
@@ -19779,6 +20830,12 @@ function speakWorkModeReplyMessage(index, options = {}) {
   return speakWorkModeReplyText(idx, workModeReplySpeechText(msg.text || ''), options);
 }
 function toggleWorkModeAutoReadReplies() {
+  if (!agentGOTTSEnabled) {
+    workModeSettings.autoReadReplies = false;
+    updateWorkModeSpeechUI();
+    showToast('AgentGO speech is disabled.', 'warning', 3000);
+    return;
+  }
   if (!isWorkModeReplySpeechSupported()) {
     workModeSettings.autoReadReplies = false;
     updateWorkModeSpeechUI();
@@ -21686,6 +22743,13 @@ function attachWorkModeMessageEvents() {
     btn.addEventListener('click', toggleSpeaker);
     btn.addEventListener('contextmenu', toggleSpeaker);
   });
+  feed.querySelectorAll('[data-work-pause-message]').forEach(btn => {
+    btn.addEventListener('click', event => {
+      event.preventDefault();
+      const idx = Number(event.currentTarget.getAttribute('data-work-pause-message'));
+      toggleWorkModeReplySpeechPause(idx);
+    });
+  });
   feed.querySelectorAll('[data-work-copy-message]').forEach(btn => {
     btn.addEventListener('click', event => {
       event.preventDefault();
@@ -22429,8 +23493,9 @@ function appendWorkModeMessage(role, text, options = {}) {
   const index = workModeMessages.length - 1;
   workModeActiveFile = null;
   if (!workModeBackgroundTabMutation) renderWorkModeMessages();
-  if (role === 'ai' && options.autoRead && workModeOpen && workModeSettings.autoReadReplies && !workModeBackgroundTabMutation) {
-    setTimeout(() => speakWorkModeReplyMessage(index, { silent: true, auto: true }), 0);
+  if (role === 'ai' && workModeOpen && !workModeBackgroundTabMutation) {
+    if (options.autoRead && workModeSettings.autoReadReplies) setTimeout(() => speakWorkModeReplyMessage(index, { silent:true, auto:true }), 0);
+    else setTimeout(() => prebufferWorkModeReplyMessage(index), 0);
   }
   return index;
 }
@@ -24786,6 +25851,14 @@ function resetWorkModeState() {
   updateWorkModeSettingsStatus();
   requestAnimationFrame(updateWorkModeScrollButton);
 }
+function handleYetiWorkModeButton() {
+  if (workModeOpen) {
+    closeYetiMenu();
+    hideWorkModeOverlay();
+    return;
+  }
+  startWorkModeFromYetiMenu();
+}
 function startWorkModeFromYetiMenu() {
   if (!activeProject) return showToast('Select a project first before starting Work Mode.', 'warning', 3200);
   const builderCount = activeBuilderCount();
@@ -26881,6 +27954,12 @@ document.getElementById('riskYeti').addEventListener('keydown', e => {
   }
 });
 document.getElementById('riskIndicator').addEventListener('click', e => {
+  const phoneticsBtn = e.target.closest('#yetiPhoneticsBtn');
+  if (phoneticsBtn) {
+    e.preventDefault();
+    openAgentGOPhonetics();
+    return;
+  }
   const testVoiceBtn = e.target.closest('#yetiTestVoiceBtn');
   if (testVoiceBtn) {
     e.preventDefault();
@@ -26896,14 +27975,48 @@ document.getElementById('riskIndicator').addEventListener('click', e => {
   const workBtn = e.target.closest('#yetiStartWorkBtn');
   if (workBtn) {
     e.preventDefault();
-    startWorkModeFromYetiMenu();
+    handleYetiWorkModeButton();
+  }
+});
+document.addEventListener('click', e => {
+  if (e.target.closest('#phoneticsSaveBtn')) {
+    e.preventDefault();
+    saveAgentGOPhonetics();
+    return;
+  }
+  if (e.target.closest('#phoneticsCancelBtn, #phoneticsCloseBtn, [data-close-phonetics="true"]')) {
+    e.preventDefault();
+    closeAgentGOPhonetics();
   }
 });
 document.getElementById('riskIndicator').addEventListener('change', e => {
   const voiceSelect = e.target.closest('#yetiTTSVoiceSelect');
   if (voiceSelect) {
-    saveAgentGOTTSVoice(voiceSelect.value);
+    saveAgentGOTTSUnifiedVoice(voiceSelect.value).catch(() => {});
+    return;
   }
+  const enabledToggle = e.target.closest('#yetiTTSEnabledToggle');
+  if (enabledToggle) {
+    saveAgentGOTTSConfig({ tts_enabled: !!enabledToggle.checked }, { message: enabledToggle.checked ? 'AgentGO speech enabled.' : 'AgentGO speech disabled.' }).catch(() => {});
+    return;
+  }
+  const highlightToggle = e.target.closest('#yetiTTSHighlightToggle');
+  if (highlightToggle) {
+    saveAgentGOTTSConfig({ tts_highlight: !!highlightToggle.checked }, { message: highlightToggle.checked ? 'Spoken-word highlighting enabled.' : 'Spoken-word highlighting disabled.' }).catch(() => {});
+    return;
+  }
+  const speedRange = e.target.closest('#yetiTTSSpeedRange');
+  if (speedRange) {
+    const speed = Math.min(1.5, Math.max(0.75, Number(speedRange.value) || 1));
+    saveAgentGOTTSConfig({ tts_speed: speed }, { message: `Speech speed saved at ${speed.toFixed(2)}×.` }).catch(() => {});
+  }
+});
+document.getElementById('riskIndicator').addEventListener('input', e => {
+  const speedRange = e.target.closest('#yetiTTSSpeedRange');
+  if (!speedRange) return;
+  const output = document.getElementById('yetiTTSSpeedValue');
+  const speed = Math.min(1.5, Math.max(0.75, Number(speedRange.value) || 1));
+  if (output) output.textContent = `${speed.toFixed(2)}×`;
 });
 if (isAgentGOTTSSupported()) {
   refreshAgentGOTTSVoices();
@@ -26915,7 +28028,15 @@ if (workModeBuilderLabel) workModeBuilderLabel.addEventListener('contextmenu', e
   openWorkModeFolderContextMenu(workModeProjectworkRootPath(), event.clientX, event.clientY, 'root');
 });
 const workModeYeti = document.getElementById('workModeYeti');
-if (workModeYeti) workModeYeti.addEventListener('click', hideWorkModeOverlay);
+if (workModeYeti) {
+  workModeYeti.addEventListener('click', toggleYetiMenu);
+  workModeYeti.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleYetiMenu();
+    }
+  });
+}
 const workModeSearchInput = document.getElementById('workModeSearchInput');
 if (workModeSearchInput) workModeSearchInput.addEventListener('input', scheduleWorkModeSearch);
 const workModeSearchClearBtn = document.getElementById('workModeSearchClearBtn');
@@ -27299,8 +28420,9 @@ document.addEventListener('click', event => {
 document.addEventListener('click', event => {
   const bubble = document.getElementById('riskIndicator');
   const yeti = document.getElementById('riskYeti');
+  const workModeYeti = document.getElementById('workModeYeti');
   if (!yetiMenuOpen || !bubble || !yeti) return;
-  if (bubble.contains(event.target) || yeti.contains(event.target)) return;
+  if (bubble.contains(event.target) || yeti.contains(event.target) || (workModeYeti && workModeYeti.contains(event.target))) return;
   closeYetiMenu();
 });
 document.getElementById('diagnosticsSpiderBtn').addEventListener('click', toggleDiagnosticsModal);
@@ -28057,6 +29179,7 @@ async function initializeApp() {
 
   stopModelStatePolling();
   initializeKnowledgeSurface();
+  scheduleAgentGOKokoroStartupRefresh();
   populateRiskIterationOptions();
   populateLoopCountOptions();
   resetWavePromptEditorState();
@@ -28246,4 +29369,5 @@ setInterval(() => {
 </div>
 </div>
 
-<div aria-hidden="true" class="model-corrections-modal" id="modelCorrectionsModal"><div class="model-corrections-backdrop" data-close-model-corrections="true"></div><div aria-labelledby="modelCorrectionsTitle" aria-modal="true" class="model-corrections-dialog" role="dialog"><button aria-label="Close" class="modal-close-btn modal-close-floating" id="modelCorrectionsCloseBtn" type="button">Close</button><div class="model-corrections-head"><h3 id="modelCorrectionsTitle">Model Corrections</h3><p>These instructions help this model avoid previously detected Work Mode mistakes. They apply whenever this configured model is used as an AI Builder in Work Mode.</p><div class="model-corrections-path" id="modelCorrectionsPath"></div></div><div class="model-corrections-draft-box" id="modelCorrectionsDraftBox" hidden><p class="model-corrections-draft-copy">AgentGO detected a problem in this AI Builder’s response. Select a capable AI to draft a short instruction that may prevent this Builder from repeating the mistake.</p><div class="model-corrections-issue" id="modelCorrectionsIssue"></div><div class="model-corrections-observer-row"><label>Observer AI<select id="modelCorrectionsObserver"></select></label><button class="model-corrections-btn draft" id="modelCorrectionsDraftBtn" type="button">Draft correction</button></div></div><label class="model-corrections-editor-label" for="modelCorrectionsEditor">Work Mode Builder correction profile</label><textarea class="model-corrections-editor" id="modelCorrectionsEditor" maxlength="32768" placeholder="- Add concise, model-specific Work Mode correction rules here."></textarea><div aria-live="polite" class="model-corrections-status" id="modelCorrectionsStatus"></div><div class="model-corrections-actions"><button class="model-corrections-btn secondary" id="modelCorrectionsCancelBtn" type="button">Cancel</button><button class="model-corrections-btn primary" id="modelCorrectionsSaveBtn" type="button">Save corrections</button></div></div></div><div aria-hidden="true" class="settings-modal" id="settings-modal"><div class="settings-backdrop" data-close-settings="true"></div><div aria-labelledby="settings-title" aria-modal="true" class="settings-dialog" role="dialog"><button aria-label="Close" class="modal-close-btn modal-close-floating" id="settingsCloseX" type="button">Close</button><h3 id="settings-title">Model Settings</h3><p id="settings-copy">Edit the current project meta files for this model.</p><div class="settings-meta-tabs"><button class="meta-tab is-active" data-file="user_context.json" title="user_context.json" type="button">User</button><button class="meta-tab" data-file="ai_context.json" title="ai_context.json" type="button">AI Builder</button><button class="meta-tab" data-file="reviewer_context.json" title="reviewer_context.json" type="button">AI Reviewer</button></div><textarea class="meta-editor" id="metaEditor"></textarea><div class="meta-save-row"><button class="settings-close" id="settings-close" type="button">Cancel</button><button class="meta-save-btn" id="metaSaveBtn" type="button">Save Meta Files</button></div></div></div><script>function closeSettingsModal(){const modal=document.getElementById('settings-modal');if(!modal)return;restoreFocusBeforeHide(modal,lastFocusedBeforeSettingsModal||document.querySelector('.settings-btn'));modal.classList.remove('open');modal.setAttribute('aria-hidden','true');openSettingsModelId='';settingsMetaCache={};activeMetaTab='user_context.json';lastFocusedBeforeSettingsModal=null;}const metaSaveBtn=document.getElementById('metaSaveBtn');if(metaSaveBtn)metaSaveBtn.addEventListener('click',saveMetaFiles);const settingsCloseBtnInline=document.getElementById('settings-close');if(settingsCloseBtnInline)settingsCloseBtnInline.addEventListener('click',closeSettingsModal);const settingsCloseXInline=document.getElementById('settingsCloseX');if(settingsCloseXInline)settingsCloseXInline.addEventListener('click',closeSettingsModal);document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeSettingsModal();closeRiskModal();closeConfirmModal(false);closeModelEditor();closeDeleteModelModal();closeModelActionsMenu();closeMasterMindNamePopup();closeMasterMindModal();closeModelCorrectionsModal();closeVideoJobsModal();closeMeshModelSettings({ restoreFocus: false });closeMeshViewerModal({ restoreFocus: false });closeMeshJobsModal();closeDeadDropPopover({ restoreFocus: false });}});</script></body></html>
+<div aria-hidden="true" class="phonetics-modal" id="phoneticsModal"><div class="phonetics-backdrop" data-close-phonetics="true"></div><div aria-labelledby="phoneticsTitle" aria-modal="true" class="phonetics-dialog" role="dialog"><button aria-label="Close custom phonetics" class="modal-close-btn modal-close-floating" id="phoneticsCloseBtn" type="button">Close</button><div class="phonetics-head"><h3 id="phoneticsTitle">Custom Phonetics</h3><p>Edit the speech-only pronunciation library used by Kokoro. AgentGO’s displayed response is never changed.</p><div class="phonetics-path" id="phoneticsPath">system_prompts/phonetics.md</div></div><textarea aria-label="Custom phonetics rules" class="phonetics-editor" id="phoneticsEditor" maxlength="262144" spellcheck="false"></textarea><div aria-live="polite" class="phonetics-status" id="phoneticsStatus"></div><div class="phonetics-actions"><button class="phonetics-cancel" id="phoneticsCancelBtn" type="button">Cancel</button><button class="phonetics-save" id="phoneticsSaveBtn" type="button">Save Phonetics</button></div></div></div>
+<div aria-hidden="true" class="model-corrections-modal" id="modelCorrectionsModal"><div class="model-corrections-backdrop" data-close-model-corrections="true"></div><div aria-labelledby="modelCorrectionsTitle" aria-modal="true" class="model-corrections-dialog" role="dialog"><button aria-label="Close" class="modal-close-btn modal-close-floating" id="modelCorrectionsCloseBtn" type="button">Close</button><div class="model-corrections-head"><h3 id="modelCorrectionsTitle">Model Corrections</h3><p>These instructions help this model avoid previously detected Work Mode mistakes. They apply whenever this configured model is used as an AI Builder in Work Mode.</p><div class="model-corrections-path" id="modelCorrectionsPath"></div></div><div class="model-corrections-draft-box" id="modelCorrectionsDraftBox" hidden><p class="model-corrections-draft-copy">AgentGO detected a problem in this AI Builder’s response. Select a capable AI to draft a short instruction that may prevent this Builder from repeating the mistake.</p><div class="model-corrections-issue" id="modelCorrectionsIssue"></div><div class="model-corrections-observer-row"><label>Observer AI<select id="modelCorrectionsObserver"></select></label><button class="model-corrections-btn draft" id="modelCorrectionsDraftBtn" type="button">Draft correction</button></div></div><label class="model-corrections-editor-label" for="modelCorrectionsEditor">Work Mode Builder correction profile</label><textarea class="model-corrections-editor" id="modelCorrectionsEditor" maxlength="32768" placeholder="- Add concise, model-specific Work Mode correction rules here."></textarea><div aria-live="polite" class="model-corrections-status" id="modelCorrectionsStatus"></div><div class="model-corrections-actions"><button class="model-corrections-btn secondary" id="modelCorrectionsCancelBtn" type="button">Cancel</button><button class="model-corrections-btn primary" id="modelCorrectionsSaveBtn" type="button">Save corrections</button></div></div></div><div aria-hidden="true" class="settings-modal" id="settings-modal"><div class="settings-backdrop" data-close-settings="true"></div><div aria-labelledby="settings-title" aria-modal="true" class="settings-dialog" role="dialog"><button aria-label="Close" class="modal-close-btn modal-close-floating" id="settingsCloseX" type="button">Close</button><h3 id="settings-title">Model Settings</h3><p id="settings-copy">Edit the current project meta files for this model.</p><div class="settings-meta-tabs"><button class="meta-tab is-active" data-file="user_context.json" title="user_context.json" type="button">User</button><button class="meta-tab" data-file="ai_context.json" title="ai_context.json" type="button">AI Builder</button><button class="meta-tab" data-file="reviewer_context.json" title="reviewer_context.json" type="button">AI Reviewer</button></div><textarea class="meta-editor" id="metaEditor"></textarea><div class="meta-save-row"><button class="settings-close" id="settings-close" type="button">Cancel</button><button class="meta-save-btn" id="metaSaveBtn" type="button">Save Meta Files</button></div></div></div><script>function closeSettingsModal(){const modal=document.getElementById('settings-modal');if(!modal)return;restoreFocusBeforeHide(modal,lastFocusedBeforeSettingsModal||document.querySelector('.settings-btn'));modal.classList.remove('open');modal.setAttribute('aria-hidden','true');openSettingsModelId='';settingsMetaCache={};activeMetaTab='user_context.json';lastFocusedBeforeSettingsModal=null;}const metaSaveBtn=document.getElementById('metaSaveBtn');if(metaSaveBtn)metaSaveBtn.addEventListener('click',saveMetaFiles);const settingsCloseBtnInline=document.getElementById('settings-close');if(settingsCloseBtnInline)settingsCloseBtnInline.addEventListener('click',closeSettingsModal);const settingsCloseXInline=document.getElementById('settingsCloseX');if(settingsCloseXInline)settingsCloseXInline.addEventListener('click',closeSettingsModal);document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeSettingsModal();closeRiskModal();closeConfirmModal(false);closeModelEditor();closeDeleteModelModal();closeModelActionsMenu();closeMasterMindNamePopup();closeMasterMindModal();closeAgentGOPhonetics();closeModelCorrectionsModal();closeVideoJobsModal();closeMeshModelSettings({ restoreFocus: false });closeMeshViewerModal({ restoreFocus: false });closeMeshJobsModal();closeDeadDropPopover({ restoreFocus: false });}});</script></body></html>

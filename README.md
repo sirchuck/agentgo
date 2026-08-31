@@ -304,6 +304,16 @@ This is one of the most important controls in AgentGO because it keeps the workf
 
 ---
 
+## Local neural speech (Kokoro)
+
+AgentGO supports Kokoro as its local neural voice companion. Official AgentGO release packages may include the tested Kokoro runtime/model assets, while GitHub/source builds can run without Kokoro and fall back to the browser/system speech engine. AgentGO never downloads Kokoro automatically.
+
+For a manual source-build installation, place the model at `assets/kokoro/model.onnx`, voice files under `assets/kokoro/voices/`, and compile AgentGO's native helper from `cmd/kokoro-helper/` into the current platform folder under `assets/kokoro/runtime/<os>-<arch>/`, then restart AgentGO. A generic helper directly under `assets/kokoro/runtime/` is also accepted for single-platform packages. See `assets/kokoro/Kokoro.md` for the exact filesystem contract, helper build example, and model details.
+
+The known full-quality target is `onnx-community/Kokoro-82M-v1.0-ONNX-timestamped` FP32 `onnx/model.onnx` (installed as `assets/kokoro/model.onnx`), SHA-256 `651ea8291843a92276a4a003581a215cb07d15e47dde6fcfb1b768f9a1682054`. The timestamp-enabled graph's predicted-duration output is used for exact source-text highlighting when available; AgentGO safely falls back to chunk/sentence highlighting when exact timing is unavailable. The checksum documents the selected file; AgentGO does not enforce it at runtime, and developers may substitute another compatible Kokoro ONNX variant.
+
+---
+
 ## FAQ
 
 ### What is AgentGO in one sentence?

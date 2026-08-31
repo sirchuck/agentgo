@@ -22,6 +22,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -75,7 +76,12 @@ type AppConfig struct {
 	TLSCertFile                 string        `json:"tls_cert_file"`
 	TLSKeyFile                  string        `json:"tls_key_file"`
 	WorkRoot                    string        `json:"work_root"`
+	TTSEnabled                  *bool         `json:"tts_enabled,omitempty"`
 	TTSVoice                    string        `json:"tts_voice"`
+	TTSLegacyVoice              *string       `json:"tts_legacy_voice,omitempty"`
+	TTSSpeed                    float64       `json:"tts_speed,omitempty"`
+	TTSHighlight                *bool         `json:"tts_highlight,omitempty"`
+	TTSEngine                   string        `json:"tts_engine,omitempty"`
 	VoiceStartCommand           string        `json:"voice_start_command"`
 	VoiceSendCommand            string        `json:"voice_send_command"`
 	VoiceRepeatCommand          string        `json:"voice_repeat_command"`
@@ -300,6 +306,7 @@ type App struct {
 	cfg                         AppConfig
 	configPath                  string
 	modelsPath                  string
+	appRoot                     string
 	knownModelMaxOutputCatalog  knownModelMaxOutputCatalog
 	modelSchemaVersion          int
 	modelTopID                  int
@@ -364,6 +371,7 @@ type App struct {
 	tokenUsageExecutionID       string
 	tokenUsageLoopLabel         string
 	tokenUsageWaveLabel         string
+	kokoro                      *kokoroManager
 }
 
 type LogEntry struct {
@@ -870,7 +878,13 @@ type homeData struct {
 	ReleaseLabel           string
 	HTTPPort               int
 	HTTPSPort              int
+	TTSEnabledJSON         template.JS
 	TTSVoiceJSON           template.JS
+	TTSLegacyVoiceJSON     template.JS
+	TTSSpeedJSON           template.JS
+	TTSHighlightJSON       template.JS
+	TTSEngineJSON          template.JS
+	KokoroStatusJSON       template.JS
 	VoiceStartCommandJSON  template.JS
 	VoiceSendCommandJSON   template.JS
 	VoiceRepeatCommandJSON template.JS
@@ -2986,6 +3000,9 @@ func main() {
 	release := loadReleaseInfo(releasePath)
 	cfg.Models = registry.Models
 	ensureWorkDirs(cfg)
+	if err := ensureKokoroAssetLayout("."); err != nil {
+		log.Printf("[WARN] startup: unable to prepare Kokoro asset directory: %v", err)
+	}
 	if err := validateSystemPromptFiles(cfg); err != nil {
 		log.Fatalf("system prompt setup error: %v", err)
 	}
@@ -2994,6 +3011,7 @@ func main() {
 		cfg:                         cfg,
 		configPath:                  configPath,
 		modelsPath:                  modelsPath,
+		appRoot:                     ".",
 		knownModelMaxOutputCatalog:  maxOutputCatalog,
 		modelSchemaVersion:          registry.SchemaVersion,
 		modelTopID:                  registry.TopID,
@@ -3029,6 +3047,7 @@ func main() {
 	}
 	app.startOutfitTimerLoop()
 	app.logf("system", "info", "Loaded %s", app.release.Label())
+	app.kokoro = newKokoroManager(app.appRoot, app.logf)
 
 	mux := http.NewServeMux()
 	mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
@@ -3063,6 +3082,9 @@ func main() {
 	mux.HandleFunc("/api/mesh/jobs/promote", app.handleMeshJobPromote)
 	mux.HandleFunc("/api/chat", app.handleChat)
 	mux.HandleFunc("/api/config/tts", app.handleTTSConfig)
+	mux.HandleFunc("/api/config/tts/phonetics", app.handleTTSPhonetics)
+	mux.HandleFunc("/api/tts/status", app.handleTTSStatus)
+	mux.HandleFunc("/api/tts/kokoro/synthesize", app.handleKokoroSynthesis)
 	mux.HandleFunc("/api/config/voice-commands", app.handleVoiceCommandConfig)
 	mux.HandleFunc("/api/work-mode/send", app.withWorkModeRecovery("/api/work-mode/send", app.handleWorkModeSend))
 	mux.HandleFunc("/api/work-mode/url/capabilities", app.withWorkModeRecovery("/api/work-mode/url/capabilities", app.handleWorkModeURLCapabilities))
@@ -3202,12 +3224,36 @@ func main() {
 
 	httpAddr := listenAddress(cfg.BindHost, cfg.HTTPPort)
 	httpsAddr := listenAddress(cfg.BindHost, cfg.HTTPSPort)
+
+	// Claim configured server ports before touching the Kokoro helper. This makes
+	// duplicate/broken AgentGO launches fail cleanly without killing or replacing
+	// the helper/model owned by the already-running AgentGO instance.
+	var httpListener net.Listener
+	var httpsListener net.Listener
+	if httpEnabled {
+		listener, err := net.Listen("tcp", httpAddr)
+		if err != nil {
+			log.Fatalf("AgentGO could not claim HTTP listener %s: %v", httpAddr, err)
+		}
+		httpListener = listener
+	}
+	if httpsEnabled {
+		listener, err := net.Listen("tcp", httpsAddr)
+		if err != nil {
+			if httpListener != nil {
+				_ = httpListener.Close()
+			}
+			log.Fatalf("AgentGO could not claim HTTPS listener %s: %v", httpsAddr, err)
+		}
+		httpsListener = listener
+	}
+
 	printStartupBanner(app.release, cfg, httpEnabled, httpsEnabled, tlsReason)
 	handler := app.wrapHTTPHandler(mux)
 
 	serverErrs := make(chan error, 2)
 	if httpEnabled {
-		go func() {
+		go func(listener net.Listener) {
 			app.logf("system", "info", "Starting HTTP server on %s", httpAddr)
 			server := &http.Server{
 				Addr:              httpAddr,
@@ -3217,13 +3263,13 @@ func main() {
 				MaxHeaderBytes:    defaultHTTPMaxHeaderBytes,
 				ConnState:         app.httpConnStateHook,
 			}
-			serverErrs <- fmt.Errorf("HTTP server stopped: %w", server.ListenAndServe())
-		}()
+			serverErrs <- fmt.Errorf("HTTP server stopped: %w", server.Serve(listener))
+		}(httpListener)
 	} else {
 		app.logf("system", "info", "HTTP listener disabled by http_port=0")
 	}
 	if httpsEnabled {
-		go func() {
+		go func(listener net.Listener) {
 			app.logf("system", "info", "Starting HTTPS server on %s", httpsAddr)
 			server := &http.Server{
 				Addr:              httpsAddr,
@@ -3233,15 +3279,34 @@ func main() {
 				MaxHeaderBytes:    defaultHTTPMaxHeaderBytes,
 				ConnState:         app.httpConnStateHook,
 			}
-			serverErrs <- fmt.Errorf("HTTPS server stopped: %w", server.ListenAndServeTLS(cfg.TLSCertFile, cfg.TLSKeyFile))
-		}()
+			serverErrs <- fmt.Errorf("HTTPS server stopped: %w", server.ServeTLS(listener, cfg.TLSCertFile, cfg.TLSKeyFile))
+		}(httpsListener)
 	} else if httpsRequested {
 		app.logf("system", "info", "HTTPS listener disabled: %s", tlsReason)
 	} else {
 		app.logf("system", "info", "HTTPS listener disabled by https_port=0")
 	}
 
-	log.Fatal(<-serverErrs)
+	// AgentGO is now listening and usable. Warm Kokoro in the background so its
+	// ONNX model can load while the user begins working instead of gating startup.
+	app.syncKokoroLifecycle()
+
+	shutdownSignals := make(chan os.Signal, 1)
+	signal.Notify(shutdownSignals, os.Interrupt)
+	defer signal.Stop(shutdownSignals)
+
+	select {
+	case serverErr := <-serverErrs:
+		if app.kokoro != nil {
+			app.kokoro.Close()
+		}
+		log.Fatal(serverErr)
+	case sig := <-shutdownSignals:
+		app.logf("system", "info", "Shutdown signal received: %s", sig.String())
+		if app.kokoro != nil {
+			app.kokoro.Close()
+		}
+	}
 }
 
 func listenAddress(host string, port int) string {
@@ -3317,6 +3382,12 @@ func applyConfigDefaults(cfg *AppConfig) {
 		cfg.WorkRoot = "work"
 	}
 	cfg.TTSVoice = strings.TrimSpace(cfg.TTSVoice)
+	if cfg.TTSLegacyVoice != nil {
+		legacyVoice := strings.TrimSpace(*cfg.TTSLegacyVoice)
+		cfg.TTSLegacyVoice = stringPointer(legacyVoice)
+	}
+	cfg.TTSSpeed = normalizeTTSSpeed(cfg.TTSSpeed)
+	cfg.TTSEngine = normalizeTTSEngine(cfg.TTSEngine)
 	cfg.VoiceStartCommand = strings.TrimSpace(cfg.VoiceStartCommand)
 	if cfg.VoiceStartCommand == "" {
 		cfg.VoiceStartCommand = defaultVoiceStartCommand
@@ -4089,80 +4160,42 @@ func jsonStringForTemplate(value string) template.JS {
 	return template.JS(string(data))
 }
 
+func jsonValueForTemplate(value any) template.JS {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return template.JS(`null`)
+	}
+	return template.JS(string(data))
+}
+
 func (a *App) handleHome(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
 	}
 	a.mu.RLock()
-	ttsVoice := a.cfg.TTSVoice
-	voiceStartCommand := a.cfg.VoiceStartCommand
-	voiceSendCommand := a.cfg.VoiceSendCommand
-	voiceRepeatCommand := a.cfg.VoiceRepeatCommand
-	voiceReadCommand := a.cfg.VoiceReadCommand
+	cfg := a.cfg
 	a.mu.RUnlock()
+	kokoroStatus := a.currentKokoroStatus()
 	if err := a.tmpl.Execute(w, homeData{
-		Models:                 a.cfg.Models,
-		RiskModeMaxIterations:  a.cfg.RiskModeMaxIterations,
+		Models:                 cfg.Models,
+		RiskModeMaxIterations:  cfg.RiskModeMaxIterations,
 		ReleaseLabel:           a.release.Label(),
-		HTTPPort:               a.cfg.HTTPPort,
-		HTTPSPort:              a.cfg.HTTPSPort,
-		TTSVoiceJSON:           jsonStringForTemplate(ttsVoice),
-		VoiceStartCommandJSON:  jsonStringForTemplate(voiceStartCommand),
-		VoiceSendCommandJSON:   jsonStringForTemplate(voiceSendCommand),
-		VoiceRepeatCommandJSON: jsonStringForTemplate(voiceRepeatCommand),
-		VoiceReadCommandJSON:   jsonStringForTemplate(voiceReadCommand),
+		HTTPPort:               cfg.HTTPPort,
+		HTTPSPort:              cfg.HTTPSPort,
+		TTSEnabledJSON:         jsonValueForTemplate(ttsEnabled(cfg)),
+		TTSVoiceJSON:           jsonStringForTemplate(cfg.TTSVoice),
+		TTSLegacyVoiceJSON:     jsonStringForTemplate(ttsLegacyVoice(cfg)),
+		TTSSpeedJSON:           jsonValueForTemplate(normalizeTTSSpeed(cfg.TTSSpeed)),
+		TTSHighlightJSON:       jsonValueForTemplate(ttsHighlightEnabled(cfg)),
+		TTSEngineJSON:          jsonStringForTemplate(normalizeTTSEngine(cfg.TTSEngine)),
+		KokoroStatusJSON:       jsonValueForTemplate(kokoroStatus),
+		VoiceStartCommandJSON:  jsonStringForTemplate(cfg.VoiceStartCommand),
+		VoiceSendCommandJSON:   jsonStringForTemplate(cfg.VoiceSendCommand),
+		VoiceRepeatCommandJSON: jsonStringForTemplate(cfg.VoiceRepeatCommand),
+		VoiceReadCommandJSON:   jsonStringForTemplate(cfg.VoiceReadCommand),
 	}); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-func (a *App) handleTTSConfig(w http.ResponseWriter, r *http.Request) {
-	type ttsConfigResponse struct {
-		OK       bool   `json:"ok"`
-		TTSVoice string `json:"tts_voice"`
-	}
-	type ttsConfigRequest struct {
-		TTSVoice string `json:"tts_voice"`
-	}
-	switch r.Method {
-	case http.MethodGet:
-		a.mu.RLock()
-		voice := a.cfg.TTSVoice
-		a.mu.RUnlock()
-		writeJSON(w, http.StatusOK, ttsConfigResponse{OK: true, TTSVoice: voice})
-	case http.MethodPost:
-		var req ttsConfigRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "invalid json", http.StatusBadRequest)
-			return
-		}
-		voice := strings.TrimSpace(req.TTSVoice)
-		if len(voice) > 256 {
-			http.Error(w, "tts_voice is too long", http.StatusBadRequest)
-			return
-		}
-		a.mu.RLock()
-		cfg := a.cfg
-		a.mu.RUnlock()
-		cfg.TTSVoice = voice
-		applyConfigDefaults(&cfg)
-		data, err := json.MarshalIndent(cfg, "", "  ")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		data = append(data, '\n')
-		if err := atomicWriteFile(a.configPath, data, 0o644); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		a.mu.Lock()
-		a.cfg.TTSVoice = voice
-		a.mu.Unlock()
-		writeJSON(w, http.StatusOK, ttsConfigResponse{OK: true, TTSVoice: voice})
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
@@ -25291,7 +25324,7 @@ const defaultAgentGOStylingPrompt = `AgentGO Styling Protocol
 
 Only apply AgentGO Styling Protocol to the user-facing "reply" field inside the required JSON envelope.
 
-Whenever you return any user-provided prose or code, always wrap only the changes or modifications you make in <span class="agentgo-code-change">...</span>. Always apply this rule so users can quickly identify your edits, whether inside a <pre><code> block or in ordinary prose outside a code block.
+Important: Whenever you return or reuse any user-provided prose or code, always wrap only the changes or modifications you make in <span class="agentgo-code-change">...</span>. Always apply this rule so users can quickly identify your edits, whether inside a <pre><code> block or in ordinary prose outside a code block.
 
 Use compact, safe HTML for rendered chat replies.
 

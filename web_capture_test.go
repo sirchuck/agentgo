@@ -965,7 +965,7 @@ func TestAgentGOStylingPaletteAndWorkModeWebshotUI(t *testing.T) {
 	if prompt != strings.TrimSpace(defaultAgentGOStylingPrompt) {
 		t.Fatal("built-in styling prompt and system_prompts/agentgo_styling.txt are out of sync")
 	}
-	for _, required := range []string{"green #7EE7A8", "yellow #FFE27C", "orange #FF9900", "red #FF9696", `<span style="color:#RRGGBB">`, `Whenever you return any user-provided prose or code, always wrap only the changes or modifications you make in <span class="agentgo-code-change">...</span>. Always apply this rule so users can quickly identify your edits, whether inside a <pre><code> block or in ordinary prose outside a code block.`, `Render prose as normal prose, never inside <pre><code>. Use <pre><code>`, `only for code.`} {
+	for _, required := range []string{"green #7EE7A8", "yellow #FFE27C", "orange #FF9900", "red #FF9696", `<span style="color:#RRGGBB">`, `Important: Whenever you return or reuse any user-provided prose or code, always wrap only the changes or modifications you make in <span class="agentgo-code-change">...</span>. Always apply this rule so users can quickly identify your edits, whether inside a <pre><code> block or in ordinary prose outside a code block.`, `Render prose as normal prose, never inside <pre><code>. Use <pre><code>`, `only for code.`} {
 		if !strings.Contains(prompt, required) {
 			t.Fatalf("styling prompt missing %q", required)
 		}

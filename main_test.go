@@ -43,7 +43,7 @@ func TestDefaultAgentGOStylingKeepsCorrectionInstructionNearTop(t *testing.T) {
 		defaultAgentGOStylingPrompt,
 		"",
 	)
-	correction := `Whenever you return any user-provided prose or code, always wrap only the changes or modifications you make in <span class="agentgo-code-change">...</span>. Always apply this rule so users can quickly identify your edits, whether inside a <pre><code> block or in ordinary prose outside a code block.`
+	correction := `Important: Whenever you return or reuse any user-provided prose or code, always wrap only the changes or modifications you make in <span class="agentgo-code-change">...</span>. Always apply this rule so users can quickly identify your edits, whether inside a <pre><code> block or in ordinary prose outside a code block.`
 	if count := strings.Count(instructions, correction); count != 1 {
 		t.Fatalf("correction instruction count = %d, want 1\n%s", count, instructions)
 	}
@@ -65,7 +65,7 @@ func TestDefaultAgentGOStylingPositionIsPreservedForObserverWorker(t *testing.T)
 		defaultAgentGOStylingPrompt,
 		"",
 	)
-	correction := `Whenever you return any user-provided prose or code, always wrap only the changes or modifications you make in <span class="agentgo-code-change">...</span>. Always apply this rule so users can quickly identify your edits, whether inside a <pre><code> block or in ordinary prose outside a code block.`
+	correction := `Important: Whenever you return or reuse any user-provided prose or code, always wrap only the changes or modifications you make in <span class="agentgo-code-change">...</span>. Always apply this rule so users can quickly identify your edits, whether inside a <pre><code> block or in ordinary prose outside a code block.`
 	if count := strings.Count(instructions, correction); count != 1 {
 		t.Fatalf("Observer Worker correction instruction count = %d, want 1\n%s", count, instructions)
 	}
@@ -76,7 +76,7 @@ func TestDefaultAgentGOStylingPositionIsPreservedForObserverWorker(t *testing.T)
 
 func TestAgentGOStylingCorrectionInstructionNotAddedWhenStylingDisabled(t *testing.T) {
 	instructions := buildWorkModeInstructions(ModelConfig{UseUggPrompt: true}, false, false, "auto", nil, "", "")
-	if strings.Contains(instructions, `Whenever you return any user-provided prose or code, always wrap only the changes or modifications you make in <span class="agentgo-code-change">...</span>. Always apply this rule so users can quickly identify your edits, whether inside a <pre><code> block or in ordinary prose outside a code block.`) {
+	if strings.Contains(instructions, `Important: Whenever you return or reuse any user-provided prose or code, always wrap only the changes or modifications you make in <span class="agentgo-code-change">...</span>. Always apply this rule so users can quickly identify your edits, whether inside a <pre><code> block or in ordinary prose outside a code block.`) {
 		t.Fatalf("AgentGO styling correction instruction was added while styling disabled:\n%s", instructions)
 	}
 }
