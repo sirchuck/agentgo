@@ -70,6 +70,8 @@ func (r ReleaseInfo) Label() string {
 type AppConfig struct {
 	AgentGOFile                 string        `json:"agentgo_file,omitempty"`
 	FileVersion                 int           `json:"file_version,omitempty"`
+	Password                    string        `json:"password"`
+	FailedPasswordCount         int           `json:"failed_password_count"`
 	HTTPPort                    int           `json:"http_port"`
 	HTTPSPort                   int           `json:"https_port"`
 	BindHost                    string        `json:"bind_host"`
@@ -313,6 +315,9 @@ type App struct {
 	tmpl                        *template.Template
 	release                     ReleaseInfo
 	startedAt                   time.Time
+	authMu                      sync.RWMutex
+	authSessions                map[string]struct{}
+	shutdownCh                  chan struct{}
 	mu                          sync.RWMutex
 	structuredOutputDetectionMu sync.Mutex
 	activeSessionMu             sync.Mutex
@@ -2990,6 +2995,9 @@ func main() {
 	modelsPath := "models.json"
 	modelNamesPath := "model_names.json"
 	releasePath := "version.json"
+	if err := ensureWebSecurityConfigFields(configPath); err != nil {
+		log.Fatalf("web security config setup error: %v", err)
+	}
 	cfg := loadConfig(configPath)
 	applyConfigDefaults(&cfg)
 	registry := loadOrInitModelRegistry(modelsPath)
@@ -3018,6 +3026,8 @@ func main() {
 		tmpl:                        template.Must(template.ParseFiles("templates/index.html")),
 		release:                     release,
 		startedAt:                   time.Now(),
+		authSessions:                map[string]struct{}{},
+		shutdownCh:                  make(chan struct{}, 1),
 		toggles:                     map[string]bool{},
 		httpActiveByRoute:           map[string]int{},
 		httpActiveRequestDetails:    map[uint64]httpActiveRequestInfo{},
@@ -3054,6 +3064,7 @@ func main() {
 	mux.HandleFunc("/favicon.ico", handleFavicon)
 	mux.HandleFunc("/", app.handleHome)
 	mux.HandleFunc("/api/healthz", app.handleHealthz)
+	mux.HandleFunc("/api/shutdown", app.handleShutdown)
 	mux.HandleFunc("/api/debug/goroutines", app.handleDebugGoroutines)
 	mux.HandleFunc("/api/debug/http-state", app.handleDebugHTTPState)
 	mux.HandleFunc("/api/models", app.handleModels)
@@ -3249,7 +3260,7 @@ func main() {
 	}
 
 	printStartupBanner(app.release, cfg, httpEnabled, httpsEnabled, tlsReason)
-	handler := app.wrapHTTPHandler(mux)
+	handler := app.wrapHTTPHandler(app.withWebPasswordProtection(mux))
 
 	serverErrs := make(chan error, 2)
 	if httpEnabled {
@@ -3303,6 +3314,11 @@ func main() {
 		log.Fatal(serverErr)
 	case sig := <-shutdownSignals:
 		app.logf("system", "info", "Shutdown signal received: %s", sig.String())
+		if app.kokoro != nil {
+			app.kokoro.Close()
+		}
+	case <-app.shutdownCh:
+		app.logf("system", "info", "Shutdown requested from AgentGO web interface")
 		if app.kokoro != nil {
 			app.kokoro.Close()
 		}
@@ -5500,6 +5516,14 @@ func workModeJSONSchema() map[string]any {
 
 const workModeSmallModelPolishPassInstruction = `Revise only the "reply" field to follow the AGENTGO STYLING INSTRUCTIONS below. Preserve the AI Builder response's meaning and do not change its warnings, memory, file operations, artifacts, or other decisions. Return only one complete AgentGO Work Mode JSON object. Do not add, remove, or reinterpret any requested work.`
 
+const workModeFinalOutputRequirementInstruction = `FINAL OUTPUT REQUIREMENT
+
+Your entire response must be one valid AgentGO Work Mode JSON object. Put all prose, HTML, and code inside the JSON "reply" string and escape it correctly. Never output raw prose, HTML, code, Markdown fences, or any other content before or after the JSON object.`
+
+func appendWorkModeFinalOutputRequirement(instructions string) string {
+	return joinNonEmptyWithDoubleNewlines(strings.TrimSpace(instructions), workModeFinalOutputRequirementInstruction)
+}
+
 const workModeHTMLPreviewResponsesInstruction = `HTML PREVIEW RESPONSES
 
 When the user explicitly asks for a complete webpage, interactive HTML
@@ -5536,6 +5560,7 @@ func buildWorkModeSmallModelPolishPayload(promptEnforcedJSON bool, agentGOStylin
 		instructionParts = append(instructionParts, "PROMPT-ENFORCED JSON CONTRACT:\n"+workModeStructuredOutputContract(true))
 	}
 	instructions := strings.TrimSpace(strings.Join(instructionParts, "\n\n"))
+	instructions = appendWorkModeFinalOutputRequirement(instructions)
 	requestText := strings.TrimSpace(userRequest)
 	if requestText == "" {
 		requestText = "(Original user request unavailable.)"
@@ -8075,6 +8100,7 @@ func (a *App) handleWorkModeObserverReviewSend(w http.ResponseWriter, req workMo
 		}
 		updateableFiles := workModeUniqueRelPaths(selectedFiles, tmpRelsBefore)
 		workerInstructions := workModeObserverReviewWorkerInstructions(worker, includeRoleContext, req.UseMemory, req.ResponseMode, updateableFiles, agentGOStyling, a.loadModelCorrections(worker))
+		workerInstructions = appendWorkModeFinalOutputRequirement(workerInstructions)
 		workerMessages := []adapters.Message{buildSessionMessage("Worker", worker, workerUserContext)}
 		contextMessages, err := buildContextMessages(workerTransport, true)
 		if err != nil {
@@ -8523,6 +8549,7 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 		instructions = buildWorkModeAgenticInstructions(instructions, req.Agentic, agenticEnvironment)
 		responseSchema = workModeAgenticJSONSchema(req.Agentic.ScreenshotEnabled)
 	}
+	instructions = appendWorkModeFinalOutputRequirement(instructions)
 	requestPayload := adapterRequestPayload{
 		Instructions: strings.TrimSpace(instructions),
 		Messages:     []adapters.Message{},
@@ -8576,6 +8603,7 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 	if req.Agentic.Enabled {
 		instructions = buildWorkModeAgenticInstructions(instructions, req.Agentic, agenticEnvironment)
 	}
+	instructions = appendWorkModeFinalOutputRequirement(instructions)
 	requestPayload.Instructions = strings.TrimSpace(instructions)
 	adapterResp, err := a.executeAdapterResponse(ctx, model, requestPayload)
 	if err != nil {

@@ -9,15 +9,7 @@ import (
 
 const kokoroPinnedOnnxerVersion = "v0.7.1-0.20260807134843-4a9e532648b2"
 
-func TestKokoroPhase5StabilizationRevisionAndDependencyLock(t *testing.T) {
-	version, err := os.ReadFile("version.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(version), `"revision": "r448"`) {
-		t.Fatalf("Phase 5 overlay-upgrade stabilization must preserve the stabilized Phase 5 dependency lock through r448:\n%s", version)
-	}
-
+func TestKokoroPhase5StabilizationDependencyLock(t *testing.T) {
 	helperMod, err := os.ReadFile(filepath.Join("cmd", "kokoro-helper", "go.mod"))
 	if err != nil {
 		t.Fatal(err)

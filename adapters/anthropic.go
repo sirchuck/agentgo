@@ -238,6 +238,18 @@ func anthropicTemperature(model ModelConfig) *float64 {
 }
 
 func parseAnthropicResponse(respBody []byte, contentType string, model ModelConfig) (Response, error) {
+	// Anthropic provider-schema Work Mode responses arrive as tool_use blocks.
+	// Extract that structured payload before any generic text/raw-body fallback,
+	// otherwise the whole outer Anthropic response can be mistaken for reply text.
+	var parsed any
+	if err := json.Unmarshal(respBody, &parsed); err == nil {
+		if message := strings.TrimSpace(asString(lookupPath(parsed, "error.message"))); message != "" {
+			return Response{}, errors.New(message)
+		}
+		if toolInputJSON := extractAnthropicToolUseInputJSON(parsed); toolInputJSON != "" {
+			return Response{Text: toolInputJSON, RawBody: string(respBody)}, nil
+		}
+	}
 	response, err := parseMultipartCapableResponse(respBody, contentType, model, parseAnthropicResponseText)
 	if err == nil {
 		return response, nil
