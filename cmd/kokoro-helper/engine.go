@@ -40,6 +40,7 @@ type kokoroSynthesisChunk struct {
 type kokoroEngine interface {
 	RuntimeVersion() string
 	TimingSupported() bool
+	G2PStatus() (bool, string)
 	Synthesize(context.Context, string, string, float32, func(kokoroSynthesisChunk) error) error
 	Close() error
 }
@@ -58,10 +59,10 @@ func clampKokoroSpeed(speed float32) float32 {
 }
 
 // splitNaturalSourceText keeps source offsets so the browser can highlight the
-// source whose audio is actually playing. Chunks target a useful amount of text
-// instead of treating every sentence ending as a synthesis boundary; this lets
-// Kokoro carry natural punctuation/prosody across short sentences while still
-// avoiding mid-word cuts.
+// source whose audio is actually playing. r455 deliberately does not choose
+// sentence/punctuation boundaries: after reaching the target size it continues
+// only until the next whitespace boundary so Kokoro, not AgentGO, decides the
+// sentence cadence while words remain intact.
 func splitNaturalSourceText(text string) []sourceChunk {
 	text = strings.TrimSpace(text)
 	if text == "" {
@@ -69,8 +70,6 @@ func splitNaturalSourceText(text string) []sourceChunk {
 	}
 	var chunks []sourceChunk
 	start := 0
-	lastNaturalBreak := -1
-	lastSoftBreak := -1
 	runeCount := 0
 	flush := func(end int) {
 		if end <= start {
@@ -81,8 +80,6 @@ func splitNaturalSourceText(text string) []sourceChunk {
 		right := strings.TrimRight(raw, " \t\r\n")
 		if right == "" {
 			start = end
-			lastNaturalBreak = -1
-			lastSoftBreak = -1
 			runeCount = 0
 			return
 		}
@@ -90,35 +87,14 @@ func splitNaturalSourceText(text string) []sourceChunk {
 		chunkEnd := start + len(right)
 		chunks = append(chunks, sourceChunk{Text: text[chunkStart:chunkEnd], CharStart: utf16Units(text[:chunkStart]), CharEnd: utf16Units(text[:chunkEnd])})
 		start = end
-		lastNaturalBreak = -1
-		lastSoftBreak = -1
 		runeCount = 0
 	}
 	for i := 0; i < len(text); {
 		r, size := utf8.DecodeRuneInString(text[i:])
 		next := i + size
 		runeCount++
-		if runeCount >= kokoroTargetChunkRunes/2 {
-			switch r {
-			case '.', '!', '?', ';', ':', '\n', '—':
-				lastNaturalBreak = next
-			case ',', ' ', '\t':
-				lastSoftBreak = next
-			}
-		}
-		if runeCount >= kokoroTargetChunkRunes {
-			end := lastNaturalBreak
-			if end <= start {
-				end = lastSoftBreak
-			}
-			if end > start {
-				flush(end)
-				if end < next {
-					// Re-scan the portion after the selected natural break.
-					i = end
-					continue
-				}
-			}
+		if runeCount >= kokoroTargetChunkRunes && (r == ' ' || r == '\t' || r == '\r' || r == '\n') {
+			flush(next)
 		}
 		i = next
 	}

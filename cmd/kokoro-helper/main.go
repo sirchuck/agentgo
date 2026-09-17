@@ -18,7 +18,7 @@ import (
 	"agentgo/internal/kokoroipc"
 )
 
-const helperVersion = "agentgo-kokoro-helper-phase5"
+const helperVersion = "agentgo-kokoro-helper-r457"
 
 var kokoroEngineFactory = newKokoroEngine
 
@@ -208,6 +208,12 @@ func (s *helperServer) initialize(ref string) error {
 	if engine.TimingSupported() {
 		capabilities = append(capabilities, "word-timing-source-spans")
 	}
+	g2pAvailable, g2pMessage := engine.G2PStatus()
+	g2pProvider := "standard"
+	if g2pAvailable {
+		g2pProvider = "moonshine"
+		capabilities = append(capabilities, "moonshine-g2p")
+	}
 	return s.respond(kokoroipc.Message{
 		Type:           "ready",
 		Ref:            ref,
@@ -219,6 +225,9 @@ func (s *helperServer) initialize(ref string) error {
 		ModelLoaded:    true,
 		Voices:         assets.Voices,
 		Capabilities:   capabilities,
+		G2PProvider:    g2pProvider,
+		G2PAvailable:   g2pAvailable,
+		G2PMessage:     strings.TrimSpace(g2pMessage),
 		SampleRate:     kokoroSampleRate,
 		Channels:       kokoroChannels,
 		Encoding:       kokoroAudioEncoding,

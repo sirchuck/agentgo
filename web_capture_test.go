@@ -895,11 +895,14 @@ func TestToastPositionContrastAndKnowledgeToggleLayering(t *testing.T) {
 		"transform: translateX(-50%) translateY(-24px);",
 		"pointer-events: none;",
 		"background: #17355f;",
-		"border: 2px solid #9db6d7;",
-		"border-top-width: 4px;",
-		"border-top-color: #9db6d7;",
-		"border-top-color: #f4b740;",
-		"border-top-color: #ff5b67;",
+		"border: 0;",
+		"font-weight: 600;",
+		"--toast-glow: rgba(157,182,215,0.52);",
+		"--toast-glow: rgba(244,183,64,0.72);",
+		"--toast-glow: rgba(255,91,103,0.76);",
+		"--toast-glow: rgba(73,201,132,0.62);",
+		"--toast-glow: rgba(88,184,255,0.62);",
+		"box-shadow: 0 0 18px var(--toast-glow), 0 16px 36px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.08);",
 		"color: #f8fafc;",
 	} {
 		if !strings.Contains(toastCSS, required) {
@@ -912,6 +915,10 @@ func TestToastPositionContrastAndKnowledgeToggleLayering(t *testing.T) {
 		"background: rgba(16, 32, 58, 0.94);",
 		"border-left: 4px solid #f5a6d7;",
 		"background: rgba(47, 31, 15, 0.98);",
+		"border-top-width: 4px;",
+		"border-top-color: #9db6d7;",
+		"border-top-color: #f4b740;",
+		"border-top-color: #ff5b67;",
 	} {
 		if strings.Contains(toastCSS, forbidden) {
 			t.Fatalf("toast CSS still contains old styling %q", forbidden)

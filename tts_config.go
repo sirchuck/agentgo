@@ -119,6 +119,19 @@ func (a *App) currentKokoroStatus() kokoroAssetStatus {
 	status.Available = runtimeStatus.Available
 	if runtimeStatus.HandshakeReady {
 		status.Voices = cleanKokoroVoiceList(runtimeStatus.Voices)
+		status.G2PProvider = strings.TrimSpace(runtimeStatus.G2PProvider)
+		if status.G2PProvider == "" {
+			status.G2PProvider = "standard"
+		}
+		status.G2PAvailable = runtimeStatus.G2PAvailable
+		if strings.TrimSpace(runtimeStatus.G2PMessage) != "" {
+			status.G2PMessage = runtimeStatus.G2PMessage
+		}
+		if runtimeStatus.G2PAvailable {
+			status.G2PState = "ready"
+		} else if status.G2PState == "installed" {
+			status.G2PState = "fallback"
+		}
 	}
 	if runtimeStatus.HelperPath != "" {
 		status.HelperPath = filepath.ToSlash(runtimeStatus.HelperPath)

@@ -87,6 +87,14 @@ type phonemeSourceGroup struct {
 	TokenEnd   int
 }
 
+// unknownWordPronouncer is intentionally tiny so Kokoro remains fully usable
+// without an optional G2P model. The Moonshine implementation satisfies this
+// interface when its local assets are present; otherwise the existing
+// deterministic letter-name fallback remains in place.
+type unknownWordPronouncer interface {
+	Pronounce(word string) (string, bool)
+}
+
 var speechTextReplacements = []struct {
 	From string
 	To   string
@@ -273,6 +281,10 @@ func phonemizeEnglish(text string) (string, []int64, error) {
 }
 
 func phonemizeEnglishWithSource(text string) (string, []int64, []phonemeSourceGroup, error) {
+	return phonemizeEnglishWithSourceUsing(text, nil)
+}
+
+func phonemizeEnglishWithSourceUsing(text string, oov unknownWordPronouncer) (string, []int64, []phonemeSourceGroup, error) {
 	mapped := normalizeEnglishWithSource(text)
 	if len(mapped) == 0 {
 		return "", nil, nil, fmt.Errorf("text is empty after normalization")
@@ -296,6 +308,31 @@ func phonemizeEnglishWithSource(text string) (string, []int64, []phonemeSourceGr
 		phonemes.WriteRune(r)
 		return true
 	}
+	appendIPA := func(ipa string) bool {
+		ipa = normalizeMoonshineIPA(ipa)
+		if strings.TrimSpace(ipa) == "" {
+			return false
+		}
+		for _, pr := range ipa {
+			if unicode.IsSpace(pr) {
+				continue
+			}
+			// A Moonshine pronunciation should already use Kokoro-compatible
+			// English IPA. Reject rather than silently delete an unknown symbol;
+			// the caller can then fall back to AgentGO's deterministic spelling.
+			if _, ok := kokoroVocab[pr]; !ok {
+				return false
+			}
+		}
+		start := len(tokens)
+		for _, pr := range ipa {
+			if unicode.IsSpace(pr) {
+				continue
+			}
+			appendTokenRune(pr)
+		}
+		return len(tokens) > start
+	}
 	for i := 0; i < len(mapped); {
 		r := mapped[i].Value
 		if unicode.IsLetter(r) || r == '\'' {
@@ -309,16 +346,27 @@ func phonemizeEnglishWithSource(text string) (string, []int64, []phonemeSourceGr
 				word.WriteRune(r2)
 				i++
 			}
-			phones := pronunciationForWord(dict, word.String())
-			if len(phones) == 0 {
-				continue
-			}
+			rawWord := word.String()
+			phones := cmuPronunciationForWord(dict, rawWord)
 			if needSpace && len(tokens) > 0 {
 				appendTokenRune(' ')
 			}
 			tokenStart := len(tokens)
-			for _, pr := range arpabetToKokoroIPA(phones) {
-				appendTokenRune(pr)
+			pronounced := false
+			if len(phones) > 0 {
+				for _, pr := range arpabetToKokoroIPA(phones) {
+					appendTokenRune(pr)
+				}
+				pronounced = len(tokens) > tokenStart
+			} else if oov != nil && shouldUseAutomaticG2P(rawWord) {
+				if ipa, ok := oov.Pronounce(strings.ToLower(strings.Trim(rawWord, "'"))); ok {
+					pronounced = appendIPA(ipa)
+				}
+			}
+			if !pronounced {
+				for _, pr := range arpabetToKokoroIPA(letterNamePronunciation(rawWord)) {
+					appendTokenRune(pr)
+				}
 			}
 			tokenEnd := len(tokens)
 			if tokenEnd > tokenStart {
@@ -352,7 +400,7 @@ func phonemizeEnglishWithSource(text string) (string, []int64, []phonemeSourceGr
 	return phonemeText, tokens, groups, nil
 }
 
-func pronunciationForWord(dict map[string][]string, raw string) []string {
+func cmuPronunciationForWord(dict map[string][]string, raw string) []string {
 	word := strings.ToLower(strings.Trim(raw, "'"))
 	if word == "" {
 		return nil
@@ -365,9 +413,11 @@ func pronunciationForWord(dict map[string][]string, raw string) []string {
 			return append(append([]string(nil), phones...), "Z")
 		}
 	}
-	// Acronyms and unknown words use spoken letter names instead of requiring
-	// eSpeak. CMUdict covers the overwhelming majority of normal English words;
-	// this deterministic fallback keeps arbitrary developer identifiers usable.
+	return nil
+}
+
+func letterNamePronunciation(raw string) []string {
+	word := strings.ToLower(strings.Trim(raw, "'"))
 	var phones []string
 	for _, r := range word {
 		if names, ok := letterNames[r]; ok {
@@ -375,6 +425,48 @@ func pronunciationForWord(dict map[string][]string, raw string) []string {
 		}
 	}
 	return phones
+}
+
+func pronunciationForWord(dict map[string][]string, raw string) []string {
+	if phones := cmuPronunciationForWord(dict, raw); len(phones) > 0 {
+		return phones
+	}
+	return letterNamePronunciation(raw)
+}
+
+func shouldUseAutomaticG2P(raw string) bool {
+	word := strings.Trim(raw, "'")
+	if word == "" {
+		return false
+	}
+	letterCount := 0
+	upperCount := 0
+	for _, r := range word {
+		if r == '\'' {
+			continue
+		}
+		if !unicode.IsLetter(r) {
+			return false
+		}
+		letterCount++
+		if unicode.IsUpper(r) {
+			upperCount++
+		}
+	}
+	if letterCount == 0 {
+		return false
+	}
+	// Preserve the useful historical behavior for obvious developer acronyms
+	// (HTML, CPU, API). Mixed/title/lowercase unknown words go through G2P.
+	return !(letterCount >= 2 && upperCount == letterCount)
+}
+
+func normalizeMoonshineIPA(value string) string {
+	value = strings.TrimSpace(value)
+	// Moonshine's CMU-derived English IPA uses ɝ for stressed ER while the
+	// Kokoro vocabulary represents that sound as ɜ + ɹ.
+	value = strings.ReplaceAll(value, "ɝ", "ɜɹ")
+	return value
 }
 
 func arpabetToKokoroIPA(phones []string) string {

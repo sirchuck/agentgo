@@ -1372,29 +1372,33 @@ type workModeBlockedFileOutput struct {
 }
 
 type workModeAIResponse struct {
-	Reply            string                    `json:"reply"`
-	Files            []builderFileOp           `json:"files"`
-	Artifacts        []builderArtifact         `json:"artifacts,omitempty"`
-	Memory           string                    `json:"memory,omitempty"`
-	Warnings         []string                  `json:"warnings,omitempty"`
-	ReviewComplete   bool                      `json:"review_complete,omitempty"`
-	AgenticStatus    string                    `json:"agentic_status,omitempty"`
-	AgenticCommand   workModeAgenticCommand    `json:"command,omitempty"`
-	AgenticSummary   string                    `json:"summary,omitempty"`
-	AgenticQuestion  string                    `json:"question,omitempty"`
-	AgenticWorkspace map[string]any            `json:"workspace,omitempty"`
-	MemoryIssue      string                    `json:"-"`
-	RepairDetail     *workModeJSONRepairDetail `json:"-"`
-	Normalizations   []string                  `json:"-"`
+	Reply                     string                    `json:"reply"`
+	Files                     []builderFileOp           `json:"files"`
+	Artifacts                 []builderArtifact         `json:"artifacts,omitempty"`
+	Memory                    string                    `json:"memory,omitempty"`
+	Warnings                  []string                  `json:"warnings,omitempty"`
+	ReviewComplete            bool                      `json:"review_complete,omitempty"`
+	AgenticStatus             string                    `json:"agentic_status,omitempty"`
+	AgenticCommand            workModeAgenticCommand    `json:"command,omitempty"`
+	AgenticSummary            string                    `json:"summary,omitempty"`
+	AgenticQuestion           string                    `json:"question,omitempty"`
+	AgenticWorkspace          map[string]any            `json:"workspace,omitempty"`
+	MemoryIssue               string                    `json:"-"`
+	RepairDetail              *workModeJSONRepairDetail `json:"-"`
+	Normalizations            []string                  `json:"-"`
+	DiagnosticOriginalText    string                    `json:"-"`
+	DiagnosticOriginalRawBody string                    `json:"-"`
 }
 
 type workModeObserverResponse struct {
-	Reply           string                    `json:"reply"`
-	HasInput        bool                      `json:"has_input"`
-	Recommendations []string                  `json:"recommendations,omitempty"`
-	Warnings        []string                  `json:"warnings,omitempty"`
-	RepairDetail    *workModeJSONRepairDetail `json:"-"`
-	Normalizations  []string                  `json:"-"`
+	Reply                     string                    `json:"reply"`
+	HasInput                  bool                      `json:"has_input"`
+	Recommendations           []string                  `json:"recommendations,omitempty"`
+	Warnings                  []string                  `json:"warnings,omitempty"`
+	RepairDetail              *workModeJSONRepairDetail `json:"-"`
+	Normalizations            []string                  `json:"-"`
+	DiagnosticOriginalText    string                    `json:"-"`
+	DiagnosticOriginalRawBody string                    `json:"-"`
 }
 
 type workModeJSONRepairDetail struct {
@@ -5925,8 +5929,10 @@ func workModeMemoryUpdate(parsed workModeAIResponse) (string, string) {
 type workModeJSONRepairError struct {
 	OriginalParseError string
 	OriginalResponse   string
+	OriginalRawBody    string
 	RepairParseError   string
 	RepairResponse     string
+	RepairRawBody      string
 }
 
 func errorString(err error) string {
@@ -6086,6 +6092,7 @@ func (a *App) repairAndParseWorkModeAdapterResponse(ctx context.Context, model M
 		return workModeAIResponse{}, originalResp, &workModeJSONRepairError{
 			OriginalParseError: errorString(originalErr),
 			OriginalResponse:   originalResp.Text,
+			OriginalRawBody:    originalResp.RawBody,
 			RepairParseError:   repairErr.Error(),
 		}
 	}
@@ -6094,8 +6101,10 @@ func (a *App) repairAndParseWorkModeAdapterResponse(ctx context.Context, model M
 		return workModeAIResponse{}, repairResp, &workModeJSONRepairError{
 			OriginalParseError: errorString(originalErr),
 			OriginalResponse:   originalResp.Text,
+			OriginalRawBody:    originalResp.RawBody,
 			RepairParseError:   parseErr.Error(),
 			RepairResponse:     repairResp.Text,
+			RepairRawBody:      repairResp.RawBody,
 		}
 	}
 	parsed.RepairDetail = &workModeJSONRepairDetail{
@@ -6103,6 +6112,8 @@ func (a *App) repairAndParseWorkModeAdapterResponse(ctx context.Context, model M
 		OriginalResponse:   originalResp.Text,
 		RepairResponse:     repairResp.Text,
 	}
+	parsed.DiagnosticOriginalText = originalResp.Text
+	parsed.DiagnosticOriginalRawBody = originalResp.RawBody
 	return parsed, repairResp, nil
 }
 
@@ -6116,6 +6127,8 @@ func (a *App) parseOrRepairWorkModeAdapterResponse(ctx context.Context, model Mo
 		normalizedResp.Text = normalizedText
 		if normalizedParsed, normalizedErr := parseWorkModeAdapterResponse(normalizedResp, projectworkRoot, projectName); normalizedErr == nil {
 			normalizedParsed.Normalizations = append(normalizedParsed.Normalizations, "AgentGO escaped literal line breaks inside JSON string values so the Work Mode response could be read safely.")
+			normalizedParsed.DiagnosticOriginalText = resp.Text
+			normalizedParsed.DiagnosticOriginalRawBody = resp.RawBody
 			return normalizedParsed, normalizedResp, nil
 		}
 	}
@@ -6129,6 +6142,7 @@ func (a *App) repairAndParseWorkModeObserverResponse(ctx context.Context, model 
 		return workModeObserverResponse{}, originalResp, &workModeJSONRepairError{
 			OriginalParseError: errorString(originalErr),
 			OriginalResponse:   originalResp.Text,
+			OriginalRawBody:    originalResp.RawBody,
 			RepairParseError:   repairErr.Error(),
 		}
 	}
@@ -6137,8 +6151,10 @@ func (a *App) repairAndParseWorkModeObserverResponse(ctx context.Context, model 
 		return workModeObserverResponse{}, repairResp, &workModeJSONRepairError{
 			OriginalParseError: errorString(originalErr),
 			OriginalResponse:   originalResp.Text,
+			OriginalRawBody:    originalResp.RawBody,
 			RepairParseError:   parseErr.Error(),
 			RepairResponse:     repairResp.Text,
+			RepairRawBody:      repairResp.RawBody,
 		}
 	}
 	parsed.RepairDetail = &workModeJSONRepairDetail{
@@ -6146,6 +6162,8 @@ func (a *App) repairAndParseWorkModeObserverResponse(ctx context.Context, model 
 		OriginalResponse:   originalResp.Text,
 		RepairResponse:     repairResp.Text,
 	}
+	parsed.DiagnosticOriginalText = originalResp.Text
+	parsed.DiagnosticOriginalRawBody = originalResp.RawBody
 	return parsed, repairResp, nil
 }
 
@@ -6159,6 +6177,8 @@ func (a *App) parseOrRepairWorkModeObserverResponse(ctx context.Context, model M
 		normalizedResp.Text = normalizedText
 		if normalizedParsed, normalizedErr := parseWorkModeObserverResponse(normalizedResp.Text); normalizedErr == nil {
 			normalizedParsed.Normalizations = append(normalizedParsed.Normalizations, "AgentGO escaped literal line breaks inside JSON string values so the Observer response could be read safely.")
+			normalizedParsed.DiagnosticOriginalText = resp.Text
+			normalizedParsed.DiagnosticOriginalRawBody = resp.RawBody
 			return normalizedParsed, normalizedResp, nil
 		}
 	}
@@ -7585,11 +7605,11 @@ func buildWorkModeTranscriptIndex(req workModeTranscriptExportRequest) string {
 a{color:#1f69bd}.transcript-page{width:min(1080px,calc(100%% - 32px));margin:28px auto;padding:34px;border:1px solid #d6e1ed;border-radius:24px;background:var(--paper);box-shadow:0 24px 65px rgba(20,43,75,.14)}
 .transcript-brand{display:flex;flex-direction:column;align-items:center;gap:8px;margin:0 auto 20px;text-decoration:none;width:max-content;max-width:100%%}.transcript-brand img:first-child{width:min(330px,75vw);height:auto}.transcript-brand img:last-child{width:min(265px,62vw);height:auto}
 .transcript-heading{text-align:center;margin:0 0 24px}.transcript-heading h1{margin:0;font-size:clamp(1.45rem,3vw,2.2rem);color:#18355d}.transcript-model-meta{margin-top:7px;color:#405a7d;font-size:.94rem;font-weight:700}.transcript-meta{margin-top:5px;color:var(--muted);font-size:.9rem}
-.transcript-messages{display:grid;gap:16px}.transcript-message{padding:18px 20px;border:1px solid var(--line);border-radius:18px;background:#f8fbfe;color:var(--ink);overflow-wrap:anywhere}.transcript-message.user{margin-left:min(8%%,72px);background:#eef6ff;border-color:#bfd7f3}.transcript-message.ai{margin-right:min(8%%,72px);background:#fff}.transcript-message.agentgo{background:#fff8e8;border-color:#eed494}.transcript-role{margin-bottom:8px;color:#526a89;font-size:.76rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
-.transcript-message h1,.transcript-message h2,.transcript-message h3,.transcript-message h4{color:#234e82;line-height:1.25}.transcript-message p:first-child{margin-top:0}.transcript-message p:last-child{margin-bottom:0}.transcript-message ul,.transcript-message ol{padding-left:1.4rem}.transcript-message blockquote{margin:12px 0;padding:8px 14px;border-left:4px solid #8ab8e5;background:#f2f7fc}.transcript-message table{width:100%%;border-collapse:collapse}.transcript-message th,.transcript-message td{padding:8px 10px;border:1px solid #dbe5f0;text-align:left;vertical-align:top}
-pre{max-width:100%%;overflow:auto;margin:12px 0;padding:14px;border-radius:12px;background:#101a29;color:#f4f7fb;white-space:pre}code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace}.agentgo-code-change{color:#FFE27C}p code,li code,td code{padding:2px 5px;border-radius:6px;background:#eaf0f6;color:#17355f}.work-mode-code-toolbar,.work-mode-message-actions,.work-mode-message-collapse-btn,.work-mode-ai-file-toggle,.work-mode-agent-details-toggle,.work-mode-repair-toggle{display:none!important}
+.transcript-messages{display:grid;gap:16px;min-width:0;max-width:100%%}.transcript-message{min-width:0;max-width:100%%;padding:18px 20px;border:1px solid var(--line);border-radius:18px;background:#f8fbfe;color:var(--ink);overflow-wrap:anywhere;word-break:break-word}.transcript-message.user{margin-left:min(8%%,72px);background:#eef6ff;border-color:#bfd7f3}.transcript-message.ai{margin-right:min(8%%,72px);background:#fff}.transcript-message.agentgo{background:#fff8e8;border-color:#eed494}.transcript-role{min-width:0;max-width:100%%;margin-bottom:8px;color:#526a89;font-size:.76rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;overflow-wrap:anywhere}
+.transcript-message h1,.transcript-message h2,.transcript-message h3,.transcript-message h4{color:#234e82;line-height:1.25;overflow-wrap:anywhere}.transcript-message p:first-child{margin-top:0}.transcript-message p:last-child{margin-bottom:0}.transcript-message ul,.transcript-message ol{max-width:100%%;padding-left:1.4rem}.transcript-message blockquote{max-width:100%%;margin:12px 0;padding:8px 14px;border-left:4px solid #8ab8e5;background:#f2f7fc}.transcript-message table{display:block;width:100%%;max-width:100%%;min-width:0;overflow-x:auto;border-collapse:collapse}.transcript-message th,.transcript-message td{padding:8px 10px;border:1px solid #dbe5f0;text-align:left;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}
+pre{width:100%%;max-width:100%%;min-width:0;overflow-x:auto;overflow-y:auto;margin:12px 0;padding:14px;border-radius:12px;background:#101a29;color:#f4f7fb;white-space:pre}code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace}.agentgo-code-change{color:#FFE27C}p code,li code,td code{max-width:100%%;padding:2px 5px;border-radius:6px;background:#eaf0f6;color:#17355f;overflow-wrap:anywhere;word-break:break-word}.work-mode-code-toolbar,.work-mode-message-actions,.work-mode-message-collapse-btn,.work-mode-ai-file-toggle,.work-mode-agent-details-toggle,.work-mode-repair-toggle{display:none!important}
 .work-mode-sent-attachments,.work-mode-webshot-list,.work-mode-inline-files{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 12px}.work-mode-sent-attachment,.work-mode-webshot-item,.work-mode-inline-image-item{min-width:180px;max-width:100%%;padding:10px;border:1px solid #d7e2ed;border-radius:12px;background:#fff}.work-mode-sent-attachment img,.work-mode-webshot-item img,.work-mode-inline-image-item img,.transcript-message img{display:block;max-width:100%%;height:auto;border-radius:10px}.work-mode-sent-attachment-head{display:flex;gap:7px;margin-top:7px;font-weight:800}.work-mode-sent-attachment-badge{color:#9a3976;font-size:.72rem}.work-mode-sent-attachment-meta,.work-mode-webshot-caption,.work-mode-inline-image-caption{color:var(--muted);font-size:.8rem;margin-top:5px}
-.work-mode-ai-warnings,.work-mode-file-outputs,.work-mode-agent-details,.work-mode-repair-details,.transcript-review-section{display:grid;gap:10px;margin-top:12px}.work-mode-ai-warning,.work-mode-file-output,.work-mode-agent-details-section,.work-mode-repair-section{padding:11px 12px;border-radius:11px;background:#fff7dc;border:1px solid #efd68c}.work-mode-file-output{background:#f3f8fd;border-color:#d3e2f1}.work-mode-file-output-head{display:flex;justify-content:space-between;gap:12px;font-weight:800}.work-mode-file-output-pre,.work-mode-agent-details-pre,.work-mode-repair-pre{margin:8px 0 0}.work-mode-repair-label,.work-mode-agent-details-label{font-weight:900;color:#6d4c13}.transcript-review-section{padding-top:16px;border-top:1px solid var(--line)}.transcript-review-section h2{margin:0;color:#18355d}.transcript-empty{padding:28px;text-align:center;color:var(--muted)}
+.work-mode-message-body,.work-mode-ai-warnings,.work-mode-file-outputs,.work-mode-agent-details,.work-mode-repair-details,.transcript-review-section{min-width:0;max-width:100%%}.work-mode-ai-warnings,.work-mode-file-outputs,.work-mode-agent-details,.work-mode-repair-details,.transcript-review-section{display:grid;gap:10px;margin-top:12px}.work-mode-ai-warning,.work-mode-file-output,.work-mode-agent-details-section,.work-mode-repair-section{min-width:0;max-width:100%%;padding:11px 12px;border-radius:11px;background:#fff7dc;border:1px solid #efd68c;overflow-wrap:anywhere;word-break:break-word}.work-mode-file-output{background:#f3f8fd;border-color:#d3e2f1}.work-mode-file-output-head{display:flex;justify-content:space-between;gap:12px;min-width:0;max-width:100%%;flex-wrap:wrap;font-weight:800}.work-mode-file-output-head>*{min-width:0;max-width:100%%;overflow-wrap:anywhere;word-break:break-word}.work-mode-file-output-pre,.work-mode-agent-details-pre,.work-mode-repair-pre{margin:8px 0 0}.work-mode-repair-label,.work-mode-agent-details-label{font-weight:900;color:#6d4c13}.transcript-review-section{padding-top:16px;border-top:1px solid var(--line)}.transcript-review-section h2{margin:0;color:#18355d}.transcript-empty{padding:28px;text-align:center;color:var(--muted)}
 .transcript-yeti{display:block;width:min(180px,45vw);height:auto;margin:20px auto 0}.transcript-footer{text-align:center;color:var(--muted);font-size:.78rem;margin-top:8px}@media(max-width:720px){.transcript-page{width:100%%;margin:0;border:0;border-radius:0;padding:22px 14px}.transcript-message.user,.transcript-message.ai{margin-left:0;margin-right:0}}
 </style>
 </head>
@@ -8194,7 +8214,7 @@ func (a *App) handleWorkModeObserverReviewSend(w http.ResponseWriter, req workMo
 			writeWorkModeFailure(w, http.StatusBadRequest, "work_mode_output_rejected", err.Error(), diagnostic, newWorkModeCorrectionCandidate(worker, "Invalid Work Mode file or artifact output", "Return file and artifact fields that satisfy AgentGO Work Mode references and encoding rules.", err.Error(), adapterResp.Text, diagnostic))
 			return
 		}
-		if diagnostic := a.publishWorkModeNormalizationDiagnostic(projectName, worker, executionID, workModeCallOwnerWorker, pass, workerResponsePayload, adapterResp, parsed.Normalizations, parsed.RepairDetail); strings.TrimSpace(diagnostic.ID) != "" {
+		if diagnostic := a.publishWorkModeNormalizationDiagnostic(projectName, worker, executionID, workModeCallOwnerWorker, pass, workerResponsePayload, adapterResp, parsed.DiagnosticOriginalText, parsed.DiagnosticOriginalRawBody, parsed.Normalizations, parsed.RepairDetail, parsed); strings.TrimSpace(diagnostic.ID) != "" {
 			normalizationDiagnostics = append(normalizationDiagnostics, diagnostic)
 			if correctionCandidate == nil {
 				correctionCandidate = newWorkModeCorrectionCandidate(worker, "AgentGO normalized a Work Mode Builder response", "Return a schema-valid response without requiring AgentGO normalization.", workModeCorrectionFailureSummary(parsed.Normalizations, parsed.RepairDetail), adapterResp.Text, diagnostic)
@@ -8312,7 +8332,7 @@ func (a *App) handleWorkModeObserverReviewSend(w http.ResponseWriter, req workMo
 			return
 		}
 		observerResp = repairedObserverResp
-		if diagnostic := a.publishWorkModeNormalizationDiagnostic(projectName, observer, executionID, workModeCallOwnerObserver, pass, observerPayload, observerResp, observerParsed.Normalizations, observerParsed.RepairDetail); strings.TrimSpace(diagnostic.ID) != "" {
+		if diagnostic := a.publishWorkModeNormalizationDiagnostic(projectName, observer, executionID, workModeCallOwnerObserver, pass, observerPayload, observerResp, observerParsed.DiagnosticOriginalText, observerParsed.DiagnosticOriginalRawBody, observerParsed.Normalizations, observerParsed.RepairDetail, observerParsed); strings.TrimSpace(diagnostic.ID) != "" {
 			normalizationDiagnostics = append(normalizationDiagnostics, diagnostic)
 		}
 		for _, warning := range normalizeWorkModeWarnings(observerParsed.Warnings) {
@@ -8798,7 +8818,7 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !req.Agentic.Enabled {
-		if diagnostic := a.publishWorkModeNormalizationDiagnostic(projectName, model, executionID, workModeCallOwnerWorker, responsePass, responsePayload, adapterResp, parsed.Normalizations, parsed.RepairDetail); strings.TrimSpace(diagnostic.ID) != "" {
+		if diagnostic := a.publishWorkModeNormalizationDiagnostic(projectName, model, executionID, workModeCallOwnerWorker, responsePass, responsePayload, adapterResp, parsed.DiagnosticOriginalText, parsed.DiagnosticOriginalRawBody, parsed.Normalizations, parsed.RepairDetail, parsed); strings.TrimSpace(diagnostic.ID) != "" {
 			normalizationDiagnostics = append(normalizationDiagnostics, diagnostic)
 			correctionCandidate = newWorkModeCorrectionCandidate(model, "AgentGO normalized a Work Mode Builder response", "Return a schema-valid response without requiring AgentGO normalization.", workModeCorrectionFailureSummary(parsed.Normalizations, parsed.RepairDetail), adapterResp.Text, diagnostic)
 		}
@@ -12341,7 +12361,41 @@ func formatWorkModeArtifactDiagnostic(files []builderFileOp, artifacts []builder
 	return string(data)
 }
 
-func formatWorkModeNormalizationDiagnostic(model ModelConfig, notes []string, repair *workModeJSONRepairDetail) string {
+func workModeDiagnosticParsedValue(model ModelConfig, value any) any {
+	if value == nil {
+		return nil
+	}
+	data, err := json.Marshal(value)
+	if err != nil {
+		return sanitizeWorkModeDiagnosticText(model, fmt.Sprintf("[AgentGO could not serialize final parsed response: %v]", err))
+	}
+	var decoded any
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return sanitizeWorkModeResponseDiagnostic(model, string(data))
+	}
+	return sanitizeWorkModeDiagnosticValue(model, decoded)
+}
+
+func formatWorkModeNormalizationResponseDiagnostic(model ModelConfig, response adapters.Response, originalText, originalRawBody string) string {
+	hasOriginalTrace := strings.TrimSpace(originalText) != "" || strings.TrimSpace(originalRawBody) != ""
+	if !hasOriginalTrace {
+		originalText = response.Text
+		originalRawBody = response.RawBody
+	}
+	document := map[string]any{
+		"original_extracted_response": workModeDiagnosticJSONValue(model, originalText),
+		"original_provider_raw_body":  workModeDiagnosticJSONValue(model, originalRawBody),
+		"final_extracted_response":    workModeDiagnosticJSONValue(model, response.Text),
+		"final_provider_raw_body":     workModeDiagnosticJSONValue(model, response.RawBody),
+	}
+	data, err := json.MarshalIndent(document, "", "  ")
+	if err != nil {
+		return "AgentGO could not serialize response-normalization evidence: " + err.Error()
+	}
+	return truncateWorkModeDiagnosticText(string(data))
+}
+
+func formatWorkModeNormalizationDiagnostic(model ModelConfig, notes []string, repair *workModeJSONRepairDetail, finalParsed any) string {
 	document := map[string]any{}
 	cleanNotes := uniqueNonEmptyStrings(notes)
 	if len(cleanNotes) > 0 {
@@ -12353,17 +12407,20 @@ func formatWorkModeNormalizationDiagnostic(model ModelConfig, notes []string, re
 			repairDocument["original_parse_error"] = sanitizeWorkModeDiagnosticText(model, value)
 		}
 		if value := strings.TrimSpace(repair.OriginalResponse); value != "" {
-			repairDocument["original_response"] = sanitizeWorkModeResponseDiagnostic(model, value)
+			repairDocument["original_extracted_response"] = sanitizeWorkModeResponseDiagnostic(model, value)
 		}
 		if value := strings.TrimSpace(repair.RepairParseError); value != "" {
 			repairDocument["repair_parse_error"] = sanitizeWorkModeDiagnosticText(model, value)
 		}
 		if value := strings.TrimSpace(repair.RepairResponse); value != "" {
-			repairDocument["repair_response"] = sanitizeWorkModeResponseDiagnostic(model, value)
+			repairDocument["repair_extracted_response"] = sanitizeWorkModeResponseDiagnostic(model, value)
 		}
 		if len(repairDocument) > 0 {
 			document["automatic_json_repair"] = repairDocument
 		}
+	}
+	if parsed := workModeDiagnosticParsedValue(model, finalParsed); parsed != nil {
+		document["final_parsed_response"] = parsed
 	}
 	data, err := json.MarshalIndent(document, "", "  ")
 	if err != nil {
@@ -12372,7 +12429,7 @@ func formatWorkModeNormalizationDiagnostic(model ModelConfig, notes []string, re
 	return truncateWorkModeDiagnosticText(string(data))
 }
 
-func (a *App) publishWorkModeNormalizationDiagnostic(projectName string, model ModelConfig, executionID, owner string, pass int, payload adapterRequestPayload, response adapters.Response, notes []string, repair *workModeJSONRepairDetail) diagnosticsEntry {
+func (a *App) publishWorkModeNormalizationDiagnostic(projectName string, model ModelConfig, executionID, owner string, pass int, payload adapterRequestPayload, response adapters.Response, originalText, originalRawBody string, notes []string, repair *workModeJSONRepairDetail, finalParsed any) diagnosticsEntry {
 	if len(uniqueNonEmptyStrings(notes)) == 0 && repair == nil {
 		return diagnosticsEntry{}
 	}
@@ -12397,10 +12454,6 @@ func (a *App) publishWorkModeNormalizationDiagnostic(projectName string, model M
 	if strings.TrimSpace(executionID) != "" {
 		statusParts = append(statusParts, "Request ID: "+strings.TrimSpace(executionID))
 	}
-	responseText := response.Text
-	if strings.TrimSpace(responseText) == "" {
-		responseText = response.RawBody
-	}
 	return a.publishDiagnostics(diagnosticsEntry{
 		Mode:          "work_mode",
 		Target:        "Work Mode",
@@ -12411,11 +12464,44 @@ func (a *App) publishWorkModeNormalizationDiagnostic(projectName string, model M
 		StatusMessage: strings.Join(statusParts, " · "),
 		Request:       formatWorkModeOutboundDiagnostic(model, executionID, payload),
 		RequestLabel:  "Sanitized AgentGO outbound request",
-		Response:      sanitizeWorkModeResponseDiagnostic(model, responseText),
-		ResponseLabel: "Normalized AI/provider response",
-		Details:       formatWorkModeNormalizationDiagnostic(model, notes, repair),
-		DetailsLabel:  "Normalization details",
+		Response:      formatWorkModeNormalizationResponseDiagnostic(model, response, originalText, originalRawBody),
+		ResponseLabel: "Sanitized original/final AI/provider responses",
+		Details:       formatWorkModeNormalizationDiagnostic(model, notes, repair, finalParsed),
+		DetailsLabel:  "Normalization and final parsed result",
 	})
+}
+
+func formatWorkModeRepairFailureDiagnostic(model ModelConfig, repairErr *workModeJSONRepairError) string {
+	if repairErr == nil {
+		return ""
+	}
+	document := map[string]any{}
+	if value := strings.TrimSpace(repairErr.OriginalParseError); value != "" {
+		document["original_parse_error"] = sanitizeWorkModeDiagnosticText(model, value)
+	}
+	if value := strings.TrimSpace(repairErr.OriginalResponse); value != "" {
+		document["original_extracted_response"] = workModeDiagnosticJSONValue(model, value)
+	}
+	if value := strings.TrimSpace(repairErr.OriginalRawBody); value != "" {
+		document["original_provider_raw_body"] = workModeDiagnosticJSONValue(model, value)
+	}
+	if value := strings.TrimSpace(repairErr.RepairParseError); value != "" {
+		document["repair_parse_error"] = sanitizeWorkModeDiagnosticText(model, value)
+	}
+	if value := strings.TrimSpace(repairErr.RepairResponse); value != "" {
+		document["repair_extracted_response"] = workModeDiagnosticJSONValue(model, value)
+	}
+	if value := strings.TrimSpace(repairErr.RepairRawBody); value != "" {
+		document["repair_provider_raw_body"] = workModeDiagnosticJSONValue(model, value)
+	}
+	if len(document) == 0 {
+		return ""
+	}
+	data, err := json.MarshalIndent(map[string]any{"automatic_json_repair_failure": document}, "", "  ")
+	if err != nil {
+		return "AgentGO could not serialize automatic JSON repair failure details: " + err.Error()
+	}
+	return truncateWorkModeDiagnosticText(string(data))
 }
 
 func (a *App) publishWorkModeFailureDiagnostic(projectName string, model ModelConfig, executionID, stage, failureStage string, statusCode int, failure error, payload adapterRequestPayload, response adapters.Response, parsed *workModeAIResponse) diagnosticsEntry {
@@ -12433,14 +12519,20 @@ func (a *App) publishWorkModeFailureDiagnostic(projectName string, model ModelCo
 	if strings.TrimSpace(responseText) == "" {
 		responseText = response.RawBody
 	}
-	details := ""
+	detailParts := []string{}
 	if parsed == nil && strings.TrimSpace(responseText) != "" {
 		if responseCandidate, parseErr := parseWorkModeAIResponse(responseText); parseErr == nil {
 			parsed = &responseCandidate
 		}
 	}
 	if parsed != nil {
-		details = formatWorkModeArtifactDiagnostic(parsed.Files, parsed.Artifacts)
+		detailParts = append(detailParts, "ARTIFACT METADATA:\n"+formatWorkModeArtifactDiagnostic(parsed.Files, parsed.Artifacts))
+	}
+	var repairErr *workModeJSONRepairError
+	if errors.As(failure, &repairErr) && repairErr != nil {
+		if repairDetails := strings.TrimSpace(formatWorkModeRepairFailureDiagnostic(model, repairErr)); repairDetails != "" {
+			detailParts = append(detailParts, repairDetails)
+		}
 	}
 	entry := diagnosticsEntry{
 		Mode:          "work_mode",
@@ -12452,10 +12544,10 @@ func (a *App) publishWorkModeFailureDiagnostic(projectName string, model ModelCo
 		StatusMessage: strings.Join(statusParts, " · "),
 		Request:       formatWorkModeOutboundDiagnostic(model, executionID, payload),
 		RequestLabel:  "Sanitized AgentGO outbound request",
-		Response:      sanitizeWorkModeResponseDiagnostic(model, responseText),
-		ResponseLabel: "AI/provider response",
-		Details:       details,
-		DetailsLabel:  "Artifact metadata",
+		Response:      formatWorkModeNoVisibleReplyResponseDiagnostic(model, response),
+		ResponseLabel: "Sanitized AI/provider response",
+		Details:       strings.Join(detailParts, "\n\n"),
+		DetailsLabel:  "Failure and repair details",
 	}
 	if failure != nil {
 		entry.Reason = sanitizeWorkModeDiagnosticText(model, failure.Error())
@@ -16009,6 +16101,15 @@ func (a *App) handleProjectImportUpload(w http.ResponseWriter, r *http.Request) 
 	}
 	defer src.Close()
 	includeGitMetadata, _ := strconv.ParseBool(strings.TrimSpace(r.FormValue("includeGitMetadata")))
+	overwrite := true
+	if rawOverwrite := strings.TrimSpace(r.FormValue("overwrite")); rawOverwrite != "" {
+		parsedOverwrite, parseErr := strconv.ParseBool(rawOverwrite)
+		if parseErr != nil {
+			http.Error(w, "overwrite must be true or false", http.StatusBadRequest)
+			return
+		}
+		overwrite = parsedOverwrite
+	}
 	name := sanitizeImportedFilename(header.Filename)
 	if strings.HasSuffix(strings.ToLower(name), ".zip") {
 		tmp, err := os.CreateTemp("", "agentgo-upload-*.zip")
@@ -16043,6 +16144,15 @@ func (a *App) handleProjectImportUpload(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
+	}
+	if !overwrite {
+		if _, statErr := os.Lstat(target); statErr == nil {
+			http.Error(w, "file already exists", http.StatusConflict)
+			return
+		} else if !errors.Is(statErr, os.ErrNotExist) {
+			http.Error(w, statErr.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 	if err := atomicWriteFileUnderRoot(projectRoot, target, data, 0o644); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

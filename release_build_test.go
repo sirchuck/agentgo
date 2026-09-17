@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"compress/gzip"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -204,6 +205,20 @@ printf 'fake binary\n' > "$out"
 		if err != nil || !info.IsDir() {
 			t.Fatalf("required release directory %s missing", dir)
 		}
+	}
+	configData, err := os.ReadFile(filepath.Join(dist, "config.json"))
+	if err != nil {
+		t.Fatalf("read generated config.json: %v", err)
+	}
+	var publicConfig map[string]any
+	if err := json.Unmarshal(configData, &publicConfig); err != nil {
+		t.Fatalf("generated config.json is invalid JSON: %v", err)
+	}
+	if password, ok := publicConfig["password"]; !ok || password != "" {
+		t.Fatalf("generated config.json password = %#v, want empty string", password)
+	}
+	if failedCount, ok := publicConfig["failed_password_count"]; !ok || failedCount != float64(0) {
+		t.Fatalf("generated config.json failed_password_count = %#v, want 0", failedCount)
 	}
 	for _, item := range []struct{ platform, helper, library string }{
 		{"windows-amd64", "kokoro-helper.exe", "onnxruntime.dll"},

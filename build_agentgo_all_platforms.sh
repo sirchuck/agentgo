@@ -126,6 +126,8 @@ cat > "$DIST_DIR/config.json" <<'JSON'
 {
   "agentgo_file": "config",
   "file_version": 1,
+  "password": "",
+  "failed_password_count": 0,
   "bind_host": "127.0.0.1",
   "http_port": 5226,
   "https_port": 0,

@@ -13,6 +13,7 @@ The stable layout is:
 - `assets/kokoro/runtime/<os>-<arch>/kokoro-helper[.exe]` - AgentGO's platform-specific private helper, supplied by the AgentGO build.
 - `assets/kokoro/runtime/<os>-<arch>/onnxruntime.dll` on Windows, or the matching ONNX Runtime 1.23.2 shared library on Linux/macOS, supplied by the AgentGO build.
 - `assets/kokoro/licenses/` - third-party notices/licenses distributed with the Kokoro runtime path.
+- `assets/kokoro/g2p/moonshine/en_us/` - optional Moonshine English G2P assets for better pronunciation of words missing from AgentGO's bundled CMU dictionary.
 
 AgentGO creates the Kokoro directory structure and this document if they are missing. After adding or replacing Kokoro model/voice files, restart AgentGO.
 
@@ -39,6 +40,35 @@ AgentGO creates the Kokoro directory structure and this document if they are mis
 You can instead place `model.onnx` and `voices/*.bin` under the source `assets/kokoro/` directory **before** running the builder; the normal AgentGO asset copy will carry them into `dist/`.
 
 No Python, Docker, C compiler, CGO setup, manual helper compilation, or manually installed ONNX Runtime is required for the normal AgentGO build path.
+
+
+## Optional Moonshine English G2P
+
+AgentGO can use Moonshine's small English grapheme-to-phoneme model as an optional pronunciation fallback. Moonshine is **not required** for Kokoro: if these files are absent, incomplete, or incompatible, AgentGO keeps Kokoro available and uses its standard pronunciation fallback. Nothing is downloaded automatically.
+
+Expected layout:
+
+```text
+assets/kokoro/g2p/moonshine/en_us/
+  dict_filtered_heteronyms.tsv
+  g2p-config.json
+  oov/
+    model.onnx              # model.ort is also accepted
+    onnx-config.json        # config_onnx.json is also accepted
+```
+
+The Moonshine OOV model reuses the same ONNX Runtime already loaded by the Kokoro helper, so users do not install Python, Apache, another runtime, or a separate service. A packaged AgentGO release may include these files; a GitHub/source user can add them manually to the path above and restart AgentGO.
+
+Pronunciation priority is:
+
+1. AgentGO **Custom Phonetics** (`system_prompts/phonetics.md`)
+2. AgentGO's bundled CMU dictionary
+3. Moonshine English G2P, when the complete asset set above loads successfully
+4. AgentGO's existing deterministic letter-name fallback
+
+AgentGO keeps obvious all-uppercase developer acronyms such as `HTML`, `CPU`, and `API` on the letter-name path rather than sending them through automatic G2P. Voice status reports whether Moonshine G2P is active or the standard fallback is in use.
+
+If Moonshine data/model files are redistributed with an AgentGO package, preserve and review the license/provenance terms published with those upstream assets.
 
 ## AgentGO full-quality model target
 
@@ -79,7 +109,7 @@ Voice availability is discovered from installed `.bin` voice files through the l
 
 AgentGO only marks Kokoro as available after the helper completes its private IPC handshake, reports at least one voice, loads the model through ONNX Runtime, and reports synthesis capability. If any check fails, AgentGO keeps the browser/system speech fallback active.
 
-During speech, AgentGO sends natural text chunks to the helper, receives 24 kHz mono float32 PCM frames, and streams them to the browser for Web Audio playback. When the loaded model exposes duration timing, AgentGO maps predicted timing back to original source spans. If exact timing is unavailable or cannot be mapped, AgentGO falls back to chunk/sentence highlighting rather than show an incorrect word.
+During speech, AgentGO targets about 100 runes for the first browser synthesis request and 180 runes for later requests, then continues only to the next whitespace boundary so a word is never intentionally split. Kokoro receives the punctuation/newlines inside each request and determines its own speech cadence. AgentGO receives 24 kHz mono float32 PCM frames and streams them to the browser for Web Audio playback. When the loaded model exposes duration timing, AgentGO maps predicted timing back to original source spans. If exact timing is unavailable or cannot be mapped, AgentGO falls back to chunk/sentence highlighting rather than show an incorrect word.
 
 See `assets/kokoro/licenses/THIRD_PARTY_NOTICES.md` for third-party components and license files used by the Kokoro speech path.
 
@@ -92,4 +122,6 @@ Before calling a packaged Kokoro runtime fully validated, test it on a machine t
 3. Read `AgentGO charged $42, e.g. for the test.` and confirm source highlighting stays synchronized, or safely falls back to chunk highlighting.
 4. Change Speech Speed and confirm speech/highlighting remain synchronized.
 5. Stop speech mid-response and confirm queued audio/highlights stop immediately.
-6. Temporarily remove/rename `model.onnx`, a selected voice, or the helper and confirm AgentGO remains usable through legacy browser/system TTS with a clear Kokoro-unavailable message.
+6. With Moonshine G2P installed, read a sentence containing uncommon ordinary words such as `glyphs` and `descenders`; confirm they are pronounced as words rather than spelled letter by letter.
+7. Temporarily remove/rename the Moonshine G2P asset directory and confirm Kokoro still works, with voice status reporting the AgentGO standard pronunciation fallback.
+8. Temporarily remove/rename `model.onnx`, a selected voice, or the helper and confirm AgentGO remains usable through legacy browser/system TTS with a clear Kokoro-unavailable message.

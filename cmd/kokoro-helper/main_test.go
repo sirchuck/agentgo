@@ -16,6 +16,9 @@ type fakeKokoroEngine struct{ timed bool }
 
 func (fakeKokoroEngine) RuntimeVersion() string  { return "test-runtime" }
 func (e fakeKokoroEngine) TimingSupported() bool { return e.timed }
+func (fakeKokoroEngine) G2PStatus() (bool, string) {
+	return false, "Moonshine G2P is not installed; using AgentGO standard pronunciation fallback."
+}
 func (e fakeKokoroEngine) Synthesize(ctx context.Context, text, voice string, speed float32, emit func(kokoroSynthesisChunk) error) error {
 	chunk := kokoroSynthesisChunk{Source: sourceChunk{Text: text, CharStart: 0, CharEnd: utf16Units(text)}, PCM: []float32{0.1, -0.1}}
 	if e.timed {
@@ -82,6 +85,9 @@ func TestServeInitializeAndShutdown(t *testing.T) {
 	}
 	if len(ready.Voices) != 2 {
 		t.Fatalf("voices = %#v", ready.Voices)
+	}
+	if ready.G2PProvider != "standard" || ready.G2PAvailable || !strings.Contains(ready.G2PMessage, "standard pronunciation fallback") {
+		t.Fatalf("G2P ready status = provider=%q available=%t message=%q", ready.G2PProvider, ready.G2PAvailable, ready.G2PMessage)
 	}
 	bye, err := kokoroipc.ReadMessage(&output)
 	if err != nil {
@@ -310,5 +316,81 @@ func TestSynthesizeWritesExactTimingBeforeAudio(t *testing.T) {
 	}
 	if got := strings.Join(types, ","); got != "audio_start,chunk_start,chunk_timing,chunk_end,complete" {
 		t.Fatalf("message sequence=%q", got)
+	}
+}
+
+type recordingUnknownWordPronouncer struct {
+	pronunciations map[string]string
+	calls          []string
+}
+
+func (p *recordingUnknownWordPronouncer) Pronounce(word string) (string, bool) {
+	p.calls = append(p.calls, word)
+	ipa, ok := p.pronunciations[word]
+	return ipa, ok
+}
+
+func TestR455UnknownNormalWordsUseOptionalG2PAfterCMUDict(t *testing.T) {
+	pronouncer := &recordingUnknownWordPronouncer{pronunciations: map[string]string{
+		"glyphs":     "ɡlɪfs",
+		"descenders": "dɪsɛndɚz",
+	}}
+	phonemes, tokens, _, err := phonemizeEnglishWithSourceUsing("hello glyphs descenders HTML", pronouncer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tokens) == 0 || !strings.Contains(phonemes, "ɡlɪfs") || !strings.Contains(phonemes, "dɪsɛndɚz") {
+		t.Fatalf("phonemes=%q tokens=%v", phonemes, tokens)
+	}
+	if got := strings.Join(pronouncer.calls, ","); got != "glyphs,descenders" {
+		t.Fatalf("G2P calls=%q, want glyphs,descenders (CMU words and all-caps acronyms must bypass Moonshine)", got)
+	}
+}
+
+func TestR455MoonshineIPANormalizesStressedERForKokoro(t *testing.T) {
+	if got := normalizeMoonshineIPA("bɝd"); got != "bɜɹd" {
+		t.Fatalf("normalizeMoonshineIPA = %q, want bɜɹd", got)
+	}
+}
+
+func TestR455MoonshineAssetDiscoveryIsOptionalAndCompleteOnlyWithFullSet(t *testing.T) {
+	assetRoot := t.TempDir()
+	missing := discoverMoonshineG2PAssets(assetRoot)
+	if missing.Complete || len(missing.Missing) != 4 {
+		t.Fatalf("empty asset discovery=%#v", missing)
+	}
+	root := filepath.Join(assetRoot, filepath.FromSlash(moonshineG2PRelativeDir))
+	for name, content := range map[string]string{
+		"dict_filtered_heteronyms.tsv": "glyphs\tɡlɪfs\n",
+		"g2p-config.json":              "{}\n",
+		"oov/model.onnx":               "placeholder-model",
+		"oov/onnx-config.json":         "{}\n",
+	} {
+		path := filepath.Join(root, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	complete := discoverMoonshineG2PAssets(assetRoot)
+	if !complete.Complete || len(complete.Missing) != 0 {
+		t.Fatalf("complete asset discovery=%#v", complete)
+	}
+}
+
+func TestR455NaturalSourceChunksDoNotBreakEarlyAtSentencePunctuation(t *testing.T) {
+	text := "Short sentence. Another sentence. " + strings.Repeat("alpha ", 40)
+	chunks := splitNaturalSourceText(strings.TrimSpace(text))
+	if len(chunks) < 2 {
+		t.Fatalf("expected multiple chunks; chunks=%#v", chunks)
+	}
+	firstRunes := len([]rune(chunks[0].Text))
+	if firstRunes < kokoroTargetChunkRunes-1 {
+		t.Fatalf("first helper chunk ended early at %d runes, target=%d: %q", firstRunes, kokoroTargetChunkRunes, chunks[0].Text)
+	}
+	if !strings.Contains(chunks[0].Text, "Another sentence.") {
+		t.Fatalf("sentence punctuation caused an early helper split: %q", chunks[0].Text)
 	}
 }

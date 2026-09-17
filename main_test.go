@@ -1449,7 +1449,7 @@ func TestRevision422CorrectionActionsUseAdaptiveRows(t *testing.T) {
 		`title="Suggest a correction for this AI">Suggest correction</button>`,
 		`renderWorkModeCorrectionFooter(msg.correction, index, 'warning')`,
 		`renderWorkModeCorrectionFooter(msg.correction, index, 'agentgo')`,
-		`${normalized}${warnings}${correction}${repairs}${inlineFiles}${actions}`,
+		`${actions}<div class="work-mode-message-ai-content"><div>${text}</div>${normalized}${warnings}${correction}${repairs}${inlineFiles}${files}</div>${toggle}`,
 	} {
 		if !strings.Contains(text, required) {
 			t.Fatalf("adaptive correction layout missing %q", required)

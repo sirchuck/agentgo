@@ -36,6 +36,9 @@ type Message struct {
 	ModelLoaded    bool     `json:"model_loaded,omitempty"`
 	Voices         []string `json:"voices,omitempty"`
 	Capabilities   []string `json:"capabilities,omitempty"`
+	G2PProvider    string   `json:"g2p_provider,omitempty"`
+	G2PAvailable   bool     `json:"g2p_available,omitempty"`
+	G2PMessage     string   `json:"g2p_message,omitempty"`
 	Error          string   `json:"error,omitempty"`
 	Message        string   `json:"message,omitempty"`
 

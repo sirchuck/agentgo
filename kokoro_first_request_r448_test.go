@@ -22,7 +22,7 @@ func TestKokoroFirstRequestR448UsesSmallerStartupChunk(t *testing.T) {
 		`? WORK_MODE_KOKORO_FIRST_REQUEST_TARGET_RUNES`,
 		`: WORK_MODE_KOKORO_REQUEST_TARGET_RUNES;`,
 		`const targetRunes = currentTargetRunes();`,
-		`if (runeCount >= targetRunes)`,
+		`if (runeCount >= targetRunes && /\s/u.test(character))`,
 	} {
 		if !strings.Contains(source, want) {
 			t.Fatalf("r448 first-request Kokoro chunking missing %q", want)
@@ -53,14 +53,14 @@ const assert = require('node:assert/strict');
 const WORK_MODE_KOKORO_FIRST_REQUEST_TARGET_RUNES = 100;
 const WORK_MODE_KOKORO_REQUEST_TARGET_RUNES = 180;
 ` + chunker + `
-const words = Array.from({length:40}, (_, i) => 'word' + String(i).padStart(2, '0'));
+const words = Array.from({length:80}, (_, i) => 'word' + String(i).padStart(2, '0'));
 const text = words.join(' ');
 const chunks = workModeKokoroSplitText(text);
 assert.ok(chunks.length >= 2, 'expected multiple Kokoro requests');
 assert.equal(chunks.map(chunk => chunk.text).join(' '), text, 'chunking must preserve all words');
-assert.ok([...chunks[0].text].length <= 100, 'first Kokoro request should use the smaller startup target');
+assert.ok([...chunks[0].text].length >= 99, 'first Kokoro request should reach the startup target before taking a word boundary');
 assert.ok([...chunks[1].text].length > [...chunks[0].text].length, 'later Kokoro requests should use the larger normal target');
-assert.ok([...chunks[1].text].length <= 180, 'normal Kokoro request should stay within the normal target for this whitespace-rich fixture');
+assert.ok([...chunks[1].text].length >= 179, 'normal Kokoro request should reach the normal target before taking a word boundary');
 `
 	cmd := exec.Command("node", "-e", script)
 	if output, err := cmd.CombinedOutput(); err != nil {

@@ -44,6 +44,9 @@ type kokoroRuntimeStatus struct {
 	ProtocolVersion int
 	HelperVersion   string
 	HelperPath      string
+	G2PProvider     string
+	G2PAvailable    bool
+	G2PMessage      string
 }
 
 type kokoroProcessRecord struct {
@@ -97,6 +100,9 @@ type kokoroManager struct {
 	protocolVersion  int
 	helperVersion    string
 	helperPath       string
+	g2pProvider      string
+	g2pAvailable     bool
+	g2pMessage       string
 	instanceID       string
 	intentionalStop  bool
 	everReady        bool
@@ -185,6 +191,9 @@ func (m *kokoroManager) Status() kokoroRuntimeStatus {
 		ProtocolVersion: m.protocolVersion,
 		HelperVersion:   m.helperVersion,
 		HelperPath:      m.helperPath,
+		G2PProvider:     m.g2pProvider,
+		G2PAvailable:    m.g2pAvailable,
+		G2PMessage:      m.g2pMessage,
 	}
 }
 
@@ -323,6 +332,9 @@ func (m *kokoroManager) Start() error {
 	m.handshakeReady = false
 	m.modelLoaded = false
 	m.available = false
+	m.g2pProvider = ""
+	m.g2pAvailable = false
+	m.g2pMessage = ""
 	m.state = "initializing"
 	m.message = "Kokoro helper is performing its initialization handshake."
 	m.mu.Unlock()
@@ -370,6 +382,14 @@ func (m *kokoroManager) Start() error {
 	m.protocolVersion = response.Protocol
 	m.helperVersion = strings.TrimSpace(response.HelperVersion)
 	m.voices = voices
+	m.g2pProvider = strings.TrimSpace(response.G2PProvider)
+	if m.g2pProvider == "" {
+		m.g2pProvider = "standard"
+	}
+	m.g2pAvailable = response.G2PAvailable || kokoroCapabilitiesContain(response.Capabilities, "moonshine-g2p")
+	m.g2pMessage = strings.TrimSpace(response.G2PMessage)
+	g2pProvider := m.g2pProvider
+	g2pAvailable := m.g2pAvailable
 	m.everReady = true
 	if response.ModelLoaded && synthesisCapable {
 		m.available = true
@@ -383,7 +403,10 @@ func (m *kokoroManager) Start() error {
 	m.mu.Unlock()
 
 	if m.logf != nil {
-		m.logf("system", "info", "Kokoro helper handshake ready with %d voice(s); model_loaded=%t", len(voices), response.ModelLoaded)
+		m.logf("system", "info", "Kokoro helper handshake ready with %d voice(s); model_loaded=%t; g2p_provider=%s; moonshine_g2p=%t", len(voices), response.ModelLoaded, g2pProvider, g2pAvailable)
+		if message := strings.TrimSpace(response.G2PMessage); message != "" {
+			m.logf("system", "info", "Kokoro pronunciation status: %s", message)
+		}
 	}
 	return nil
 }
@@ -666,6 +689,9 @@ func (m *kokoroManager) waitProcess(cmd *exec.Cmd, controller *agenticProcessCon
 	m.handshakeReady = false
 	m.modelLoaded = false
 	m.voices = nil
+	m.g2pProvider = ""
+	m.g2pAvailable = false
+	m.g2pMessage = ""
 	if wasIntentional {
 		m.state = "stopped"
 		m.message = "Kokoro helper is stopped."

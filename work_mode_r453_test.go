@@ -111,7 +111,7 @@ func TestR453DefaultClaudeAndGeminiUseProviderSchema(t *testing.T) {
 	}
 }
 
-func TestR453Revision(t *testing.T) {
+func TestR457Revision(t *testing.T) {
 	data, err := os.ReadFile("version.json")
 	if err != nil {
 		t.Fatal(err)
@@ -122,7 +122,7 @@ func TestR453Revision(t *testing.T) {
 	if err := json.Unmarshal(data, &version); err != nil {
 		t.Fatal(err)
 	}
-	if version.Revision != "r453" {
-		t.Fatalf("revision = %q, want r453", version.Revision)
+	if version.Revision != "r457" {
+		t.Fatalf("revision = %q, want r457", version.Revision)
 	}
 }

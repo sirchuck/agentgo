@@ -352,27 +352,32 @@ select:focus {
   pointer-events: none;
   z-index: 2300;
   padding: 12px 16px;
-  border: 2px solid #9db6d7;
-  border-top-width: 4px;
-  border-top-color: #9db6d7;
+  border: 0;
   border-radius: 14px;
   color: #f8fafc;
-  font-weight: 800;
-  line-height: 1.35;
+  font-weight: 600;
+  line-height: 1.38;
   text-align: center;
   background: #17355f;
-  box-shadow: 0 16px 36px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.08);
-  transition: opacity 0.16s ease, transform 0.16s ease;
+  --toast-glow: rgba(157,182,215,0.52);
+  box-shadow: 0 0 18px var(--toast-glow), 0 16px 36px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.08);
+  transition: opacity 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
 }
 .toast.open {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
 .toast[data-variant="warning"] {
-  border-top-color: #f4b740;
+  --toast-glow: rgba(244,183,64,0.72);
 }
 .toast[data-variant="error"] {
-  border-top-color: #ff5b67;
+  --toast-glow: rgba(255,91,103,0.76);
+}
+.toast[data-variant="success"] {
+  --toast-glow: rgba(73,201,132,0.62);
+}
+.toast[data-variant="info"] {
+  --toast-glow: rgba(88,184,255,0.62);
 }
 
 .token-usage-display {
@@ -3373,7 +3378,7 @@ body.deaddrop-popover-open {
 .work-mode-overlay{--work-pink:#f5a6d7;--work-pink-strong:#d14ba0;--work-blue:#4aa3ff;--work-yellow:#ffe27c;position:fixed;inset:0;z-index:2100;display:none;background:#0b0d12;color:#f5f7fb;overflow:hidden}
 .work-mode-overlay.open{display:block}
 .work-mode-shell{height:100%;display:grid;grid-template-columns:minmax(250px,320px) minmax(0,1fr);background:radial-gradient(circle at 78% 16%,rgba(209,75,160,.18),transparent 30%),radial-gradient(circle at 24% 78%,rgba(74,163,255,.12),transparent 28%),linear-gradient(180deg,#10131b,#080a0f 62%);overflow:auto;scrollbar-width:none}.work-mode-shell::-webkit-scrollbar{width:0;height:0}
-.work-mode-sidebar{border-right:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.30);padding:18px 12px;display:flex;flex-direction:column;gap:12px;min-width:0;overflow:hidden}
+.work-mode-sidebar{position:relative;border-right:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.30);padding:18px 12px;display:flex;flex-direction:column;gap:12px;min-width:0;overflow:hidden}
 .work-mode-sidebar-title{font-size:.88rem;font-weight:950;letter-spacing:.03em;color:var(--work-pink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 6px 8px;border-bottom:1px solid rgba(255,255,255,.08)}
 .work-mode-tree{flex:1 1 auto;min-height:0;overflow:auto;padding:2px 0 10px;scrollbar-width:none;scrollbar-gutter:stable}.work-mode-tree::-webkit-scrollbar{width:0;height:0}
 .work-mode-tree-row{min-height:28px;display:flex;align-items:center;gap:7px;border-radius:9px;padding:3px 6px;color:rgba(245,247,251,.82);font-size:.88rem;line-height:1.2;user-select:none}
@@ -3389,6 +3394,7 @@ body.deaddrop-popover-open {
 .work-mode-file-bubble.is-selected{background:var(--work-blue);border-color:var(--work-blue);box-shadow:0 0 0 3px rgba(74,163,255,.18)}
 .work-mode-search-badge{flex:0 0 auto;min-width:20px;height:18px;border-radius:999px;background:rgba(74,163,255,.22);border:1px solid rgba(74,163,255,.42);color:#d9eeff;display:inline-flex;align-items:center;justify-content:center;padding:0 6px;font-size:.70rem;font-weight:950;line-height:1}
 .work-mode-file-meta{margin-left:auto;flex:0 0 42px;display:flex;align-items:center;justify-content:flex-end;color:rgba(245,247,251,.34);font-size:.76rem;white-space:nowrap;min-width:0}
+.work-mode-file-dropzone{position:absolute;left:14px;right:14px;bottom:86px;z-index:12;min-height:126px;border:2px dashed rgba(74,163,255,.55);border-radius:18px;background:linear-gradient(180deg,rgba(28,49,76,.96),rgba(13,24,39,.98));box-shadow:0 18px 42px rgba(0,0,0,.38),inset 0 0 0 1px rgba(255,255,255,.035);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:18px 14px;text-align:center;color:#eaf6ff;opacity:0;visibility:hidden;pointer-events:none;transform:translateY(8px) scale(.985);transition:opacity .12s ease,transform .12s ease,visibility 0s linear .12s}.work-mode-sidebar.is-file-dragging .work-mode-file-dropzone{opacity:1;visibility:visible;pointer-events:auto;transform:translateY(0) scale(1);transition-delay:0s}.work-mode-file-dropzone.is-drop-target{border-color:rgba(245,166,215,.9);background:linear-gradient(180deg,rgba(72,36,69,.98),rgba(25,25,45,.99));box-shadow:0 18px 42px rgba(0,0,0,.42),0 0 0 4px rgba(209,75,160,.12),inset 0 0 0 1px rgba(255,255,255,.05)}.work-mode-file-dropzone-icon{width:38px;height:38px;border-radius:999px;border:1px solid rgba(74,163,255,.42);background:rgba(74,163,255,.13);display:flex;align-items:center;justify-content:center;color:#9fd0ff;font-size:1.25rem;font-weight:950}.work-mode-file-dropzone.is-drop-target .work-mode-file-dropzone-icon{border-color:rgba(245,166,215,.5);background:rgba(209,75,160,.16);color:#ffd9ef}.work-mode-file-dropzone-title{font-size:.88rem;font-weight:950;letter-spacing:.01em}.work-mode-file-dropzone-note{max-width:220px;color:rgba(234,246,255,.58);font-size:.70rem;line-height:1.35}
 .work-mode-search{flex:0 0 auto;border-top:1px solid rgba(255,255,255,.10);padding:10px 4px 0;display:grid;gap:7px}
 .work-mode-search-row{display:flex;align-items:center;gap:6px}
 .work-mode-search-input{width:100%;min-width:0;border:1px solid rgba(255,255,255,.14);border-radius:13px;background:rgba(255,255,255,.075);color:#f5f7fb;font:inherit;font-size:.84rem;padding:9px 10px;outline:none}
@@ -3418,7 +3424,8 @@ body.deaddrop-popover-open {
 .work-mode-review-final-feed{max-width:none;margin:0}.work-mode-review-final-feed .work-mode-message.ai{color:rgba(245,247,251,.90)}
 .work-mode-message{min-width:0;max-width:100%;box-sizing:border-box;font-size:.96rem;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
 .work-mode-message.user{justify-self:end;max-width:min(650px,82%);background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.08);border-radius:22px;padding:13px 16px;box-shadow:0 14px 28px rgba(0,0,0,.18)}.work-mode-sent-attachments{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:8px;margin:0 0 10px}.work-mode-sent-attachment{min-width:0;border:1px solid rgba(255,255,255,.12);border-radius:13px;background:rgba(0,0,0,.18);padding:7px;color:rgba(245,247,251,.82)}.work-mode-sent-attachment-image{display:block;width:100%;max-height:150px;object-fit:contain;border-radius:9px;background:rgba(0,0,0,.28)}.work-mode-sent-attachment-head{display:flex;align-items:center;gap:6px;margin-top:6px;min-width:0}.work-mode-sent-attachment-badge{flex:0 0 auto;border-radius:999px;background:rgba(255,153,0,.18);color:#ffc76d;padding:2px 6px;font-size:.62rem;font-weight:950;letter-spacing:.04em}.work-mode-sent-attachment-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.75rem;font-weight:850}.work-mode-sent-attachment-meta{margin-top:3px;color:rgba(245,247,251,.50);font-size:.68rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.work-mode-sent-attachment-file{min-height:66px;display:flex;flex-direction:column;justify-content:center}
-.work-mode-message.ai{justify-self:start;max-width:min(720px,88%);padding:4px 0;color:rgba(245,247,251,.88)}
+.work-mode-message.ai{justify-self:start;max-width:min(770px,92%);padding:4px 0;color:rgba(245,247,251,.88);display:grid;grid-template-columns:38px minmax(0,720px);column-gap:10px;align-items:start}
+.work-mode-message-ai-content{grid-column:2;min-width:0;max-width:720px}
 .work-mode-message.ai.has-file-output{position:relative;padding-right:44px}
 .work-mode-ai-warning{margin-top:18px;padding:11px 13px;border:1px solid rgba(255,211,92,.52);border-radius:13px;background:rgba(255,201,61,.11);color:#fff0ad;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);white-space:normal}
 .work-mode-ai-warning-title{display:block;margin-bottom:5px;color:#ffe27c;font-weight:950}
@@ -3440,6 +3447,7 @@ body.deaddrop-popover-open {
 .work-mode-ai-file-toggle svg{width:23px;height:23px;stroke:currentColor;fill:none;transition:transform .16s ease}
 .work-mode-ai-file-toggle.is-open svg{transform:rotate(180deg)}
 .work-mode-message-actions{display:inline-flex;align-items:center;gap:7px;margin-top:8px;vertical-align:middle}
+.work-mode-message-actions.is-sticky-rail{grid-column:1;grid-row:1;display:flex;flex-direction:column;align-items:center;justify-content:center;align-self:start;position:sticky;top:calc(50vh - 52px);z-index:4;margin:0;padding:4px 0;min-height:30px}
 .work-mode-message-action-btn{appearance:none;width:30px;height:30px;border-radius:999px;border:1px solid rgba(74,163,255,.30);background:rgba(74,163,255,.10);color:#d9eeff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
 .work-mode-message-action-btn:hover{background:rgba(74,163,255,.18);color:#fff}.work-mode-message-action-btn.is-speaking{background:rgba(74,163,255,.24);color:#fff;box-shadow:0 0 0 1px rgba(74,163,255,.32)}.work-mode-message-action-btn.is-preparing{color:#fff;background:rgba(74,163,255,.16)}.work-mode-message-action-btn.is-paused{background:rgba(255,255,255,.10);color:#fff}
 ::highlight(agentgo-spoken-word){color:#fff;text-shadow:0 0 3px rgba(255,255,255,.72),0 0 7px rgba(255,255,255,.28)}.work-mode-speaking-word{color:#fff!important;text-shadow:0 0 3px rgba(255,255,255,.72),0 0 7px rgba(255,255,255,.28)}
@@ -7327,6 +7335,11 @@ body.deaddrop-popover-open {
 <aside class="work-mode-sidebar" aria-label="Work Mode projectwork files">
 <div class="work-mode-sidebar-title" id="workModeBuilderLabel">Builder</div>
 <div class="work-mode-tree" id="workModeFileTree" aria-label="Projectwork files"></div>
+<div aria-hidden="true" class="work-mode-file-dropzone" id="workModeFileDropZone">
+<div aria-hidden="true" class="work-mode-file-dropzone-icon">↓</div>
+<div class="work-mode-file-dropzone-title">Drop files to add to project</div>
+<div class="work-mode-file-dropzone-note">Text and code files · multiple files supported</div>
+</div>
 <div class="work-mode-search" id="workModeSearchBox">
 <div class="work-mode-search-row">
 <input aria-label="Search projectwork text file contents" autocomplete="off" class="work-mode-search-input" id="workModeSearchInput" placeholder="Search file contents..." type="search"/>
@@ -8014,6 +8027,8 @@ const WORK_MODE_KOKORO_REQUEST_TARGET_RUNES = 180;
 let workModeFileTree = null;
 let workModeTmpWorkTree = null;
 let workModeTreeLoadedProject = "";
+let workModeFileDropBusy = false;
+let workModeFileDragDepth = 0;
 let workModeExpandedFolders = new Set();
 let workModeSelectedFiles = new Set();
 let workModeOpenedFiles = [];
@@ -10365,6 +10380,7 @@ async function importSelectedUpload() {
   const form = new FormData();
   form.append('file', file);
   form.append('includeGitMetadata', includeGitMetadataForImport() ? 'true' : 'false');
+  form.append('overwrite', 'true');
   const res = await agentGOFetch('/api/project/import/upload', { method: 'POST', body: form });
   if (!res.ok) throw new Error(await res.text());
   const data = await res.json();
@@ -16065,7 +16081,12 @@ function normalizeStructuredOutputCompatibility(value) {
   return 'automatic';
 }
 function buildDefaultResponseCapabilities(provider, adapter) {
-  return { structured_output_compatibility: 'automatic', prompt_mode: "balanced" };
+  const normalizedProvider = String(provider || '').trim().toLowerCase();
+  const normalizedAdapter = String(adapter || '').trim().toLowerCase();
+  const structuredOutputCompatibility = (normalizedProvider === 'claude' || normalizedProvider === 'anthropic' || normalizedAdapter === 'anthropic_messages')
+    ? 'provider_schema'
+    : 'automatic';
+  return { structured_output_compatibility: structuredOutputCompatibility, prompt_mode: "balanced" };
 }
 function normalizePromptMode(value, fallback = "balanced") {
   const mode = String(value || "").toLowerCase().trim();
@@ -16456,7 +16477,10 @@ function syncModelResponseCapabilityUI({ force = false } = {}) {
   const promptModeValue = document.getElementById('modelPromptModeValue');
   if (!select) return;
   const supported = adapterSupportsStrictStructuredOutput(adapter);
-  if (force) select.value = 'automatic';
+  if (force) {
+    const provider = document.getElementById('modelProvider') ? document.getElementById('modelProvider').value : '';
+    select.value = buildDefaultResponseCapabilities(provider, adapter).structured_output_compatibility;
+  }
   select.disabled = !supported;
   if (!supported) select.value = 'automatic';
   const compatibility = normalizeStructuredOutputCompatibility(select.value);
@@ -18258,6 +18282,9 @@ function renderYetiVoiceSection() {
     ? kokoroReady && isAgentGOKokoroPlaybackSupported()
     : legacySupported;
   const kokoroStatus = kokoroReady ? '' : `<div class="yeti-menu-voice-status">${escapeHtml(String((agentGOKokoroStatus && agentGOKokoroStatus.message) || 'Local Kokoro voices are not installed. Using system speech.'))} See <strong>${escapeHtml(readmePath)}</strong> for installation instructions.</div>`;
+  const g2pStatus = agentGOKokoroStatus && agentGOKokoroStatus.g2p_available
+    ? '<div class="yeti-menu-voice-note">Pronunciation: Moonshine G2P active for unknown English words.</div>'
+    : `<div class="yeti-menu-voice-note">Pronunciation: AgentGO standard fallback${agentGOKokoroStatus && agentGOKokoroStatus.g2p_state === 'incomplete' ? ' · Moonshine G2P assets are incomplete.' : ' · optional Moonshine G2P not active.'}</div>`;
   const legacyNote = !legacySupported && !kokoroReady
     ? '<div class="yeti-menu-voice-note">Browser/system speech is not supported in this browser.</div>'
     : (legacySupported && !agentGOTTSVoices.length ? '<div class="yeti-menu-voice-note">System voices may still be loading; the default browser/system voice remains available.</div>' : '');
@@ -18265,6 +18292,7 @@ function renderYetiVoiceSection() {
     <div class="yeti-menu-voice-head"><div class="yeti-menu-voice-title">AgentGO Voice</div><button class="yeti-menu-phonetics-link" id="yetiPhoneticsBtn" type="button">Custom Phonetics</button></div>
     <div class="yeti-menu-voice-row"><select class="yeti-menu-voice-select" id="yetiTTSVoiceSelect" ${voiceDisabled ? 'disabled' : ''} aria-label="AgentGO preferred voice">${groups.join('')}</select><button class="yeti-menu-voice-test" id="yetiTestVoiceBtn" type="button" ${agentGOTTSEnabled && testSupported ? '' : 'disabled'} aria-label="Test selected AgentGO voice" title="Test selected AgentGO voice">${renderWorkModeSpeakerIcon()}</button></div>
     ${kokoroStatus}
+    ${g2pStatus}
     ${legacyNote}
     <div class="yeti-menu-voice-speed"><label for="yetiTTSSpeedRange">Speech Speed</label><input id="yetiTTSSpeedRange" type="range" min="0.75" max="1.50" step="0.05" value="${speed.toFixed(2)}" aria-label="AgentGO speech speed"><output id="yetiTTSSpeedValue">${speed.toFixed(2)}×</output></div>
     <div class="yeti-menu-voice-options">
@@ -19775,7 +19803,7 @@ function renderWorkModeMessageActions(index, options = {}) {
     buttons.push(`<button class="work-mode-message-action-btn work-mode-ai-speak-btn${state.playing ? ' is-speaking' : ''}${state.preparing ? ' is-preparing' : ''}${state.paused ? ' is-paused' : ''}" data-work-speak-message="${index}" type="button" aria-pressed="${state.playing || state.paused || state.playRequested ? 'true' : 'false'}" aria-label="${state.playing || state.paused ? 'Restart this reply from the beginning' : 'Read this reply aloud'}" title="${state.playing || state.paused ? 'Restart this reply from the beginning' : 'Read this reply aloud'}">${countdown}</button>`);
     buttons.push(`<button class="work-mode-message-action-btn work-mode-ai-pause-btn${state.paused ? ' is-paused' : ''}" data-work-pause-message="${index}" type="button" ${state.playing || state.paused ? '' : 'hidden disabled'} aria-pressed="${state.paused ? 'true' : 'false'}" aria-label="${state.paused ? 'Resume this reply' : 'Pause this reply'}" title="${state.paused ? 'Resume this reply' : 'Pause this reply'}">${state.paused ? renderWorkModePlayIcon() : renderWorkModePauseIcon()}</button>`);
   }
-  return `<div class="work-mode-message-actions">${buttons.join('')}</div>`;
+  return `<div class="work-mode-message-actions${options.rail ? ' is-sticky-rail' : ''}">${buttons.join('')}</div>`;
 }
 function renderWorkModeStatusMessage(content, dismissible = true) {
   const value = String(content || '');
@@ -20442,8 +20470,6 @@ function workModeKokoroSplitText(value, forcedRanges = []) {
     if (rangeEnd <= rangeStart) return;
     let start = rangeStart;
     let runeCount = 0;
-    let lastNaturalBreak = -1;
-    let lastSoftBreak = -1;
     const currentTargetRunes = () => segments.length === 0
       ? WORK_MODE_KOKORO_FIRST_REQUEST_TARGET_RUNES
       : WORK_MODE_KOKORO_REQUEST_TARGET_RUNES;
@@ -20457,8 +20483,6 @@ function workModeKokoroSplitText(value, forcedRanges = []) {
       if (segmentEnd > segmentStart) segments.push({ text:text.slice(segmentStart, segmentEnd), start:segmentStart, end:segmentEnd });
       start = end;
       runeCount = 0;
-      lastNaturalBreak = -1;
-      lastSoftBreak = -1;
     };
     for (let i = rangeStart; i < rangeEnd;) {
       const codePoint = text.codePointAt(i);
@@ -20467,20 +20491,11 @@ function workModeKokoroSplitText(value, forcedRanges = []) {
       const next = Math.min(rangeEnd, i + size);
       runeCount += 1;
       const targetRunes = currentTargetRunes();
-      const minBreakRunes = Math.floor(targetRunes / 2);
-      if (runeCount >= minBreakRunes) {
-        if (/[.!?;:\n—]/.test(character)) lastNaturalBreak = next;
-        else if (/[,\s]/.test(character)) lastSoftBreak = next;
-      }
-      if (runeCount >= targetRunes) {
-        const end = lastNaturalBreak > start ? lastNaturalBreak : lastSoftBreak;
-        if (end > start) {
-          flush(end);
-          if (end < next) {
-            i = end;
-            continue;
-          }
-        }
+      // r455: target a useful amount of text first, then finish the current
+      // word. Kokoro receives the punctuation/newlines inside the request and
+      // decides its own sentence cadence; AgentGO only avoids mid-word cuts.
+      if (runeCount >= targetRunes && /\s/u.test(character)) {
+        flush(next);
       }
       i = next;
     }
@@ -22236,6 +22251,131 @@ async function confirmWorkModeCreateItem() {
     showToast(err.message || `Could not ${workModeCreateKind === 'rename' ? 'rename item' : 'create ' + itemType}.`, 'warning');
   }
 }
+const WORK_MODE_DROP_TEXT_EXTENSIONS = new Set([
+  'txt','md','markdown','json','jsonl','js','mjs','cjs','jsx','ts','tsx','css','scss','sass','less','html','htm','xml','svg',
+  'yaml','yml','toml','ini','cfg','conf','env','py','pyi','go','rs','java','kt','kts','c','cc','cpp','cxx','h','hpp','hxx',
+  'cs','php','rb','sh','bash','zsh','fish','ps1','bat','cmd','sql','graphql','gql','vue','svelte','lua','r','swift','dart','ex',
+  'exs','erl','hrl','fs','fsx','clj','cljs','cljc','edn','properties','gradle','mk','make','csv','tsv','log','tex','rst'
+]);
+const WORK_MODE_DROP_TEXT_BASENAMES = new Set(['makefile','dockerfile','license','readme','gemfile','rakefile','procfile']);
+function workModeDragHasFiles(event) {
+  const types = event && event.dataTransfer ? Array.from(event.dataTransfer.types || []) : [];
+  return types.includes('Files');
+}
+function workModeDroppedFileSupported(file) {
+  if (!file || !file.name) return false;
+  const name = String(file.name || '').trim();
+  const lower = name.toLowerCase();
+  if (!name || lower.startsWith('.') || lower === 'project.json' || lower.endsWith('.zip')) return false;
+  if (String(file.type || '').toLowerCase().startsWith('text/')) return true;
+  const mime = String(file.type || '').toLowerCase();
+  if (/\b(?:json|xml|javascript|typescript|yaml|toml|graphql)\b/.test(mime)) return true;
+  if (WORK_MODE_DROP_TEXT_BASENAMES.has(lower)) return true;
+  const dot = lower.lastIndexOf('.');
+  return dot > 0 && WORK_MODE_DROP_TEXT_EXTENSIONS.has(lower.slice(dot + 1));
+}
+function setWorkModeFileDropZoneVisible(visible, isTarget = false) {
+  const sidebar = document.querySelector('.work-mode-sidebar');
+  const zone = document.getElementById('workModeFileDropZone');
+  if (!sidebar || !zone) return;
+  const show = !!visible && !!activeProject && workModeOpen && !workModeFileDropBusy;
+  sidebar.classList.toggle('is-file-dragging', show);
+  zone.classList.toggle('is-drop-target', show && !!isTarget);
+  zone.setAttribute('aria-hidden', show ? 'false' : 'true');
+}
+function resetWorkModeFileDropZone() {
+  setWorkModeFileDropZoneVisible(false, false);
+}
+function workModeDropContainsDirectory(dataTransfer) {
+  return Array.from((dataTransfer && dataTransfer.items) || []).some(item => {
+    if (!item || item.kind !== 'file' || typeof item.webkitGetAsEntry !== 'function') return false;
+    try {
+      const entry = item.webkitGetAsEntry();
+      return !!(entry && entry.isDirectory);
+    } catch (_) {
+      return false;
+    }
+  });
+}
+async function uploadWorkModeDroppedFile(file, overwrite = false) {
+  const form = new FormData();
+  form.append('file', file, file.name);
+  form.append('includeGitMetadata', 'false');
+  form.append('overwrite', overwrite ? 'true' : 'false');
+  const response = await agentGOFetch('/api/project/import/upload', { method:'POST', body:form });
+  const body = await response.text();
+  if (response.status === 409) return { conflict:true, message:body.trim() || 'file already exists' };
+  if (!response.ok) throw new Error(body.trim() || `Upload failed (${response.status}).`);
+  try {
+    return body ? JSON.parse(body) : { ok:true };
+  } catch (_) {
+    return { ok:true };
+  }
+}
+async function importWorkModeDroppedFiles(dataTransfer) {
+  if (!requireActiveProjectSelection()) return;
+  const allFiles = Array.from((dataTransfer && dataTransfer.files) || []);
+  const containsDirectory = workModeDropContainsDirectory(dataTransfer);
+  if (!allFiles.length) {
+    if (containsDirectory) showToast('Folder drag-and-drop is not supported yet. Drop individual text/code files instead.', 'warning', 4200);
+    return;
+  }
+  const supported = [];
+  const unsupported = [];
+  allFiles.forEach(file => (workModeDroppedFileSupported(file) ? supported : unsupported).push(file));
+  if (!supported.length) {
+    showToast('Drag-and-drop currently supports text/code files only. Use Import for ZIP or other file types.', 'warning', 4600);
+    return;
+  }
+  workModeFileDropBusy = true;
+  resetWorkModeFileDropZone();
+  let imported = 0;
+  let skipped = 0;
+  let failed = 0;
+  try {
+    for (const file of supported) {
+      try {
+        let result = await uploadWorkModeDroppedFile(file, false);
+        if (result && result.conflict) {
+          const replace = await openConfirmModal({
+            title:'File Already Exists',
+            message:`${file.name} already exists in projectwork. Replace it?`,
+            confirmLabel:'Replace',
+            cancelLabel:'Skip',
+            destructive:true,
+            trigger:document.getElementById('workModeFileDropZone') || document.activeElement || null
+          });
+          if (!replace) {
+            skipped++;
+            continue;
+          }
+          result = await uploadWorkModeDroppedFile(file, true);
+          if (result && result.conflict) throw new Error(`${file.name} could not be replaced.`);
+        }
+        imported++;
+      } catch (err) {
+        failed++;
+        showToast(`${file.name}: ${err.message || 'Could not import file.'}`, 'warning', 4300);
+      }
+    }
+    if (imported > 0) {
+      await refreshLogs().catch(() => {});
+      await loadFiles(currentPath).catch(() => loadFiles('').catch(() => {}));
+      await loadContextFiles().catch(() => {});
+      await loadWorkModeFileTree().catch(() => {});
+    }
+    const ignored = unsupported.length + (containsDirectory ? 1 : 0);
+    const details = [];
+    if (skipped) details.push(`${skipped} skipped`);
+    if (ignored) details.push(`${ignored} unsupported`);
+    if (failed) details.push(`${failed} failed`);
+    if (imported) showToast(`Added ${imported} file${imported === 1 ? '' : 's'}${details.length ? ` · ${details.join(' · ')}` : ''}.`, failed ? 'warning' : 'success', 4200);
+    else if (details.length) showToast(`No files added · ${details.join(' · ')}.`, 'warning', 4200);
+  } finally {
+    workModeFileDropBusy = false;
+    resetWorkModeFileDropZone();
+  }
+}
 function renderWorkModeFileTree() {
   const tree = document.getElementById('workModeFileTree');
   if (!tree) return;
@@ -23537,8 +23677,8 @@ function renderWorkModeMessages() {
         : (!msg.normalized ? renderWorkModeCorrectionFooter(msg.correction, index) : '');
       const repairs = renderWorkModeRepairDisclosure(msg.repairDetails, index, !!msg.repairDetailsOpen);
       const inlineFiles = renderWorkModeInlineFiles(msg.inlineFiles, index);
-      const actions = renderWorkModeMessageActions(index, { speak: isWorkModeReplySpeechSupported() });
-      return `<div class="work-mode-message ai${hasFileOutput ? ' has-file-output' : ''}"><div>${text}</div>${normalized}${warnings}${correction}${repairs}${inlineFiles}${actions}${toggle}${files}</div>`;
+      const actions = renderWorkModeMessageActions(index, { speak: isWorkModeReplySpeechSupported(), rail: true });
+      return `<div class="work-mode-message ai${hasFileOutput ? ' has-file-output' : ''}">${actions}<div class="work-mode-message-ai-content"><div>${text}</div>${normalized}${warnings}${correction}${repairs}${inlineFiles}${files}</div>${toggle}</div>`;
     }
     const attachments = renderWorkModeMessageAttachments(msg.attachments);
     const webshots = renderWorkModeWebshots(msg.webshots, index);
@@ -25968,6 +26108,8 @@ function hideWorkModeOverlay() {
   toggleWorkModeTerminalPanel(false);
   closeWorkModeFolderContextMenu();
   closeWorkModeCreateModal();
+  workModeFileDragDepth = 0;
+  resetWorkModeFileDropZone();
   workModeOpen = false;
   overlay.classList.remove('open');
   overlay.setAttribute('aria-hidden', 'true');
@@ -26005,6 +26147,9 @@ function resetWorkModeState() {
   workModeFileTree = null;
   workModeTmpWorkTree = null;
   workModeTreeLoadedProject = '';
+  workModeFileDropBusy = false;
+  workModeFileDragDepth = 0;
+  resetWorkModeFileDropZone();
   workModeExpandedFolders = new Set();
   workModeSelectedFiles = new Set();
   workModeLargeFileOpenConfirmed = new Set();
@@ -28271,6 +28416,38 @@ const workModeSearchInput = document.getElementById('workModeSearchInput');
 if (workModeSearchInput) workModeSearchInput.addEventListener('input', scheduleWorkModeSearch);
 const workModeSearchClearBtn = document.getElementById('workModeSearchClearBtn');
 if (workModeSearchClearBtn) workModeSearchClearBtn.addEventListener('click', () => resetWorkModeSearch());
+const workModeDropOverlay = document.getElementById('workModeOverlay');
+if (workModeDropOverlay) {
+  workModeDropOverlay.addEventListener('dragenter', event => {
+    if (!workModeOpen || !activeProject || workModeFileDropBusy || !workModeDragHasFiles(event)) return;
+    event.preventDefault();
+    workModeFileDragDepth++;
+    setWorkModeFileDropZoneVisible(true, false);
+  });
+  workModeDropOverlay.addEventListener('dragover', event => {
+    if (!workModeOpen || !activeProject || workModeFileDropBusy || !workModeDragHasFiles(event)) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+    const zone = document.getElementById('workModeFileDropZone');
+    setWorkModeFileDropZoneVisible(true, !!(zone && zone.contains(event.target)));
+  });
+  workModeDropOverlay.addEventListener('dragleave', event => {
+    if (!workModeDragHasFiles(event)) return;
+    workModeFileDragDepth = Math.max(0, workModeFileDragDepth - 1);
+    if (workModeFileDragDepth === 0) resetWorkModeFileDropZone();
+  });
+  workModeDropOverlay.addEventListener('drop', event => {
+    if (!workModeDragHasFiles(event)) return;
+    event.preventDefault();
+    const zone = document.getElementById('workModeFileDropZone');
+    const droppedOnZone = !!(zone && zone.contains(event.target));
+    const transfer = event.dataTransfer;
+    workModeFileDragDepth = 0;
+    resetWorkModeFileDropZone();
+    if (!droppedOnZone || !transfer) return;
+    importWorkModeDroppedFiles(transfer).catch(err => showToast(err.message || 'Could not add dropped files.', 'warning', 4300));
+  });
+}
 const workModeObserverReviewBtn = document.getElementById('workModeObserverReviewBtn');
 if (workModeObserverReviewBtn) workModeObserverReviewBtn.addEventListener('click', () => {
   if (isWorkModeTerminalAccessActive()) return showToast('End the active terminal session before enabling AI Observer.', 'warning', 3400);

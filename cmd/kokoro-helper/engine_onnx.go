@@ -29,6 +29,8 @@ type nativeKokoroEngine struct {
 	waveformOutputName string
 	durationOutputName string
 	voiceCache         map[string][]float32
+	moonshineG2P       *moonshineG2P
+	g2pMessage         string
 	closed             bool
 }
 
@@ -91,6 +93,8 @@ func newKokoroEngine(assetRoot string) (kokoroEngine, error) {
 		return nil, fmt.Errorf("Kokoro ONNX model exposes no usable waveform output")
 	}
 
+	moonshineG2P, g2pMessage := newMoonshineG2P(assetRoot, ortRuntime, ortEnv)
+
 	cleanupSession = false
 	cleanupEnv = false
 	cleanupRuntime = false
@@ -106,6 +110,8 @@ func newKokoroEngine(assetRoot string) (kokoroEngine, error) {
 		waveformOutputName: waveformOutputName,
 		durationOutputName: durationOutputName,
 		voiceCache:         map[string][]float32{},
+		moonshineG2P:       moonshineG2P,
+		g2pMessage:         strings.TrimSpace(g2pMessage),
 	}, nil
 }
 
@@ -137,6 +143,17 @@ func (e *nativeKokoroEngine) TimingSupported() bool {
 	return e != nil && strings.TrimSpace(e.durationOutputName) != ""
 }
 
+func (e *nativeKokoroEngine) G2PStatus() (bool, string) {
+	if e == nil {
+		return false, "Moonshine G2P is unavailable; using AgentGO standard pronunciation fallback."
+	}
+	message := strings.TrimSpace(e.g2pMessage)
+	if message == "" {
+		message = "Moonshine G2P is not installed; using AgentGO standard pronunciation fallback."
+	}
+	return e.moonshineG2P != nil, message
+}
+
 func (e *nativeKokoroEngine) Close() error {
 	if e == nil {
 		return nil
@@ -147,6 +164,10 @@ func (e *nativeKokoroEngine) Close() error {
 		return nil
 	}
 	e.closed = true
+	if e.moonshineG2P != nil {
+		e.moonshineG2P.Close()
+		e.moonshineG2P = nil
+	}
 	if e.session != nil {
 		e.session.Close()
 		e.session = nil
@@ -192,7 +213,7 @@ func (e *nativeKokoroEngine) Synthesize(ctx context.Context, text, voice string,
 }
 
 func (e *nativeKokoroEngine) synthesizeSourceChunk(ctx context.Context, chunk sourceChunk, voiceID string, speed float32, emit func(kokoroSynthesisChunk) error) error {
-	_, tokens, groups, err := phonemizeEnglishWithSource(chunk.Text)
+	_, tokens, groups, err := phonemizeEnglishWithSourceUsing(chunk.Text, e.moonshineG2P)
 	if err != nil {
 		return fmt.Errorf("phonemize %q: %w", truncateForError(chunk.Text), err)
 	}
