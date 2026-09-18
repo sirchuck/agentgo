@@ -160,6 +160,10 @@ func (a *App) handleWebLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	password, failedCount := a.webPasswordState()
 	if password == "" {
+		if err := a.createWebSession(w, r); err != nil {
+			http.Error(w, "could not create startup session", http.StatusInternalServerError)
+			return
+		}
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "password_required": false})
 		return
 	}
@@ -194,14 +198,19 @@ func (a *App) handleWebLogin(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
-func writeAgentGOPasswordPage(w http.ResponseWriter) {
+func writeAgentGOPasswordPage(w http.ResponseWriter, passwordRequired bool) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
-	_, _ = fmt.Fprint(w, `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AgentGO Login</title><style>
-html,body{height:100%;margin:0;background:#fff;color:#151515;font-family:Arial,Helvetica,sans-serif}.wrap{height:100%;display:flex;align-items:center;justify-content:center}.box{width:min(360px,calc(100vw - 48px));text-align:center}.title{font-size:25px;font-weight:700;margin-bottom:22px}.password{box-sizing:border-box;width:100%;height:44px;border:1px solid #aaa;border-radius:6px;padding:0 12px;font-size:17px}.button{margin-top:12px;width:100%;height:42px;border:0;border-radius:6px;background:#171717;color:white;font-size:16px;cursor:pointer}.error{min-height:20px;margin-top:12px;color:#a00000;font-size:14px}</style></head><body><div class="wrap"><form class="box" id="loginForm"><div class="title">AgentGO</div><input class="password" id="password" type="password" autocomplete="current-password" autofocus placeholder="Password"><button class="button" type="submit">Enter</button><div class="error" id="error"></div></form></div><script>
+	passwordControl := `<input class="password" id="password" type="password" autocomplete="current-password" autofocus placeholder="Password">`
+	if !passwordRequired {
+		passwordControl = `<div class="no-password-note" role="note">You can set a password in your <strong>config.json</strong> file.</div>`
+	}
+	_, _ = fmt.Fprintf(w, `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AgentGO Login</title><style>
+html,body{height:100%%;margin:0;color:#f7fbff;font-family:Arial,Helvetica,sans-serif}body{background-color:#071322;background-image:linear-gradient(rgba(3,10,22,.14),rgba(3,10,22,.24)),url('/assets/yetiagent.png');background-position:center center;background-size:cover;background-repeat:no-repeat;background-attachment:fixed}.wrap{min-height:100%%;display:flex;align-items:center;justify-content:center;padding:28px;box-sizing:border-box}.box{box-sizing:border-box;width:min(430px,calc(100vw - 42px));padding:34px 34px 30px;text-align:center;background:rgba(7,18,37,.76);border:1px solid rgba(173,208,255,.24);border-radius:24px;box-shadow:0 24px 70px rgba(0,0,0,.52),inset 0 1px 0 rgba(255,255,255,.08);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}.title{font-size:31px;font-weight:800;letter-spacing:.01em;margin-bottom:24px;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.55)}.password{box-sizing:border-box;width:100%%;height:48px;border:1px solid rgba(184,208,240,.72);border-radius:10px;padding:0 14px;font-size:17px;background:rgba(255,255,255,.97);color:#13233b;outline:none;box-shadow:0 7px 20px rgba(0,0,0,.16)}.password:focus{border-color:#7db8ff;box-shadow:0 0 0 3px rgba(72,151,245,.25),0 7px 20px rgba(0,0,0,.16)}.no-password-note{box-sizing:border-box;width:100%%;padding:14px 16px;border:1px solid rgba(164,199,238,.28);border-radius:12px;background:rgba(12,33,61,.76);color:#eef7ff;font-size:15px;line-height:1.45;text-align:left;box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}.no-password-note strong{color:#fff}.button{margin-top:14px;width:100%%;height:46px;border:1px solid rgba(137,190,255,.28);border-radius:10px;background:linear-gradient(180deg,#2d78c5,#16528f);color:white;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 11px 28px rgba(0,34,75,.42),inset 0 1px 0 rgba(255,255,255,.18)}.button:hover{filter:brightness(1.08)}.button:focus-visible{outline:3px solid rgba(126,190,255,.48);outline-offset:2px}.error{min-height:20px;margin-top:12px;color:#ffb8b8;font-size:14px;font-weight:600;text-shadow:0 1px 4px rgba(0,0,0,.5)}@media(max-width:560px){.wrap{padding:18px}.box{padding:28px 22px 24px}.title{font-size:28px}}
+</style></head><body><div class="wrap"><form class="box" id="loginForm"><div class="title">AgentGO</div>%s<button class="button" type="submit">Enter</button><div class="error" id="error"></div></form></div><script>
 const form=document.getElementById('loginForm'),input=document.getElementById('password'),error=document.getElementById('error');
-form.addEventListener('submit',async(e)=>{e.preventDefault();error.textContent='';try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:input.value})});const data=await r.json().catch(()=>({}));if(r.ok){location.reload();return;}if(data.locked){location.reload();return;}error.textContent='Incorrect password.';input.value='';input.focus();}catch(_){error.textContent='Could not contact AgentGO.';}});
-</script></body></html>`)
+form.addEventListener('submit',async(e)=>{e.preventDefault();error.textContent='';try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:input?input.value:''})});const data=await r.json().catch(()=>({}));if(r.ok){location.reload();return;}if(data.locked){location.reload();return;}error.textContent='Incorrect password.';if(input){input.value='';input.focus();}}catch(_){error.textContent='Could not contact AgentGO.';}});
+</script></body></html>`, passwordControl)
 }
 
 func writeAgentGOLockedPage(w http.ResponseWriter) {
@@ -216,7 +225,8 @@ func writeAgentGOLockedPage(w http.ResponseWriter) {
 // is intentionally reserved for a separate patch.
 func (a *App) withWebPasswordProtection(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !a.passwordProtectionEnabled() {
+		// The startup artwork must remain reachable before a web session exists.
+		if r.URL.Path == "/assets/yetiagent.png" {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -228,6 +238,20 @@ func (a *App) withWebPasswordProtection(next http.Handler) http.Handler {
 			a.handleWebLogin(w, r)
 			return
 		}
+
+		passwordEnabled := a.passwordProtectionEnabled()
+		if !passwordEnabled {
+			// Even password-free installs get the startup splash so users discover
+			// where password protection is configured. This acknowledgement does
+			// not turn on API authentication when no password is configured.
+			if r.Method == http.MethodGet && r.URL.Path == "/" && !a.hasValidWebSession(r) {
+				writeAgentGOPasswordPage(w, false)
+				return
+			}
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		if a.webPasswordLocked() {
 			if r.Method == http.MethodGet && r.URL.Path == "/" {
 				writeAgentGOLockedPage(w)
@@ -238,7 +262,7 @@ func (a *App) withWebPasswordProtection(next http.Handler) http.Handler {
 		}
 		if !a.hasValidWebSession(r) {
 			if r.Method == http.MethodGet && r.URL.Path == "/" {
-				writeAgentGOPasswordPage(w)
+				writeAgentGOPasswordPage(w, true)
 				return
 			}
 			writeJSON(w, http.StatusUnauthorized, map[string]any{"error": "authentication required"})

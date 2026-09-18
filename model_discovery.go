@@ -62,6 +62,29 @@ type modelDiscoverySpec struct {
 	Message  string
 }
 
+type modelDiscoveryClientError struct {
+	Code    string
+	Message string
+	Detail  string
+	Status  int
+}
+
+func (e *modelDiscoveryClientError) Error() string {
+	if e == nil || strings.TrimSpace(e.Message) == "" {
+		return "Could not retrieve available models from the provider."
+	}
+	return strings.TrimSpace(e.Message)
+}
+
+func newModelDiscoveryClientError(code, message, detail string, status int) error {
+	return &modelDiscoveryClientError{
+		Code:    strings.TrimSpace(code),
+		Message: strings.TrimSpace(message),
+		Detail:  strings.TrimSpace(detail),
+		Status:  status,
+	}
+}
+
 func (a *App) handleModelDiscovery(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -96,7 +119,21 @@ func (a *App) handleModelDiscovery(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	result, err := discoverProviderModels(ctx, req)
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]string{"error": userFacingDiscoveryError(err)})
+		status := http.StatusBadGateway
+		payload := map[string]any{"error": userFacingDiscoveryError(err)}
+		var clientErr *modelDiscoveryClientError
+		if errors.As(err, &clientErr) {
+			if clientErr.Status > 0 {
+				status = clientErr.Status
+			}
+			if clientErr.Code != "" {
+				payload["code"] = clientErr.Code
+			}
+			if clientErr.Detail != "" {
+				payload["detail"] = clientErr.Detail
+			}
+		}
+		writeJSON(w, status, payload)
 		return
 	}
 	writeJSON(w, http.StatusOK, result)
@@ -160,31 +197,92 @@ func discoverProviderModels(ctx context.Context, req modelDiscoveryRequest) (mod
 	client := &http.Client{Timeout: modelDiscoveryTimeout}
 	resp, err := client.Do(request)
 	if err != nil {
-		return modelDiscoveryResponse{}, fmt.Errorf("could not connect to the provider: %w", err)
+		detail := strings.TrimSpace(err.Error())
+		message := "Could not reach the provider. Check the Base URL, network connection, and provider status."
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			message = "The provider model-list request timed out. Check the provider and try again."
+		}
+		return modelDiscoveryResponse{}, newModelDiscoveryClientError("network_error", message, detail, http.StatusBadGateway)
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, modelDiscoveryMaxBodyBytes+1))
 	if err != nil {
-		return modelDiscoveryResponse{}, fmt.Errorf("could not read the provider response: %w", err)
+		return modelDiscoveryResponse{}, newModelDiscoveryClientError("provider_response_error", "Could not read the provider model list.", err.Error(), http.StatusBadGateway)
 	}
 	if len(body) > modelDiscoveryMaxBodyBytes {
-		return modelDiscoveryResponse{}, errors.New("the provider model list was too large")
+		return modelDiscoveryResponse{}, newModelDiscoveryClientError("provider_response_error", "The provider model list was too large to read safely.", "response exceeded AgentGO model-discovery size limit", http.StatusBadGateway)
 	}
 	if resp.StatusCode >= 300 {
-		detail := strings.TrimSpace(string(body))
-		if len(detail) > 600 {
-			detail = detail[:600] + "…"
+		detail := providerDiscoveryErrorDetail(resp, body)
+		switch resp.StatusCode {
+		case http.StatusUnauthorized, http.StatusForbidden:
+			if resolveModelDiscoveryAPIKey(req) == "" && !discoveryRequestHasExplicitAuthHeader(req) {
+				message := "Authentication is required to retrieve available models. Enter an API key or an API key environment variable."
+				if req.APIKeyEnv != "" {
+					message = fmt.Sprintf("Environment variable %s is not set or is empty. Enter an API key or a working environment variable name.", req.APIKeyEnv)
+				}
+				return modelDiscoveryResponse{}, newModelDiscoveryClientError("authentication_required", message, detail, http.StatusUnauthorized)
+			}
+			return modelDiscoveryResponse{}, newModelDiscoveryClientError("authentication_failed", "Authentication failed. The provider rejected the API key or credentials. Check them and try again.", detail, http.StatusUnauthorized)
+		case http.StatusTooManyRequests:
+			return modelDiscoveryResponse{}, newModelDiscoveryClientError("provider_unavailable", "The provider is rate-limiting model discovery. Try again shortly.", detail, http.StatusBadGateway)
+		default:
+			if resp.StatusCode >= 500 {
+				return modelDiscoveryResponse{}, newModelDiscoveryClientError("provider_unavailable", "The provider is unavailable right now. Try again shortly.", detail, http.StatusBadGateway)
+			}
+			return modelDiscoveryResponse{}, newModelDiscoveryClientError("provider_error", "The provider rejected the model-list request. Check the provider, Base URL, and authentication settings.", detail, http.StatusBadGateway)
 		}
-		if detail == "" {
-			detail = resp.Status
-		}
-		return modelDiscoveryResponse{}, fmt.Errorf("provider returned %s: %s", resp.Status, detail)
 	}
 	models, err := parseDiscoveredModels(spec.Kind, req.Provider, req.Adapter, body)
 	if err != nil {
-		return modelDiscoveryResponse{}, err
+		return modelDiscoveryResponse{}, newModelDiscoveryClientError("provider_response_error", "The provider returned a model list AgentGO could not read.", err.Error(), http.StatusBadGateway)
 	}
-	return modelDiscoveryResponse{Models: models}, nil
+	result := modelDiscoveryResponse{Models: models}
+	if len(models) == 0 {
+		result.Message = "The provider returned no available models. You can still enter the model name manually."
+	}
+	return result, nil
+}
+
+func discoveryRequestHasExplicitAuthHeader(req modelDiscoveryRequest) bool {
+	header := strings.TrimSpace(req.AuthHeader)
+	if header == "" {
+		switch req.AuthType {
+		case "bearer", "fal_key":
+			header = "Authorization"
+		case "header_key":
+			if req.Provider == "google" {
+				header = "x-goog-api-key"
+			} else {
+				header = "x-api-key"
+			}
+		}
+	}
+	if header == "" {
+		return false
+	}
+	for key, value := range req.Headers {
+		if strings.EqualFold(strings.TrimSpace(key), header) && strings.TrimSpace(value) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func providerDiscoveryErrorDetail(resp *http.Response, body []byte) string {
+	if resp == nil {
+		return ""
+	}
+	detail := strings.TrimSpace(string(body))
+	if len(detail) > 600 {
+		detail = detail[:600] + "…"
+	}
+	if detail == "" {
+		detail = resp.Status
+	} else {
+		detail = resp.Status + ": " + detail
+	}
+	return detail
 }
 
 func buildModelDiscoverySpec(provider, adapter, rawBaseURL string) (modelDiscoverySpec, error) {

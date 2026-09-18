@@ -1,5 +1,25 @@
 # FrostCandy AgentGO
 
+<!-- agentgo-help-start -->
+## NEED HELP?
+
+Copy the line below into ChatGPT:
+
+> **ChatGPT, I need help using AgentGO. Please read the AgentGO GitHub repository at [https://github.com/sirchuck/agentgo](https://github.com/sirchuck/agentgo), understand how the project works, and then help me with questions about its features and usage.**
+
+Troubleshooting your installed copy? Zip your full AgentGO project and attach it to ChatGPT instead, so it can inspect the exact version you're running.
+
+**You can ask things like:**
+
+- How do I add my Claude model?
+- How do I enter Work Mode?
+- How do I use the Work Mode memory feature?
+- How do I use Kokoro voice?
+- How do I use DeadDrop?
+- How do I use an API key environment variable instead of entering the API key directly?
+- How do I add or reset a password in my config file?
+<!-- agentgo-help-end -->
+
 AgentGO is a local multi-model AI workspace for **competitive prompting, human review, and selective merge**.
 
 Instead of sending one prompt to one model and accepting whatever comes back, AgentGO lets you:

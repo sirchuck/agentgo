@@ -42,9 +42,9 @@ func TestR453HTMLPreviewIgnoresCodeExamples(t *testing.T) {
 		t.Fatal(err)
 	}
 	source := string(sourceBytes)
-	start := strings.Index(source, "function workModeReplyHTMLDetectionText(value)")
+	start := strings.Index(source, "const AGENTGO_REPLY_NORMALIZABLE_TAGS")
 	if start < 0 {
-		t.Fatal("workModeReplyHTMLDetectionText is missing")
+		t.Fatal("AgentGO reply markup normalizer is missing")
 	}
 	endRel := strings.Index(source[start:], "function workModeHTMLPreviewMode(value)")
 	if endRel < 0 {
@@ -111,7 +111,7 @@ func TestR453DefaultClaudeAndGeminiUseProviderSchema(t *testing.T) {
 	}
 }
 
-func TestR457Revision(t *testing.T) {
+func TestR461Revision(t *testing.T) {
 	data, err := os.ReadFile("version.json")
 	if err != nil {
 		t.Fatal(err)
@@ -122,7 +122,7 @@ func TestR457Revision(t *testing.T) {
 	if err := json.Unmarshal(data, &version); err != nil {
 		t.Fatal(err)
 	}
-	if version.Revision != "r457" {
-		t.Fatalf("revision = %q, want r457", version.Revision)
+	if version.Revision != "r462" {
+		t.Fatalf("revision = %q, want r462", version.Revision)
 	}
 }

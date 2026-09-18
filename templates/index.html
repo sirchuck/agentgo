@@ -2077,6 +2077,38 @@ body.deaddrop-popover-open {
 .knowledge-readme-panel pre code { padding: 0; background: transparent; color: rgba(255,255,255,0.94); }
 .knowledge-readme-panel hr { border: none; border-top: 1px solid rgba(255,255,255,0.12); margin: 18px 0; }
 .knowledge-readme-panel a { color: #aee2ff; }
+.knowledge-help-card {
+  margin: 2px 0 24px;
+  padding: 18px 20px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,124,201,0.34);
+  background:
+    linear-gradient(135deg, rgba(216,86,161,0.16), rgba(74,163,255,0.10)),
+    rgba(7,10,18,0.76);
+  box-shadow: 0 18px 34px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.knowledge-help-card h2 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #fff;
+  letter-spacing: 0.055em;
+}
+.knowledge-help-card p { color: rgba(255,255,255,0.92); }
+.knowledge-help-card blockquote {
+  margin: 8px 0 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(174,226,255,0.18);
+  border-left: 4px solid rgba(255,124,201,0.88);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.96);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.knowledge-help-card blockquote strong { font-weight: 750; }
+.knowledge-help-card ul { margin-bottom: 2px; }
+.knowledge-help-card li { margin-bottom: 5px; }
+.knowledge-help-card a { color: #bfe9ff; text-decoration-thickness: 1px; text-underline-offset: 2px; }
 .knowledge-notes-panel { padding: 14px 16px 16px; overflow: hidden; display: flex; }
 .knowledge-notes-input {
   width: 100%;
@@ -3408,7 +3440,8 @@ body.deaddrop-popover-open {
 .work-mode-kicker{font-size:.78rem;font-weight:950;letter-spacing:.09em;text-transform:uppercase;color:var(--work-pink);white-space:nowrap}
 .work-mode-title{min-width:0;margin:0;font-size:.94rem;line-height:1.1;font-weight:950;letter-spacing:.01em;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .work-mode-subtitle{margin:8px 0 0;max-width:720px;color:rgba(245,247,251,.68);font-size:.98rem;line-height:1.45}
-.work-mode-stage{max-width:1180px;width:100%;height:calc(100vh - 112px);margin:8px auto 0;border:1px solid rgba(255,255,255,.10);border-radius:28px;background:rgba(255,255,255,.045);box-shadow:0 24px 58px rgba(0,0,0,.30);overflow-y:auto;overflow-x:hidden;padding:26px 28px 220px;text-align:left;scrollbar-width:none}.work-mode-stage::-webkit-scrollbar{width:0;height:0}
+.work-mode-stage{max-width:1180px;width:100%;height:calc(100vh - 103px);margin:8px auto 0;border:1px solid rgba(255,255,255,.10);border-radius:28px;background:rgba(255,255,255,.045);box-shadow:0 24px 58px rgba(0,0,0,.30);overflow-y:auto;overflow-x:hidden;padding:26px 28px 220px;text-align:left;scrollbar-width:none}.work-mode-stage::-webkit-scrollbar{width:0;height:0}
+.work-mode-stage:not(.is-review-mode){-webkit-mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 28px),transparent 100%);mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 28px),transparent 100%);-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
 .work-mode-stage.is-review-mode{max-width:1520px;padding:20px 22px 220px;perspective:1600px;background:linear-gradient(90deg,rgba(74,163,255,.055),rgba(255,255,255,.052),rgba(209,75,160,.055))}
 .work-mode-single-pane{min-height:100%}.work-mode-stage.is-review-mode .work-mode-single-pane{display:none}
 .work-mode-chat-feed{display:grid;gap:18px;max-width:1100px;margin:0 auto;color:rgba(245,247,251,.86);min-width:0}
@@ -3471,7 +3504,7 @@ body.deaddrop-popover-open {
 .work-mode-agent-details-section+.work-mode-agent-details-section{margin-top:12px}
 .work-mode-agent-details-pre{margin:0;max-height:360px;overflow:auto;color:#f5f7fb;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word}
 .work-mode-message-kicker{font-size:.78rem;font-weight:950;letter-spacing:.02em;color:var(--work-pink);margin-bottom:5px}
-.work-mode-message-body{min-width:0;max-width:100%}.work-mode-message-body.is-collapsed{max-height:400px;overflow:hidden;position:relative}.work-mode-message-body img{display:block;max-width:min(100%,680px);height:auto;max-height:520px;object-fit:contain;border-radius:12px;background:rgba(0,0,0,.28);margin:10px auto}.work-mode-message-collapse-btn{margin-top:8px;margin-right:7px;appearance:none;border:1px solid rgba(255,255,255,.12);border-radius:999px;background:rgba(255,255,255,.08);color:rgba(245,247,251,.86);font-size:.78rem;font-weight:900;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;height:30px;line-height:1;padding:0 10px;cursor:pointer;transform-origin:center;vertical-align:middle}.work-mode-message-collapse-btn.attention{animation:agentgo-soft-breathe 1.35s ease-in-out 2}.work-mode-message-collapse-btn:hover{background:rgba(74,163,255,.16);border-color:rgba(74,163,255,.34);color:#fff}@keyframes agentgo-soft-breathe{0%,100%{transform:scale(1);box-shadow:0 0 0 rgba(74,163,255,0)}50%{transform:scale(1.025);box-shadow:0 0 12px rgba(74,163,255,.26)}}@media (prefers-reduced-motion: reduce){.work-mode-message-collapse-btn.attention{animation:none}}
+.work-mode-message-body{min-width:0;max-width:100%}.work-mode-message-body a{color:#8ec8ff;text-decoration:underline;text-underline-offset:2px;overflow-wrap:anywhere}.work-mode-message-body blockquote{margin:10px 0;padding:8px 12px;border-left:3px solid rgba(74,163,255,.55);background:rgba(74,163,255,.07);color:rgba(245,247,251,.82)}.work-mode-message-body table{display:block;max-width:100%;overflow-x:auto;border-collapse:collapse;margin:10px 0}.work-mode-message-body th,.work-mode-message-body td{border:1px solid rgba(255,255,255,.12);padding:6px 8px;text-align:left;vertical-align:top}.work-mode-message-body th{background:rgba(74,163,255,.10);color:#d9eeff}.work-mode-message-body.is-collapsed{max-height:400px;overflow:hidden;position:relative}.work-mode-message-body img{display:block;max-width:min(100%,680px);height:auto;max-height:520px;object-fit:contain;border-radius:12px;background:rgba(0,0,0,.28);margin:10px auto}.work-mode-message-collapse-btn{margin-top:8px;margin-right:7px;appearance:none;border:1px solid rgba(255,255,255,.12);border-radius:999px;background:rgba(255,255,255,.08);color:rgba(245,247,251,.86);font-size:.78rem;font-weight:900;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;height:30px;line-height:1;padding:0 10px;cursor:pointer;transform-origin:center;vertical-align:middle}.work-mode-message-collapse-btn.attention{animation:agentgo-soft-breathe 1.35s ease-in-out 2}.work-mode-message-collapse-btn:hover{background:rgba(74,163,255,.16);border-color:rgba(74,163,255,.34);color:#fff}@keyframes agentgo-soft-breathe{0%,100%{transform:scale(1);box-shadow:0 0 0 rgba(74,163,255,0)}50%{transform:scale(1.025);box-shadow:0 0 12px rgba(74,163,255,.26)}}@media (prefers-reduced-motion: reduce){.work-mode-message-collapse-btn.attention{animation:none}}
 .work-mode-file-card{display:grid;gap:12px;width:100%;justify-self:stretch;border:1px solid rgba(209,75,160,.72);border-radius:22px;background:rgba(12,14,20,.82);box-shadow:0 20px 46px rgba(0,0,0,.30);padding:14px;min-height:220px}
 .work-mode-file-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:10px}
 .work-mode-file-card-title{font-weight:900;color:#fff;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -3509,6 +3542,7 @@ body.deaddrop-popover-open {
 .work-mode-terminal-config-modal{position:fixed;inset:0;z-index:2180;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(4,6,10,.72);backdrop-filter:blur(7px)}.work-mode-terminal-config-modal[hidden]{display:none}.work-mode-terminal-config-card{width:min(820px,calc(100vw - 48px));max-height:min(82vh,760px);overflow:auto;border:1px solid rgba(255,226,124,.26);border-radius:22px;background:linear-gradient(180deg,#282b34,#171920);box-shadow:0 30px 80px rgba(0,0,0,.58);color:#f5f7fb}.work-mode-terminal-config-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.09)}.work-mode-terminal-config-title{font-size:.94rem;font-weight:950;color:var(--work-yellow)}.work-mode-terminal-config-close{margin-left:auto;appearance:none;border:0;border-radius:999px;width:32px;height:32px;background:rgba(255,255,255,.07);color:#fff;cursor:pointer}.work-mode-terminal-config-body{display:grid;gap:13px;padding:16px}.work-mode-terminal-config-copy{margin:0;color:rgba(245,247,251,.66);font-size:.78rem;line-height:1.45}.work-mode-terminal-json{width:100%;min-height:320px;box-sizing:border-box;resize:vertical;border:1px solid rgba(255,255,255,.12);border-radius:15px;background:#0b0e14;color:#f3f6fb;padding:13px;font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;outline:none}.work-mode-terminal-json:focus,.work-mode-terminal-env-input:focus{border-color:rgba(255,226,124,.45);box-shadow:0 0 0 3px rgba(255,226,124,.08)}.work-mode-terminal-validation{display:grid;gap:7px;font-size:.76rem}.work-mode-terminal-validation:empty{display:none}.work-mode-terminal-validation-block{padding:10px 12px;border-radius:13px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.045)}.work-mode-terminal-validation-block.is-error{border-color:rgba(255,105,105,.26);color:#ffb5b5}.work-mode-terminal-validation-block.is-warning{border-color:rgba(255,226,124,.24);color:#ffe8a0}.work-mode-terminal-config-actions{display:flex;justify-content:flex-end;gap:8px}.work-mode-terminal-config-btn{appearance:none;border:1px solid rgba(255,255,255,.11);border-radius:999px;background:rgba(255,255,255,.075);color:#fff;padding:9px 14px;font:inherit;font-size:.76rem;font-weight:950;cursor:pointer}.work-mode-terminal-config-btn.primary{border-color:rgba(255,226,124,.36);background:rgba(255,226,124,.18);color:var(--work-yellow)}.work-mode-terminal-config-btn:disabled{opacity:.45;cursor:not-allowed}.work-mode-terminal-env-form{display:grid;grid-template-columns:minmax(150px,.8fr) minmax(180px,1.2fr) minmax(210px,1.4fr) auto;gap:8px;align-items:end}.work-mode-terminal-env-field{display:grid;gap:5px;color:rgba(245,247,251,.62);font-size:.69rem;font-weight:900}.work-mode-terminal-env-input{height:38px;box-sizing:border-box;border:1px solid rgba(255,255,255,.12);border-radius:11px;background:rgba(255,255,255,.06);color:#fff;padding:0 10px;font:inherit;outline:none}.work-mode-terminal-env-list{display:grid;gap:7px}.work-mode-terminal-env-row{display:grid;grid-template-columns:minmax(125px,.8fr) minmax(100px,.7fr) minmax(180px,1.4fr) auto;gap:9px;align-items:center;padding:9px 10px;border-radius:13px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.075);font-size:.75rem}.work-mode-terminal-env-name{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:900;color:#fff}.work-mode-terminal-env-value{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#f4b8df}.work-mode-terminal-env-description{color:rgba(245,247,251,.60);overflow-wrap:anywhere}.work-mode-terminal-env-actions{display:flex;gap:5px}.work-mode-terminal-env-action{appearance:none;border:0;border-radius:999px;background:rgba(255,255,255,.08);color:#fff;padding:6px 9px;font:inherit;font-size:.67rem;font-weight:900;cursor:pointer}.work-mode-terminal-env-action.delete{color:#ffb3b3}.work-mode-terminal-env-empty{padding:18px;text-align:center;color:rgba(245,247,251,.48);font-size:.78rem;border:1px dashed rgba(255,255,255,.11);border-radius:14px}.import-repository-choice{display:grid;gap:8px;padding:11px 12px;border:1px solid rgba(255,255,255,.09);border-radius:14px;background:rgba(255,255,255,.035)}.import-repository-choice-title{font-weight:900;color:#fff}.import-repository-choice label{display:flex;gap:9px;align-items:flex-start;color:rgba(245,247,251,.70);font-size:.78rem;line-height:1.38}.import-repository-choice input{margin-top:2px;accent-color:#d14ba0}.import-repository-choice strong{color:#fff}
 @media(max-width:760px){.work-mode-terminal-env-form{grid-template-columns:1fr}.work-mode-terminal-env-row{grid-template-columns:1fr}.work-mode-terminal-config-modal{padding:10px}.work-mode-terminal-config-card{width:100%;max-height:92vh}}
 .work-mode-prompt-wrap{position:absolute;left:50%;right:auto;bottom:26px;transform:translateX(-50%);max-width:920px;width:min(920px,calc(100% - 56px));margin:0;display:grid;gap:8px;z-index:2140;pointer-events:none}
+.work-mode-composer,.work-mode-prompt-status{position:relative;z-index:1}
 .work-mode-composer{pointer-events:auto;display:flex;flex-direction:column;gap:8px;border:1px solid rgba(255,255,255,.12);background:rgba(37,39,46,.97);border-radius:28px;padding:12px;box-shadow:0 20px 50px rgba(0,0,0,.44);backdrop-filter:blur(18px)}
 .work-mode-input{width:100%;min-height:34px;max-height:180px;resize:none;border:none;outline:none;background:transparent;color:#fff;font:inherit;font-size:1rem;line-height:1.42;padding:4px 4px 2px;overflow-y:auto}
 .work-mode-input::placeholder{color:rgba(245,247,251,.48)}
@@ -6707,7 +6741,7 @@ body.deaddrop-popover-open {
 .model-name-picker-option code{font-size:12px;color:#48627f;white-space:normal;word-break:break-word;background:transparent;padding:0}
 .model-name-picker-option small{font-size:11px;color:#607896;line-height:1.35}
 .model-name-picker-option:hover,.model-name-picker-option:focus-visible{border-color:rgba(38,90,160,.28);box-shadow:0 10px 22px rgba(23,53,95,.1);outline:none}
-.model-name-picker-empty{margin:0;padding:12px;border:1px dashed rgba(19,39,72,.16);border-radius:14px;color:#607896;font-size:12px;line-height:1.4;background:rgba(255,255,255,.7)}.model-name-picker-search{width:100%;box-sizing:border-box;margin:0 0 8px;border:1px solid rgba(19,39,72,.16);border-radius:12px;background:#fff;color:#17325c;padding:9px 10px;font:inherit;font-size:13px;outline:none}.model-name-picker-search:focus{border-color:rgba(38,90,160,.38);box-shadow:0 0 0 3px rgba(38,90,160,.10)}.model-name-picker-manual{appearance:none;width:100%;margin-top:8px;border:1px dashed rgba(19,39,72,.20);border-radius:12px;background:rgba(238,244,251,.92);color:#244d7d;padding:9px 10px;font:inherit;font-size:12px;font-weight:900;cursor:pointer}.model-name-picker-manual:hover,.model-name-picker-manual:focus-visible{background:#fff;border-color:rgba(38,90,160,.34);outline:none}.model-name-picker-status{margin:0;padding:12px;border-radius:14px;color:#607896;font-size:12px;line-height:1.4;background:rgba(255,255,255,.72);border:1px solid rgba(19,39,72,.10)}.model-name-picker-option[hidden]{display:none}
+.model-name-picker-empty{margin:0;padding:12px;border:1px dashed rgba(19,39,72,.16);border-radius:14px;color:#607896;font-size:12px;line-height:1.4;background:rgba(255,255,255,.7)}.model-name-picker-search{width:100%;box-sizing:border-box;margin:0 0 8px;border:1px solid rgba(19,39,72,.16);border-radius:12px;background:#fff;color:#17325c;padding:9px 10px;font:inherit;font-size:13px;outline:none}.model-name-picker-search:focus{border-color:rgba(38,90,160,.38);box-shadow:0 0 0 3px rgba(38,90,160,.10)}.model-name-picker-manual{appearance:none;width:100%;margin-top:8px;border:1px dashed rgba(19,39,72,.20);border-radius:12px;background:rgba(238,244,251,.92);color:#244d7d;padding:9px 10px;font:inherit;font-size:12px;font-weight:900;cursor:pointer}.model-name-picker-manual:hover,.model-name-picker-manual:focus-visible{background:#fff;border-color:rgba(38,90,160,.34);outline:none}.model-name-picker-status{margin:0;padding:12px;border-radius:14px;color:#607896;font-size:12px;line-height:1.4;background:rgba(255,255,255,.72);border:1px solid rgba(19,39,72,.10)}.model-name-picker-option[hidden]{display:none}.model-name-picker-status.is-warning{color:#70471b;background:rgba(255,246,229,.94);border-color:rgba(196,123,37,.22)}.model-name-picker-auth{display:grid;gap:9px}.model-name-picker-auth-field{display:grid;gap:5px}.model-name-picker-auth-field span{font-size:11px;font-weight:900;color:#29486e;text-transform:uppercase;letter-spacing:.03em}.model-name-picker-auth-field input{width:100%;box-sizing:border-box;border:1px solid rgba(19,39,72,.16);border-radius:12px;background:#fff;color:#17325c;padding:9px 10px;font:inherit;font-size:13px;outline:none}.model-name-picker-auth-field input:focus{border-color:rgba(38,90,160,.38);box-shadow:0 0 0 3px rgba(38,90,160,.10)}.model-name-picker-auth-or{display:flex;align-items:center;gap:8px;color:#8090a6;font-size:10px;font-weight:900;text-transform:uppercase}.model-name-picker-auth-or:before,.model-name-picker-auth-or:after{content:"";height:1px;background:rgba(19,39,72,.10);flex:1}.model-name-picker-auth-note{margin:0;color:#667d99;font-size:11px;line-height:1.4}.model-name-picker-auth-error{min-height:0;color:#a24545;font-size:11px;font-weight:800;line-height:1.35}.model-name-picker-auth-submit{appearance:none;width:100%;border:0;border-radius:12px;background:linear-gradient(180deg,#3c8ee3,#2369b3);color:#fff;padding:10px 12px;font:inherit;font-size:12px;font-weight:900;cursor:pointer;box-shadow:0 8px 20px rgba(38,90,160,.20)}.model-name-picker-auth-submit:hover,.model-name-picker-auth-submit:focus-visible{filter:brightness(1.05);outline:none}.model-name-picker-details{margin-top:8px;border:1px solid rgba(19,39,72,.10);border-radius:12px;background:rgba(255,255,255,.7);padding:8px 10px}.model-name-picker-details summary{cursor:pointer;color:#607896;font-size:11px;font-weight:800}.model-name-picker-details pre{margin:8px 0 0;white-space:pre-wrap;word-break:break-word;color:#596f8b;font:11px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace}
 .model-form-field textarea{min-height:88px;resize:vertical}
 .model-form-field.full{grid-column:1 / -1}
 .model-section-callout{padding:14px 16px;border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.97),rgba(236,242,249,.95));border:1px solid rgba(111,134,171,.18);display:grid;gap:10px}
@@ -10645,6 +10679,20 @@ function renderKnowledgeMarkdown(markdown) {
       continue;
     }
     if (inCode) { codeLines.push(line); continue; }
+    if (trimmed === '<!-- agentgo-help-start -->') {
+      flushParagraph();
+      flushList();
+      const helpLines = [];
+      while (i + 1 < lines.length) {
+        i += 1;
+        const helpLine = String(lines[i] || '');
+        if (helpLine.trim() === '<!-- agentgo-help-end -->') break;
+        helpLines.push(helpLine);
+      }
+      html.push(`<section class="knowledge-help-card">${renderKnowledgeMarkdown(helpLines.join('\n'))}</section>`);
+      continue;
+    }
+    if (trimmed === '<!-- agentgo-help-end -->') continue;
     if (/^<table\b/i.test(trimmed)) {
       flushParagraph();
       flushList();
@@ -10671,6 +10719,20 @@ function renderKnowledgeMarkdown(markdown) {
       flushList();
       const level = Math.min(6, match[1].length);
       html.push(`<h${level}>${renderKnowledgeInlineMarkdown(match[2].trim())}</h${level}>`);
+      continue;
+    }
+    match = line.match(/^\s*>\s?(.*)$/);
+    if (match) {
+      flushParagraph();
+      flushList();
+      const quoteLines = [match[1]];
+      while (i + 1 < lines.length) {
+        const nextQuote = String(lines[i + 1] || '').match(/^\s*>\s?(.*)$/);
+        if (!nextQuote) break;
+        i += 1;
+        quoteLines.push(nextQuote[1]);
+      }
+      html.push(`<blockquote>${renderKnowledgeInlineMarkdown(quoteLines.join(' '))}</blockquote>`);
       continue;
     }
     match = line.match(/^\s*[-*]\s+(.*)$/);
@@ -16723,9 +16785,68 @@ function collectModelDiscoveryPayload() {
     clear_headers: deleteHeaders
   };
 }
+function modelDiscoveryUsesInlineAPIKeyAuth(payload) {
+  return ['bearer', 'header_key', 'fal_key'].includes(String(payload && payload.auth_type || '').trim().toLowerCase());
+}
+function modelDiscoveryErrorInfo(err) {
+  const payload = err && err.payload && typeof err.payload === 'object' ? err.payload : {};
+  return {
+    code: String(payload.code || '').trim(),
+    message: String(err && err.message ? err.message : 'Could not connect to the provider.').trim(),
+    detail: String(payload.detail || '').trim()
+  };
+}
+function modelDiscoveryDetailsHTML(detail) {
+  const clean = String(detail || '').trim();
+  if (!clean) return '';
+  return `<details class="model-name-picker-details"><summary>Technical details</summary><pre>${escapeHtml(clean)}</pre></details>`;
+}
+function renderModelDiscoveryCredentialPrompt(popover, anchor, payload, options = {}) {
+  const providerLabel = (providerCatalog[currentKnownModelProvider()] || {}).label || currentKnownModelProvider() || 'provider';
+  const message = String(options.message || 'Authentication is required to retrieve available models.').trim();
+  const detail = String(options.detail || '').trim();
+  const currentEnv = String(document.getElementById('modelApiKeyEnv')?.value || '').trim();
+  const suggestedEnv = providerApiKeyEnvPlaceholder(payload.provider || currentKnownModelProvider());
+  const manual = `<button type="button" class="model-name-picker-manual" data-model-name-manual>Enter model name manually…</button>`;
+  const html = `<p class="model-name-picker-title">Available models from ${escapeHtml(providerLabel)}</p>
+    <form class="model-name-picker-auth" id="modelNamePickerAuthForm">
+      <p class="model-name-picker-status is-warning">${escapeHtml(message)}</p>
+      <label class="model-name-picker-auth-field"><span>API Key</span><input id="modelNamePickerApiKey" type="password" autocomplete="new-password" placeholder="Paste API key"/></label>
+      <div class="model-name-picker-auth-or"><span>or</span></div>
+      <label class="model-name-picker-auth-field"><span>API Key Env</span><input id="modelNamePickerApiKeyEnv" type="text" autocomplete="off" value="${escapeHtml(currentEnv)}" placeholder="${escapeHtml(suggestedEnv)}"/></label>
+      <p class="model-name-picker-auth-note">AgentGO will copy what you enter here into the model's normal Authentication fields, then retry discovery. If both are set, the environment variable is used first.</p>
+      <div class="model-name-picker-auth-error" id="modelNamePickerAuthError" aria-live="polite"></div>
+      <button class="model-name-picker-auth-submit" type="submit">Load Available Models</button>
+    </form>${modelDiscoveryDetailsHTML(detail)}${manual}`;
+  popover.dataset.entries = '[]';
+  showKnownModelNamePicker(popover, anchor, html);
+  const form = document.getElementById('modelNamePickerAuthForm');
+  const keyInput = document.getElementById('modelNamePickerApiKey');
+  const envInput = document.getElementById('modelNamePickerApiKeyEnv');
+  const error = document.getElementById('modelNamePickerAuthError');
+  if (form) form.addEventListener('submit', event => {
+    event.preventDefault();
+    const apiKey = String(keyInput?.value || '').trim();
+    const apiKeyEnv = String(envInput?.value || '').trim();
+    if (!apiKey && !apiKeyEnv) {
+      if (error) error.textContent = 'Enter an API key or an environment variable name.';
+      (keyInput || envInput)?.focus();
+      return;
+    }
+    const normalKey = document.getElementById('modelApiKey');
+    const normalEnv = document.getElementById('modelApiKeyEnv');
+    if (apiKey && normalKey) normalKey.value = apiKey;
+    if (normalEnv) normalEnv.value = apiKeyEnv;
+    syncModelAuthFieldVisibility();
+    updateModelEditorValidationState();
+    openKnownModelNamePicker(anchor);
+  });
+  requestAnimationFrame(() => (keyInput || envInput)?.focus());
+}
 function renderDiscoveredModelNamePicker(popover, anchor, entries, options = {}) {
   const providerLabel = (providerCatalog[currentKnownModelProvider()] || {}).label || currentKnownModelProvider() || 'provider';
   const message = String(options.message || '').trim();
+  const detail = String(options.detail || '').trim();
   const status = message ? `<p class="model-name-picker-status">${escapeHtml(message)}</p>` : '';
   const search = entries.length ? `<input class="model-name-picker-search" id="modelNamePickerSearch" type="search" autocomplete="off" placeholder="Search available models" aria-label="Search available models"/>` : '';
   const list = entries.length
@@ -16733,7 +16854,7 @@ function renderDiscoveredModelNamePicker(popover, anchor, entries, options = {})
     : (!status ? `<p class="model-name-picker-status">The provider reported no available models.</p>` : '');
   const manual = `<button type="button" class="model-name-picker-manual" data-model-name-manual>Enter model name manually…</button>`;
   popover.dataset.entries = JSON.stringify(entries);
-  showKnownModelNamePicker(popover, anchor, `<p class="model-name-picker-title">Available models from ${escapeHtml(providerLabel)}</p>${search}${status}${list}${manual}`);
+  showKnownModelNamePicker(popover, anchor, `<p class="model-name-picker-title">Available models from ${escapeHtml(providerLabel)}</p>${search}${status}${list}${modelDiscoveryDetailsHTML(detail)}${manual}`);
   const searchInput = document.getElementById('modelNamePickerSearch');
   if (searchInput) {
     searchInput.addEventListener('input', () => {
@@ -16767,8 +16888,14 @@ async function openKnownModelNamePicker(anchor) {
     renderDiscoveredModelNamePicker(popover, anchor, entries, { message: data.message || '' });
   } catch (err) {
     if (requestSequence !== modelDiscoveryRequestSequence || !popover.classList.contains('open')) return;
-    const detail = String(err && err.message ? err.message : '').trim();
-    renderDiscoveredModelNamePicker(popover, anchor, [], { message: detail ? `Could not connect to the provider. ${detail}` : 'Could not connect to the provider.' });
+    const info = modelDiscoveryErrorInfo(err);
+    if ((info.code === 'authentication_required' || info.code === 'authentication_failed') && modelDiscoveryUsesInlineAPIKeyAuth(payload)) {
+      renderModelDiscoveryCredentialPrompt(popover, anchor, payload, { message: info.message, detail: info.detail });
+      return;
+    }
+    let message = info.message;
+    if (err && err.isNetworkError) message = 'Could not reach the provider. Check the Base URL, network connection, and provider status.';
+    renderDiscoveredModelNamePicker(popover, anchor, [], { message, detail: info.detail });
   }
 }
 
@@ -20996,8 +21123,37 @@ function formatWorkModeMessageText(value) {
 function formatWorkModeUserMessageText(value) {
   return escapeHtml(value || '').replace(/\r\n|\r|\n/g, '<br>');
 }
+const AGENTGO_REPLY_NORMALIZABLE_TAGS = new Set([
+  'html','head','body','base','script','style','iframe','object','embed','link','meta','form','input','select','textarea','button','canvas','svg','video','audio',
+  'div','section','main','header','footer','nav','table','thead','tbody','tfoot','tr','th','td','h1','h2','h3','h4','h5','h6','p','ul','ol','li','strong','em','u','code','pre','br','img','span','a','blockquote','hr'
+]);
+function decodeAgentGOEscapedHTMLTag(value) {
+  return String(value || '')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#(?:39|x27);/gi, "'")
+    .replace(/&amp;/gi, '&');
+}
+function normalizeAgentGOReplyMarkup(value) {
+  let raw = String(value || '');
+  raw = raw.replace(/&lt;!doctype\s+html(?:\s[^&]*?)?&gt;/gi, match => decodeAgentGOEscapedHTMLTag(match));
+  raw = raw.replace(/&lt;(\/?)([a-z][a-z0-9:-]*)([\s\S]*?)&gt;/gi, (match, slash, tag) => {
+    return AGENTGO_REPLY_NORMALIZABLE_TAGS.has(String(tag || '').toLowerCase()) ? decodeAgentGOEscapedHTMLTag(match) : match;
+  });
+  raw = raw.replace(/\\(<!doctype\s+html(?:\s[^>]*)?>)/gi, '$1');
+  raw = raw.replace(/\\(<\/?([a-z][a-z0-9:-]*)\b[^>]*>)/gi, (match, tagMarkup, tag) => {
+    return AGENTGO_REPLY_NORMALIZABLE_TAGS.has(String(tag || '').toLowerCase()) ? tagMarkup : match;
+  });
+  return raw;
+}
 function workModeReplyHasAllowedHTML(value) {
-  return /<\/?(?:h3|h4|p|ul|ol|li|strong|em|u|code|pre|br|img|span)\b/i.test(String(value || ''));
+  const raw = normalizeAgentGOReplyMarkup(value);
+  return /<\/?(?:h3|h4|p|ul|ol|li|strong|em|u|code|pre|br|img|span|a|blockquote|hr|table|thead|tbody|tfoot|tr|th|td)\b/i.test(raw);
+}
+function workModeReplyHasMarkdown(value) {
+  const raw = String(value || '');
+  return /(^|\n)\s*(?:#{1,6}\s+|[-*]\s+|\d+\.\s+|>\s+|```|~~~|---+\s*$)/m.test(raw) || /\*\*[^*\n]+\*\*|`[^`\n]+`|!?\[[^\]\n]+\]\(https?:\/\/[^\s)]+\)/i.test(raw);
 }
 function sanitizeAgentGOImageSrc(value) {
   const src = String(value || '').trim();
@@ -21005,6 +21161,13 @@ function sanitizeAgentGOImageSrc(value) {
   const compact = src.replace(/[\u0000-\u001F\u007F\s]+/g, '').toLowerCase();
   if (compact.startsWith('javascript:') || compact.startsWith('vbscript:')) return '';
   return src;
+}
+function sanitizeAgentGOHref(value) {
+  const href = String(value || '').trim();
+  if (!href) return '';
+  const compact = href.replace(/[\u0000-\u001F\u007F\s]+/g, '').toLowerCase();
+  if (compact.startsWith('javascript:') || compact.startsWith('vbscript:') || compact.startsWith('data:text/html')) return '';
+  return href;
 }
 function decodeAgentGOCodeText(node) {
   if (!node) return '';
@@ -21045,21 +21208,140 @@ function appendSanitizedAgentGOCodeContent(target, source) {
     if (child.nodeType === Node.ELEMENT_NODE) target.appendChild(document.createTextNode(decodeAgentGOCodeMarkup(child)));
   });
 }
+function renderWorkModeInlineMarkdown(value) {
+  let html = escapeHtml(value || '');
+  const code = [];
+  html = html.replace(/`([^`\n]+)`/g, (_, content) => {
+    const token = `\uE100${code.length}\uE101`;
+    code.push(`<code>${content}</code>`);
+    return token;
+  });
+  html = html.replace(/!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/g, (_, alt, src) => `<img src="${src}" alt="${alt}">`);
+  html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, label, href) => `<a href="${href}" target="_blank" rel="noopener noreferrer">${label}</a>`);
+  html = html.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+  code.forEach((content, index) => { html = html.replace(`\uE100${index}\uE101`, content); });
+  return html;
+}
+function renderWorkModeMarkdownFragment(value) {
+  const lines = String(value || '').replace(/\r\n|\r/g, '\n').split('\n');
+  const html = [];
+  let paragraph = [];
+  let listType = '';
+  let listItems = [];
+  let quoteLines = [];
+  let inCode = false;
+  let codeFence = '';
+  let codeLines = [];
+  const flushParagraph = () => {
+    if (!paragraph.length) return;
+    html.push(`<p>${renderWorkModeInlineMarkdown(paragraph.join(' '))}</p>`);
+    paragraph = [];
+  };
+  const flushList = () => {
+    if (!listItems.length || !listType) return;
+    html.push(`<${listType}>${listItems.join('')}</${listType}>`);
+    listType = '';
+    listItems = [];
+  };
+  const flushQuote = () => {
+    if (!quoteLines.length) return;
+    html.push(`<blockquote>${renderWorkModeInlineMarkdown(quoteLines.join(' '))}</blockquote>`);
+    quoteLines = [];
+  };
+  const flushCode = () => {
+    html.push(`<pre><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`);
+    codeLines = [];
+  };
+  for (const rawLine of lines) {
+    const line = String(rawLine || '');
+    const trimmed = line.trim();
+    const fence = trimmed.match(/^(`{3,}|~{3,})/);
+    if (fence) {
+      flushParagraph(); flushList(); flushQuote();
+      if (inCode && fence[1][0] === codeFence[0] && fence[1].length >= codeFence.length) {
+        flushCode(); inCode = false; codeFence = '';
+      } else if (!inCode) {
+        inCode = true; codeFence = fence[1]; codeLines = [];
+      } else codeLines.push(line);
+      continue;
+    }
+    if (inCode) { codeLines.push(line); continue; }
+    if (!trimmed) { flushParagraph(); flushList(); flushQuote(); continue; }
+    if (/^---+\s*$/.test(trimmed)) { flushParagraph(); flushList(); flushQuote(); html.push('<hr>'); continue; }
+    let match = line.match(/^\s*(#{1,6})\s+(.*)$/);
+    if (match) {
+      flushParagraph(); flushList(); flushQuote();
+      const tag = match[1].length <= 2 ? 'h3' : 'h4';
+      html.push(`<${tag}>${renderWorkModeInlineMarkdown(match[2].trim())}</${tag}>`);
+      continue;
+    }
+    match = line.match(/^\s*>\s?(.*)$/);
+    if (match) {
+      flushParagraph(); flushList();
+      quoteLines.push(match[1].trim());
+      continue;
+    }
+    match = line.match(/^\s*[-*]\s+(.*)$/);
+    if (match) {
+      flushParagraph(); flushQuote();
+      if (listType && listType !== 'ul') flushList();
+      listType = 'ul';
+      listItems.push(`<li>${renderWorkModeInlineMarkdown(match[1].trim())}</li>`);
+      continue;
+    }
+    match = line.match(/^\s*\d+\.\s+(.*)$/);
+    if (match) {
+      flushParagraph(); flushQuote();
+      if (listType && listType !== 'ol') flushList();
+      listType = 'ol';
+      listItems.push(`<li>${renderWorkModeInlineMarkdown(match[1].trim())}</li>`);
+      continue;
+    }
+    flushQuote();
+    paragraph.push(trimmed);
+  }
+  if (inCode) flushCode();
+  flushParagraph(); flushList(); flushQuote();
+  return html.join('');
+}
+function protectWorkModeMarkdownCodeForHTMLParse(value) {
+  const lines = String(value || '').replace(/\r\n|\r/g, '\n').split('\n');
+  let fence = '';
+  return lines.map(line => {
+    const trimmed = String(line || '').trim();
+    const delimiter = trimmed.match(/^(`{3,}|~{3,})/);
+    if (delimiter) {
+      if (!fence) fence = delimiter[1];
+      else if (delimiter[1][0] === fence[0] && delimiter[1].length >= fence.length) fence = '';
+      return line;
+    }
+    const protect = text => String(text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    if (fence) return protect(line);
+    return String(line || '').replace(/`([^`\n]+)`/g, match => protect(match));
+  }).join('\n');
+}
 function sanitizeAgentGOReplyHTML(value) {
-  const raw = String(value || '');
-  if (!workModeReplyHasAllowedHTML(raw)) return formatWorkModeMessageText(raw);
+  const raw = normalizeAgentGOReplyMarkup(value);
   const template = document.createElement('template');
-  template.innerHTML = raw;
-  const allowed = new Set(['h3','h4','p','ul','ol','li','strong','em','u','code','pre','br','img','span']);
-  const dropped = new Set(['script','style','iframe','object','embed','link','meta']);
-  const cleanNode = node => {
-    if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.textContent || '');
+  template.innerHTML = protectWorkModeMarkdownCodeForHTMLParse(raw);
+  const allowed = new Set(['h3','h4','p','ul','ol','li','strong','em','u','code','pre','br','img','span','a','blockquote','hr','table','thead','tbody','tfoot','tr','th','td']);
+  const dropped = new Set(['script','style','iframe','object','embed','link','meta','base','form','input','select','textarea','button','canvas','svg','video','audio']);
+  const cleanNode = (node, inlineMarkdown = true) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      if (!inlineMarkdown || !String(node.textContent || '').trim()) return document.createTextNode(node.textContent || '');
+      const inline = document.createElement('template');
+      inline.innerHTML = renderWorkModeInlineMarkdown(node.textContent || '');
+      const frag = document.createDocumentFragment();
+      Array.from(inline.content.childNodes || []).forEach(child => frag.appendChild(cleanNode(child, false)));
+      return frag;
+    }
     if (node.nodeType !== Node.ELEMENT_NODE) return document.createTextNode('');
     const tag = String(node.tagName || '').toLowerCase();
     if (dropped.has(tag)) return document.createTextNode('');
-    const children = () => {
+    const children = (allowInlineMarkdown = inlineMarkdown) => {
       const frag = document.createDocumentFragment();
-      Array.from(node.childNodes || []).forEach(child => frag.appendChild(cleanNode(child)));
+      Array.from(node.childNodes || []).forEach(child => frag.appendChild(cleanNode(child, allowInlineMarkdown)));
       return frag;
     };
     if (!allowed.has(tag)) return children();
@@ -21090,6 +21372,10 @@ function sanitizeAgentGOReplyHTML(value) {
       else el.textContent = decodeAgentGOCodeText(node);
       return el;
     }
+    if (tag === 'pre') {
+      el.appendChild(children(false));
+      return el;
+    }
     if (tag === 'img') {
       const src = sanitizeAgentGOImageSrc(node.getAttribute('src') || '');
       if (!src) return document.createTextNode(node.outerHTML || '');
@@ -21106,21 +21392,46 @@ function sanitizeAgentGOReplyHTML(value) {
       el.setAttribute('decoding', 'async');
       return el;
     }
-    if (tag !== 'br') el.appendChild(children());
+    if (tag === 'a') {
+      const href = sanitizeAgentGOHref(node.getAttribute('href') || '');
+      if (href) {
+        el.setAttribute('href', href);
+        el.setAttribute('target', '_blank');
+        el.setAttribute('rel', 'noopener noreferrer');
+      }
+    }
+    if (tag !== 'br' && tag !== 'hr') el.appendChild(children());
     return el;
   };
   const out = document.createElement('div');
-  Array.from(template.content.childNodes || []).forEach(node => out.appendChild(cleanNode(node)));
+  let markdownBuffer = '';
+  const flushMarkdown = () => {
+    if (!markdownBuffer.trim()) { markdownBuffer = ''; return; }
+    const markdown = document.createElement('template');
+    markdown.innerHTML = renderWorkModeMarkdownFragment(markdownBuffer);
+    Array.from(markdown.content.childNodes || []).forEach(node => out.appendChild(cleanNode(node, false)));
+    markdownBuffer = '';
+  };
+  Array.from(template.content.childNodes || []).forEach(node => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      markdownBuffer += node.textContent || '';
+      return;
+    }
+    flushMarkdown();
+    out.appendChild(cleanNode(node, true));
+  });
+  flushMarkdown();
   return out.innerHTML || formatWorkModeMessageText(raw);
 }
 function workModeReplyHTMLDetectionText(value) {
-  let raw = String(value || '');
+  let raw = normalizeAgentGOReplyMarkup(value);
   // Code examples are rendered as source, not executed as webpage content. Ignore
   // HTML-looking tags inside AgentGO code blocks/inline code and markdown fences
   // before deciding whether the reply needs the website preview controls.
   raw = raw.replace(/<pre\b[^>]*>[\s\S]*?<\/pre\s*>/gi, ' ');
   raw = raw.replace(/<code\b[^>]*>[\s\S]*?<\/code\s*>/gi, ' ');
   raw = raw.replace(/```[\s\S]*?```/g, ' ');
+  raw = raw.replace(/~~~[\s\S]*?~~~/g, ' ');
   return raw;
 }
 function workModeReplyContainsPreviewableHTML(value) {
@@ -21237,8 +21548,35 @@ function workModePlainTextFromRenderedReplyHTML(html) {
 }
 function workModeHTMLToPlainText(value) {
   const raw = String(value || '');
-  if (!workModeReplyHasAllowedHTML(raw)) return normalizeWorkModeCopiedText(raw.replace(/<br\s*\/?\s*>/gi, '\n'));
+  if (!workModeReplyHasAllowedHTML(raw) && !workModeReplyHasMarkdown(raw)) return normalizeWorkModeCopiedText(normalizeAgentGOReplyMarkup(raw).replace(/<br\s*\/?\s*>/gi, '\n'));
   return workModePlainTextFromRenderedReplyHTML(sanitizeAgentGOReplyHTML(raw));
+}
+function workModeRecentUserHasVisualInput() {
+  for (let index = workModeMessages.length - 1; index >= 0; index -= 1) {
+    const msg = workModeMessages[index];
+    if (!msg || msg.role !== 'user') continue;
+    const hasImageAttachment = Array.isArray(msg.attachments) && msg.attachments.some(item => String((item && item.kind) || '').toLowerCase() === 'image');
+    const hasWebshot = Array.isArray(msg.webshots) && msg.webshots.length > 0;
+    return hasImageAttachment || hasWebshot;
+  }
+  return false;
+}
+function stripWorkModePhantomSVGArtifactLines(value, visualInput) {
+  const raw = String(value || '');
+  if (!visualInput || !raw) return raw;
+  const lines = raw.replace(/\r\n|\r/g, '\n').split('\n');
+  let fence = '';
+  return lines.filter(line => {
+    const trimmed = String(line || '').trim();
+    const delimiter = trimmed.match(/^(`{3,}|~{3,})/);
+    if (delimiter) {
+      if (!fence) fence = delimiter[1];
+      else if (delimiter[1][0] === fence[0] && delimiter[1].length >= fence.length) fence = '';
+      return true;
+    }
+    if (fence) return true;
+    return !/^svg(?:\s*svg)+$/i.test(trimmed);
+  }).join('\n').replace(/\n{3,}/g, '\n\n');
 }
 function workModeMessageNeedsCollapseFallback(value) {
   const text = String(value || '');
@@ -21396,8 +21734,9 @@ function renderWorkModeMessageBody(value, index, options = {}) {
   const text = String(value || '');
   const allowHTML = options.allowHTML !== false;
   const hasHTML = allowHTML && workModeReplyHasAllowedHTML(text);
+  const hasMarkdown = allowHTML && workModeReplyHasMarkdown(text);
   const body = allowHTML
-    ? (hasHTML ? sanitizeAgentGOReplyHTML(text) : formatWorkModeMessageText(text))
+    ? ((hasHTML || hasMarkdown) ? sanitizeAgentGOReplyHTML(text) : formatWorkModeMessageText(normalizeAgentGOReplyMarkup(text)))
     : formatWorkModeUserMessageText(text);
   if (!Number.isFinite(index)) {
     return `<div class="work-mode-message-body">${body}</div>`;
@@ -23376,7 +23715,8 @@ function renderWorkModeTranscriptReviewSection() {
     const outputs = [];
     (Array.isArray(item.changedFiles) ? item.changedFiles : []).filter(Boolean).forEach(path => outputs.push({ status: 'changed', action: 'draft', path, reason: 'saved to tmp-work' }));
     (Array.isArray(item.blockedFiles) ? item.blockedFiles : []).forEach(entry => outputs.push(Object.assign({ status: 'blocked' }, entry || {})));
-    const reply = workModeReplyHasAllowedHTML(item.reply || '') ? sanitizeAgentGOReplyHTML(item.reply || '') : formatWorkModeMessageText(item.reply || '');
+    const reviewReply = String(item.reply || '');
+    const reply = (workModeReplyHasAllowedHTML(reviewReply) || workModeReplyHasMarkdown(reviewReply)) ? sanitizeAgentGOReplyHTML(reviewReply) : formatWorkModeMessageText(normalizeAgentGOReplyMarkup(reviewReply));
     return `<article class="transcript-message ai"><div class="transcript-role">${escapeHtml(label)}</div><div class="work-mode-message-body">${reply}</div>${renderWorkModeFileOutputs(outputs)}${renderWorkModeTranscriptInlineFiles(item.inlineFiles)}</article>`;
   }).join('');
   return `<section class="transcript-review-section"><h2>Observer Review Transcript</h2>${rows}</section>`;
@@ -23694,7 +24034,8 @@ function renderWorkModeMessages() {
   });
 }
 function appendWorkModeMessage(role, text, options = {}) {
-  const clean = String(text || '').trim();
+  const source = role === 'ai' ? stripWorkModePhantomSVGArtifactLines(text, workModeRecentUserHasVisualInput()) : String(text || '');
+  const clean = String(source || '').trim();
   if (!clean) return;
   const msg = { role, text: clean };
   const sections = Array.isArray(options.detailSections) ? options.detailSections.map(section => ({ label: String((section && section.label) || 'Details').trim() || 'Details', text: String((section && section.text) || '').trim() })).filter(section => section.text) : [];
@@ -24990,7 +25331,9 @@ function workModeReplySpeechPlainText(value) {
   if (typeof workModeReplyContainsPreviewableHTML === 'function' && workModeReplyContainsPreviewableHTML(raw)) {
     return workModeSpeechCodeBlockMarker(0);
   }
-  const canParseRenderedHTML = typeof workModeReplyHasAllowedHTML === 'function' && workModeReplyHasAllowedHTML(raw) &&
+  const hasRenderableMarkup = (typeof workModeReplyHasAllowedHTML === 'function' && workModeReplyHasAllowedHTML(raw)) ||
+    (typeof workModeReplyHasMarkdown === 'function' && workModeReplyHasMarkdown(raw));
+  const canParseRenderedHTML = hasRenderableMarkup &&
     typeof document !== 'undefined' && document && typeof document.createElement === 'function' &&
     typeof sanitizeAgentGOReplyHTML === 'function' && typeof workModePlainTextFromRenderedReplyHTML === 'function';
   if (canParseRenderedHTML) {

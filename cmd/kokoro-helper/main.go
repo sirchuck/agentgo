@@ -18,7 +18,7 @@ import (
 	"agentgo/internal/kokoroipc"
 )
 
-const helperVersion = "agentgo-kokoro-helper-r457"
+const helperVersion = "agentgo-kokoro-helper-r462"
 
 var kokoroEngineFactory = newKokoroEngine
 
