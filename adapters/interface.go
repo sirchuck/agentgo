@@ -2,6 +2,29 @@ package adapters
 
 import "context"
 
+type dispatchCallbackContextKey struct{}
+
+// WithDispatchCallback attaches a one-request hook that is invoked immediately
+// before an adapter performs its provider HTTP request. It lets callers account
+// for real outbound attempts without charging local validation failures.
+func WithDispatchCallback(ctx context.Context, callback func() error) context.Context {
+	if callback == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, dispatchCallbackContextKey{}, callback)
+}
+
+func beforeAdapterDispatch(ctx context.Context) error {
+	if ctx == nil {
+		return nil
+	}
+	callback, _ := ctx.Value(dispatchCallbackContextKey{}).(func() error)
+	if callback == nil {
+		return nil
+	}
+	return callback()
+}
+
 // RequestDefaults keeps provider-neutral request defaults used by adapter configs.
 type RequestDefaults struct {
 	Temperature float64 `json:"temperature,omitempty"`

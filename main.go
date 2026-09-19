@@ -93,6 +93,7 @@ type AppConfig struct {
 	OutfitRunRetention          int           `json:"outfit_run_retention"`
 	PromptVersion               int           `json:"prompt_version"`
 	WireTap                     WireTapLimits `json:"wiretap"`
+	Monitor                     MonitorConfig `json:"monitor,omitempty"`
 	AutoMergeSingleBuilderWaves *bool         `json:"auto_merge_single_builder_waves,omitempty"`
 	Models                      []ModelConfig `json:"-"`
 }
@@ -377,6 +378,8 @@ type App struct {
 	tokenUsageLoopLabel         string
 	tokenUsageWaveLabel         string
 	kokoro                      *kokoroManager
+	monitor                     *monitorManager
+	monitorAI                   *monitorAIManager
 }
 
 type LogEntry struct {
@@ -553,7 +556,7 @@ func pollRouteLimit(path string, method string) (int, bool) {
 		return 0, false
 	}
 	switch path {
-	case "/api/logs", "/api/risk", "/api/wave-state", "/api/deaddrop/status":
+	case "/api/logs", "/api/risk", "/api/wave-state", "/api/deaddrop/status", "/api/monitor/state":
 		return 1, true
 	default:
 		return 0, false
@@ -573,7 +576,7 @@ func slowHTTPRequestWarningThreshold(path string, method string) time.Duration {
 func liveFreezeDiagnosticEligible(path string, method string) bool {
 	if method == http.MethodGet {
 		switch path {
-		case "/api/healthz", "/api/logs", "/api/risk", "/api/wave-state", "/api/deaddrop/status", "/api/projects", "/api/models", "/api/models/definitions", "/api/context-files", "/api/work-mode/url/capabilities":
+		case "/api/healthz", "/api/logs", "/api/risk", "/api/wave-state", "/api/deaddrop/status", "/api/monitor/state", "/api/projects", "/api/models", "/api/models/definitions", "/api/context-files", "/api/work-mode/url/capabilities":
 			return true
 		}
 	}
@@ -3062,6 +3065,13 @@ func main() {
 	app.startOutfitTimerLoop()
 	app.logf("system", "info", "Loaded %s", app.release.Label())
 	app.kokoro = newKokoroManager(app.appRoot, app.logf)
+	monitorRoot := filepath.Join(app.appRoot, "monitor")
+	app.monitor = newMonitorManagerWithRoot(cfg.Monitor, monitorRoot)
+	app.monitor.Start()
+	defer app.monitor.Stop()
+	app.monitorAI = newMonitorAIManager(app, monitorRoot)
+	app.monitorAI.Start()
+	defer app.monitorAI.Stop()
 
 	mux := http.NewServeMux()
 	mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
@@ -3149,6 +3159,21 @@ func main() {
 	mux.HandleFunc("/api/logs", app.handleLogs)
 	mux.HandleFunc("/api/logs/toast", app.handleToastLog)
 	mux.HandleFunc("/api/logs/clear", app.handleClearLogs)
+	mux.HandleFunc("/api/monitor/state", app.handleMonitorState)
+	mux.HandleFunc("/api/monitor/settings", app.handleMonitorSettings)
+	mux.HandleFunc("/api/monitor/presence", app.handleMonitorPresence)
+	mux.HandleFunc("/api/monitor/disconnect", app.handleMonitorDisconnect)
+	mux.HandleFunc("/api/monitor/events/clear", app.handleMonitorClearEvents)
+	mux.HandleFunc("/api/monitor/ai/state", app.handleMonitorAIState)
+	mux.HandleFunc("/api/monitor/ai/report", app.handleMonitorAIReport)
+	mux.HandleFunc("/api/monitor/ai/chat", app.handleMonitorAIChat)
+	mux.HandleFunc("/api/monitor/ai/memory", app.handleMonitorAIMemory)
+	mux.HandleFunc("/api/monitor/item/details", app.handleMonitorItemDetails)
+	mux.HandleFunc("/api/monitor/item/hash", app.handleMonitorItemHash)
+	mux.HandleFunc("/api/monitor/item/reveal", app.handleMonitorItemReveal)
+	mux.HandleFunc("/api/monitor/item/ai", app.handleMonitorItemAI)
+	mux.HandleFunc("/api/monitor/item/known", app.handleMonitorItemKnown)
+	mux.HandleFunc("/api/monitor/item/virustotal", app.handleMonitorItemVirusTotal)
 	mux.HandleFunc("/api/diagnostics/stream", app.handleDiagnosticsStream)
 	mux.HandleFunc("/api/diagnostics/file", app.handleDiagnosticsFile)
 	mux.HandleFunc("/api/files", app.handleListFiles)
@@ -3434,6 +3459,7 @@ func applyConfigDefaults(cfg *AppConfig) {
 		cfg.PromptVersion = 1
 	}
 	cfg.WireTap = normalizeWireTapLimits(cfg.WireTap)
+	cfg.Monitor = normalizeMonitorConfig(cfg.Monitor)
 	if cfg.RiskModeMaxIterations <= 0 {
 		cfg.RiskModeMaxIterations = 10
 	}
@@ -12921,6 +12947,11 @@ func (a *App) callStructuredTextModel(ctx context.Context, model ModelConfig, in
 		ExpectJSON:   expectJSON,
 		JSONSchema:   cloneAnyMap(jsonSchema),
 	})
+}
+
+func (a *App) callStructuredTextModelWithDispatch(ctx context.Context, model ModelConfig, instructions, input string, expectJSON bool, jsonSchema map[string]any, beforeDispatch func() error) (string, error) {
+	ctx = adapters.WithDispatchCallback(ctx, beforeDispatch)
+	return a.callStructuredTextModel(ctx, model, instructions, input, expectJSON, jsonSchema)
 }
 
 func (a *App) callStructuredTextModelWithMessages(ctx context.Context, model ModelConfig, instructions, input string, extraMessages []adapters.Message, expectJSON bool, jsonSchema map[string]any) (string, error) {

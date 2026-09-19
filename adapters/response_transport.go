@@ -18,6 +18,9 @@ import (
 )
 
 func doAdapterRequestWithHeaders(request *http.Request, timeout time.Duration) ([]byte, string, int, http.Header, error) {
+	if err := beforeAdapterDispatch(request.Context()); err != nil {
+		return nil, "", 0, nil, err
+	}
 	client := &http.Client{Timeout: timeout}
 	resp, err := client.Do(request)
 	if err != nil {

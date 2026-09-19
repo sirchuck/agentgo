@@ -37,6 +37,9 @@ func (customMultipartAdapter) Execute(ctx context.Context, model ModelConfig, re
 	}
 	request.Header.Set("Content-Type", writer.FormDataContentType())
 	applyModelHeaders(request, model)
+	if err := beforeAdapterDispatch(request.Context()); err != nil {
+		return Response{}, err
+	}
 	client := &http.Client{Timeout: modelTimeout(model, 10*time.Minute)}
 	resp, err := client.Do(request)
 	if err != nil {

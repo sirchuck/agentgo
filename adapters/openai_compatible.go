@@ -483,6 +483,9 @@ func extractCompatibleContentText(content any) string {
 
 // doAdapterRequest runs one HTTP request and returns the raw body plus the final status details.
 func doAdapterRequest(request *http.Request, timeout time.Duration) ([]byte, string, int, error) {
+	if err := beforeAdapterDispatch(request.Context()); err != nil {
+		return nil, "", 0, err
+	}
 	client := &http.Client{Timeout: timeout}
 	resp, err := client.Do(request)
 	if err != nil {

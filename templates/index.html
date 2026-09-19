@@ -6,6 +6,7 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>AgentGO</title>
 <link href="/assets/fc_agentgo_yetti.png" rel="icon" type="image/png"/>
+<link href="/assets/monitor.css" rel="stylesheet"/>
 <style>
 :root {
   --shadow: 0 22px 45px rgba(0, 0, 0, 0.24);
@@ -3396,8 +3397,10 @@ body.deaddrop-popover-open {
 .risk-indicator-title{font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#d14ba0;margin-bottom:6px}
 .risk-indicator-line{font-size:13px;line-height:1.45;color:#17355f}
 .risk-indicator-line + .risk-indicator-line{margin-top:3px}
-.yeti-menu-actions{display:grid;gap:8px;margin-top:10px}
-.yeti-menu-shutdown-row{display:flex;justify-content:flex-end;margin-top:10px;padding-top:2px}
+.yeti-menu-actions{display:grid;gap:10px;margin-top:10px}
+.yeti-menu-monitor-btn{margin-bottom:2px}
+.yeti-menu-risk-row{margin-top:18px;padding-top:10px;border-top:1px solid rgba(23,53,95,.10)}
+.yeti-menu-shutdown-row{display:flex;justify-content:flex-end;margin-top:8px;padding-top:2px}
 .yeti-menu-shutdown-link{appearance:none;border:0;background:transparent;padding:2px 0;color:#607089;font:600 12px/1.2 inherit;text-decoration:underline;cursor:pointer}
 .yeti-menu-shutdown-link:hover{color:#17355f}
 .yeti-menu-btn{width:100%;appearance:none;border:none;border-radius:14px;padding:10px 12px;font-weight:900;cursor:pointer;text-align:center;background:linear-gradient(180deg,rgba(241,246,252,1),rgba(215,226,239,.96));color:#17355f;box-shadow:inset 0 1px 0 rgba(255,255,255,.82),0 8px 18px rgba(23,53,95,.12)}
@@ -3405,6 +3408,7 @@ body.deaddrop-popover-open {
 .yeti-menu-btn:active{transform:translateY(1px)}
 .yeti-menu-risk-btn{background:linear-gradient(180deg,var(--frost-magenta-top),var(--frost-magenta-bottom));color:#fff;box-shadow:0 10px 24px var(--frost-magenta-shadow)}
 .yeti-menu-work-btn{background:linear-gradient(180deg,rgba(106,188,255,1),rgba(35,128,245,.98));color:#fff;box-shadow:0 10px 24px rgba(74,163,255,.34),inset 0 1px 0 rgba(255,255,255,.36)}
+.yeti-menu-monitor-btn{background:linear-gradient(180deg,rgba(106,188,255,1),rgba(35,128,245,.98));color:#fff;box-shadow:0 10px 24px rgba(74,163,255,.34),inset 0 1px 0 rgba(255,255,255,.36)}
 .yeti-menu-work-status{margin:-2px 2px 2px;padding:8px 10px;border-radius:13px;background:rgba(255,255,255,.78);border:1px solid rgba(23,53,95,.10);display:grid;gap:4px;color:#17355f;box-shadow:inset 0 1px 0 rgba(255,255,255,.82)}.yeti-menu-work-status-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:.76rem;line-height:1.2}.yeti-menu-work-status-row strong{font-weight:950;color:#17355f}.yeti-menu-work-status-row span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;font-weight:850;color:#46627f}.yeti-menu-work-status-row.is-ready span{color:#0b6f8c}.yeti-menu-work-status-row.is-missing span{color:#8d2c68}
 .yeti-menu-voice{margin-top:10px;padding:9px 10px;border-radius:14px;background:rgba(255,255,255,.80);border:1px solid rgba(23,53,95,.10);display:grid;gap:7px;color:#17355f;box-shadow:inset 0 1px 0 rgba(255,255,255,.82);box-sizing:border-box;min-width:0;max-width:100%;overflow:hidden}.yeti-menu-voice-title{font-size:.72rem;font-weight:950;letter-spacing:.08em;text-transform:uppercase;color:#d14ba0}.yeti-menu-voice-row{display:grid;grid-template-columns:minmax(0,1fr) 34px;align-items:center;gap:7px;min-width:0;max-width:100%}.yeti-menu-voice-select{min-width:0;width:100%;max-width:100%;box-sizing:border-box;border:1px solid rgba(23,53,95,.14);border-radius:12px;background:rgba(255,255,255,.96);color:#17355f;font:inherit;font-size:.78rem;font-weight:850;padding:8px 9px;outline:none;overflow:hidden;text-overflow:ellipsis}.yeti-menu-voice-select:focus{border-color:rgba(74,163,255,.45);box-shadow:0 0 0 3px rgba(74,163,255,.12)}.yeti-menu-voice-test{appearance:none;width:34px;height:34px;border-radius:999px;border:1px solid rgba(74,163,255,.30);background:rgba(74,163,255,.12);color:#17355f;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;box-sizing:border-box}.yeti-menu-voice-test:hover{background:rgba(74,163,255,.20);color:#0c2344}.yeti-menu-voice-test svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9}.yeti-menu-voice-note{font-size:.70rem;line-height:1.25;color:#61748b;font-weight:750}.yeti-menu-voice-status{font-size:.70rem;line-height:1.3;color:#49637f;font-weight:800;padding:7px 8px;border-radius:10px;background:rgba(23,53,95,.055)}.yeti-menu-voice-speed{display:grid;grid-template-columns:auto minmax(80px,1fr) 42px;align-items:center;gap:7px;font-size:.70rem;font-weight:850;color:#49637f}.yeti-menu-voice-speed input{width:100%;min-width:0}.yeti-menu-voice-speed output{text-align:right;color:#17355f;font-variant-numeric:tabular-nums}.yeti-menu-voice-options{display:grid;grid-template-columns:1fr 1fr;gap:7px}.yeti-menu-voice-toggle{display:flex;align-items:center;gap:6px;font-size:.69rem;font-weight:850;color:#49637f;min-width:0}.yeti-menu-voice-toggle input{margin:0}.yeti-menu-voice-advanced{border-top:1px solid rgba(23,53,95,.10);padding-top:6px}.yeti-menu-voice-advanced summary{cursor:pointer;font-size:.69rem;font-weight:900;color:#49637f;user-select:none}.yeti-menu-voice-advanced-body{display:grid;gap:7px;padding-top:7px}.yeti-menu-voice-field{display:grid;gap:4px;font-size:.67rem;font-weight:850;color:#61748b}.yeti-menu-voice-field .yeti-menu-voice-select{font-size:.72rem;padding:7px 8px}.yeti-menu-voice-readme{font-size:.67rem;line-height:1.25;color:#61748b;font-weight:750;overflow-wrap:anywhere}
 .work-mode-overlay{--work-pink:#f5a6d7;--work-pink-strong:#d14ba0;--work-blue:#4aa3ff;--work-yellow:#ffe27c;position:fixed;inset:0;z-index:2100;display:none;background:#0b0d12;color:#f5f7fb;overflow:hidden}
@@ -8056,8 +8060,9 @@ let workModeReplySpeechHighlightState = null;
 let workModeReplySpeechHighlightSpans = [];
 const WORK_MODE_SPEECH_HIGHLIGHT_NAME = 'agentgo-spoken-word';
 const WORK_MODE_KOKORO_PREBUFFER_SECONDS = 5;
-const WORK_MODE_KOKORO_FIRST_REQUEST_TARGET_RUNES = 100;
+const WORK_MODE_KOKORO_FIRST_REQUEST_TARGET_RUNES = 180;
 const WORK_MODE_KOKORO_REQUEST_TARGET_RUNES = 180;
+const WORK_MODE_KOKORO_REQUEST_MAX_RUNES = 300;
 let workModeFileTree = null;
 let workModeTmpWorkTree = null;
 let workModeTreeLoadedProject = "";
@@ -18448,11 +18453,12 @@ function renderYetiMenuBubble() {
   return `<div class="risk-indicator-title">YETI MENU</div>
     <div class="risk-indicator-line">What would you like to start?</div>
     <div class="yeti-menu-actions">
+      <button class="yeti-menu-btn yeti-menu-monitor-btn" id="yetiStartMonitorBtn" type="button">AgentGO Monitor</button>
       <button class="yeti-menu-btn yeti-menu-work-btn" id="yetiStartWorkBtn" type="button">${workModeButtonLabel}</button>
       ${renderYetiWorkModeStatus()}
-      <button class="yeti-menu-btn yeti-menu-risk-btn" id="yetiStartRiskBtn" type="button">Risk-Mode</button>
     </div>
     ${renderYetiVoiceSection()}
+    <div class="yeti-menu-risk-row"><button class="yeti-menu-btn yeti-menu-risk-btn" id="yetiStartRiskBtn" type="button">Risk-Mode</button></div>
     <div class="yeti-menu-shutdown-row"><button class="yeti-menu-shutdown-link" id="yetiShutdownBtn" type="button">Shutdown</button></div>`;
 }
 function showAgentGOShutdownPage() {
@@ -20597,9 +20603,6 @@ function workModeKokoroSplitText(value, forcedRanges = []) {
     if (rangeEnd <= rangeStart) return;
     let start = rangeStart;
     let runeCount = 0;
-    const currentTargetRunes = () => segments.length === 0
-      ? WORK_MODE_KOKORO_FIRST_REQUEST_TARGET_RUNES
-      : WORK_MODE_KOKORO_REQUEST_TARGET_RUNES;
     const flush = end => {
       if (end <= start) return;
       const raw = text.slice(start, end);
@@ -20611,18 +20614,44 @@ function workModeKokoroSplitText(value, forcedRanges = []) {
       start = end;
       runeCount = 0;
     };
+    const sentencePeriodEnd = next => {
+      let cursor = next;
+      while (cursor < rangeEnd && /["'”’)\]]/u.test(text[cursor])) cursor += 1;
+      if (cursor >= rangeEnd) return cursor;
+      if (!/\s/u.test(text[cursor])) return -1;
+      while (cursor < rangeEnd) {
+        const codePoint = text.codePointAt(cursor);
+        const size = codePoint > 0xffff ? 2 : 1;
+        if (!/\s/u.test(text.slice(cursor, cursor + size))) break;
+        cursor += size;
+      }
+      return cursor;
+    };
     for (let i = rangeStart; i < rangeEnd;) {
       const codePoint = text.codePointAt(i);
       const size = codePoint > 0xffff ? 2 : 1;
       const character = text.slice(i, i + size);
       const next = Math.min(rangeEnd, i + size);
       runeCount += 1;
-      const targetRunes = currentTargetRunes();
-      // r455: target a useful amount of text first, then finish the current
-      // word. Kokoro receives the punctuation/newlines inside the request and
-      // decides its own sentence cadence; AgentGO only avoids mid-word cuts.
-      if (runeCount >= targetRunes && /\s/u.test(character)) {
-        flush(next);
+      const firstRequest = segments.length === 0;
+
+      // r467: the opening request now reaches about 180 runes before taking
+      // a safe word boundary. Later requests also reach at least 180 runes,
+      // then prefer the next sentence-ending period through 300 runes. If no
+      // sentence period appears by then, finish at the next whitespace so a
+      // word is never intentionally split.
+      if (firstRequest) {
+        if (runeCount >= WORK_MODE_KOKORO_FIRST_REQUEST_TARGET_RUNES && /\s/u.test(character)) flush(next);
+      } else if (runeCount >= WORK_MODE_KOKORO_REQUEST_TARGET_RUNES) {
+        if (character === '.') {
+          const periodEnd = sentencePeriodEnd(next);
+          if (periodEnd >= 0) {
+            flush(periodEnd);
+            i = periodEnd;
+            continue;
+          }
+        }
+        if (runeCount >= WORK_MODE_KOKORO_REQUEST_MAX_RUNES && /\s/u.test(character)) flush(next);
       }
       i = next;
     }
@@ -30120,4 +30149,4 @@ setInterval(() => {
 </div>
 
 <div aria-hidden="true" class="phonetics-modal" id="phoneticsModal"><div class="phonetics-backdrop" data-close-phonetics="true"></div><div aria-labelledby="phoneticsTitle" aria-modal="true" class="phonetics-dialog" role="dialog"><button aria-label="Close custom phonetics" class="modal-close-btn modal-close-floating" id="phoneticsCloseBtn" type="button">Close</button><div class="phonetics-head"><h3 id="phoneticsTitle">Custom Phonetics</h3><p>Edit the speech-only pronunciation library used by Kokoro. AgentGO’s displayed response is never changed.</p><div class="phonetics-path" id="phoneticsPath">system_prompts/phonetics.md</div></div><textarea aria-label="Custom phonetics rules" class="phonetics-editor" id="phoneticsEditor" maxlength="262144" spellcheck="false"></textarea><div aria-live="polite" class="phonetics-status" id="phoneticsStatus"></div><div class="phonetics-actions"><button class="phonetics-cancel" id="phoneticsCancelBtn" type="button">Cancel</button><button class="phonetics-save" id="phoneticsSaveBtn" type="button">Save Phonetics</button></div></div></div>
-<div aria-hidden="true" class="model-corrections-modal" id="modelCorrectionsModal"><div class="model-corrections-backdrop" data-close-model-corrections="true"></div><div aria-labelledby="modelCorrectionsTitle" aria-modal="true" class="model-corrections-dialog" role="dialog"><button aria-label="Close" class="modal-close-btn modal-close-floating" id="modelCorrectionsCloseBtn" type="button">Close</button><div class="model-corrections-head"><h3 id="modelCorrectionsTitle">Model Corrections</h3><p>These instructions help this model avoid previously detected Work Mode mistakes. They apply whenever this configured model is used as an AI Builder in Work Mode.</p><div class="model-corrections-path" id="modelCorrectionsPath"></div></div><div class="model-corrections-draft-box" id="modelCorrectionsDraftBox" hidden><p class="model-corrections-draft-copy">AgentGO detected a problem in this AI Builder’s response. Select a capable AI to draft a short instruction that may prevent this Builder from repeating the mistake.</p><div class="model-corrections-issue" id="modelCorrectionsIssue"></div><div class="model-corrections-observer-row"><label>Observer AI<select id="modelCorrectionsObserver"></select></label><button class="model-corrections-btn draft" id="modelCorrectionsDraftBtn" type="button">Draft correction</button></div></div><label class="model-corrections-editor-label" for="modelCorrectionsEditor">Work Mode Builder correction profile</label><textarea class="model-corrections-editor" id="modelCorrectionsEditor" maxlength="32768" placeholder="- Add concise, model-specific Work Mode correction rules here."></textarea><div aria-live="polite" class="model-corrections-status" id="modelCorrectionsStatus"></div><div class="model-corrections-actions"><button class="model-corrections-btn secondary" id="modelCorrectionsCancelBtn" type="button">Cancel</button><button class="model-corrections-btn primary" id="modelCorrectionsSaveBtn" type="button">Save corrections</button></div></div></div><div aria-hidden="true" class="settings-modal" id="settings-modal"><div class="settings-backdrop" data-close-settings="true"></div><div aria-labelledby="settings-title" aria-modal="true" class="settings-dialog" role="dialog"><button aria-label="Close" class="modal-close-btn modal-close-floating" id="settingsCloseX" type="button">Close</button><h3 id="settings-title">Model Settings</h3><p id="settings-copy">Edit the current project meta files for this model.</p><div class="settings-meta-tabs"><button class="meta-tab is-active" data-file="user_context.json" title="user_context.json" type="button">User</button><button class="meta-tab" data-file="ai_context.json" title="ai_context.json" type="button">AI Builder</button><button class="meta-tab" data-file="reviewer_context.json" title="reviewer_context.json" type="button">AI Reviewer</button></div><textarea class="meta-editor" id="metaEditor"></textarea><div class="meta-save-row"><button class="settings-close" id="settings-close" type="button">Cancel</button><button class="meta-save-btn" id="metaSaveBtn" type="button">Save Meta Files</button></div></div></div><script>function closeSettingsModal(){const modal=document.getElementById('settings-modal');if(!modal)return;restoreFocusBeforeHide(modal,lastFocusedBeforeSettingsModal||document.querySelector('.settings-btn'));modal.classList.remove('open');modal.setAttribute('aria-hidden','true');openSettingsModelId='';settingsMetaCache={};activeMetaTab='user_context.json';lastFocusedBeforeSettingsModal=null;}const metaSaveBtn=document.getElementById('metaSaveBtn');if(metaSaveBtn)metaSaveBtn.addEventListener('click',saveMetaFiles);const settingsCloseBtnInline=document.getElementById('settings-close');if(settingsCloseBtnInline)settingsCloseBtnInline.addEventListener('click',closeSettingsModal);const settingsCloseXInline=document.getElementById('settingsCloseX');if(settingsCloseXInline)settingsCloseXInline.addEventListener('click',closeSettingsModal);document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeSettingsModal();closeRiskModal();closeConfirmModal(false);closeModelEditor();closeDeleteModelModal();closeModelActionsMenu();closeMasterMindNamePopup();closeMasterMindModal();closeAgentGOPhonetics();closeModelCorrectionsModal();closeVideoJobsModal();closeMeshModelSettings({ restoreFocus: false });closeMeshViewerModal({ restoreFocus: false });closeMeshJobsModal();closeDeadDropPopover({ restoreFocus: false });}});</script></body></html>
+<div aria-hidden="true" class="model-corrections-modal" id="modelCorrectionsModal"><div class="model-corrections-backdrop" data-close-model-corrections="true"></div><div aria-labelledby="modelCorrectionsTitle" aria-modal="true" class="model-corrections-dialog" role="dialog"><button aria-label="Close" class="modal-close-btn modal-close-floating" id="modelCorrectionsCloseBtn" type="button">Close</button><div class="model-corrections-head"><h3 id="modelCorrectionsTitle">Model Corrections</h3><p>These instructions help this model avoid previously detected Work Mode mistakes. They apply whenever this configured model is used as an AI Builder in Work Mode.</p><div class="model-corrections-path" id="modelCorrectionsPath"></div></div><div class="model-corrections-draft-box" id="modelCorrectionsDraftBox" hidden><p class="model-corrections-draft-copy">AgentGO detected a problem in this AI Builder’s response. Select a capable AI to draft a short instruction that may prevent this Builder from repeating the mistake.</p><div class="model-corrections-issue" id="modelCorrectionsIssue"></div><div class="model-corrections-observer-row"><label>Observer AI<select id="modelCorrectionsObserver"></select></label><button class="model-corrections-btn draft" id="modelCorrectionsDraftBtn" type="button">Draft correction</button></div></div><label class="model-corrections-editor-label" for="modelCorrectionsEditor">Work Mode Builder correction profile</label><textarea class="model-corrections-editor" id="modelCorrectionsEditor" maxlength="32768" placeholder="- Add concise, model-specific Work Mode correction rules here."></textarea><div aria-live="polite" class="model-corrections-status" id="modelCorrectionsStatus"></div><div class="model-corrections-actions"><button class="model-corrections-btn secondary" id="modelCorrectionsCancelBtn" type="button">Cancel</button><button class="model-corrections-btn primary" id="modelCorrectionsSaveBtn" type="button">Save corrections</button></div></div></div><div aria-hidden="true" class="settings-modal" id="settings-modal"><div class="settings-backdrop" data-close-settings="true"></div><div aria-labelledby="settings-title" aria-modal="true" class="settings-dialog" role="dialog"><button aria-label="Close" class="modal-close-btn modal-close-floating" id="settingsCloseX" type="button">Close</button><h3 id="settings-title">Model Settings</h3><p id="settings-copy">Edit the current project meta files for this model.</p><div class="settings-meta-tabs"><button class="meta-tab is-active" data-file="user_context.json" title="user_context.json" type="button">User</button><button class="meta-tab" data-file="ai_context.json" title="ai_context.json" type="button">AI Builder</button><button class="meta-tab" data-file="reviewer_context.json" title="reviewer_context.json" type="button">AI Reviewer</button></div><textarea class="meta-editor" id="metaEditor"></textarea><div class="meta-save-row"><button class="settings-close" id="settings-close" type="button">Cancel</button><button class="meta-save-btn" id="metaSaveBtn" type="button">Save Meta Files</button></div></div></div><script>function closeSettingsModal(){const modal=document.getElementById('settings-modal');if(!modal)return;restoreFocusBeforeHide(modal,lastFocusedBeforeSettingsModal||document.querySelector('.settings-btn'));modal.classList.remove('open');modal.setAttribute('aria-hidden','true');openSettingsModelId='';settingsMetaCache={};activeMetaTab='user_context.json';lastFocusedBeforeSettingsModal=null;}const metaSaveBtn=document.getElementById('metaSaveBtn');if(metaSaveBtn)metaSaveBtn.addEventListener('click',saveMetaFiles);const settingsCloseBtnInline=document.getElementById('settings-close');if(settingsCloseBtnInline)settingsCloseBtnInline.addEventListener('click',closeSettingsModal);const settingsCloseXInline=document.getElementById('settingsCloseX');if(settingsCloseXInline)settingsCloseXInline.addEventListener('click',closeSettingsModal);document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeSettingsModal();closeRiskModal();closeConfirmModal(false);closeModelEditor();closeDeleteModelModal();closeModelActionsMenu();closeMasterMindNamePopup();closeMasterMindModal();closeAgentGOPhonetics();closeModelCorrectionsModal();closeVideoJobsModal();closeMeshModelSettings({ restoreFocus: false });closeMeshViewerModal({ restoreFocus: false });closeMeshJobsModal();closeDeadDropPopover({ restoreFocus: false });}});</script><script src="/assets/monitor.js"></script></body></html>
