@@ -216,7 +216,7 @@
       mailUI.overlay = document.getElementById('agentGOMailOverlay');
       return;
     }
-    const releaseText = (document.querySelector('.build-tag')?.textContent || 'AgentGO r492').trim();
+    const releaseText = (document.querySelector('.build-tag')?.textContent || 'AgentGO r493').trim();
     const overlay = document.createElement('div');
     overlay.id = 'agentGOMailOverlay';
     overlay.className = 'agentgo-mail-overlay';

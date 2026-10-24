@@ -1287,6 +1287,7 @@ type workModeMemoryRequest struct {
 	ModelID     string  `json:"modelId"`
 	Name        string  `json:"name,omitempty"`
 	Content     *string `json:"content,omitempty"`
+	CurrentHash string  `json:"currentHash,omitempty"`
 	SessionOnly bool    `json:"sessionOnly,omitempty"`
 }
 
@@ -1301,6 +1302,7 @@ type workModeMemoryResponse struct {
 	ActiveExists  bool                 `json:"activeExists"`
 	ActiveBytes   int64                `json:"activeBytes,omitempty"`
 	ActiveContent string               `json:"activeContent,omitempty"`
+	ActiveHash    string               `json:"activeHash,omitempty"`
 	Saved         []workModeMemoryFile `json:"saved"`
 	Name          string               `json:"name,omitempty"`
 	Content       string               `json:"content,omitempty"`
@@ -3151,6 +3153,8 @@ func main() {
 	mux.HandleFunc("/api/work-mode/memory/load", app.withWorkModeRecovery("/api/work-mode/memory/load", app.handleWorkModeMemoryLoad))
 	mux.HandleFunc("/api/work-mode/memory/save", app.withWorkModeRecovery("/api/work-mode/memory/save", app.handleWorkModeMemorySave))
 	mux.HandleFunc("/api/work-mode/memory/delete", app.withWorkModeRecovery("/api/work-mode/memory/delete", app.handleWorkModeMemoryDelete))
+	mux.HandleFunc("/api/work-mode/memory/current/save", app.withWorkModeRecovery("/api/work-mode/memory/current/save", app.handleWorkModeCurrentMemorySave))
+	mux.HandleFunc("/api/work-mode/memory/current/delete", app.withWorkModeRecovery("/api/work-mode/memory/current/delete", app.handleWorkModeCurrentMemoryDelete))
 	mux.HandleFunc("/api/work-mode/search", app.withWorkModeRecovery("/api/work-mode/search", app.handleWorkModeSearch))
 	mux.HandleFunc("/api/work-mode/tmp-work/merge", app.withWorkModeRecovery("/api/work-mode/tmp-work/merge", app.handleWorkModeTmpWorkMerge))
 	mux.HandleFunc("/api/work-mode/tmp-work/merge-all", app.withWorkModeRecovery("/api/work-mode/tmp-work/merge-all", app.handleWorkModeTmpWorkMergeAll))
@@ -4602,16 +4606,27 @@ func (a *App) workModeMemoryMetaRoot(modelID, projectName string) (ModelConfig, 
 	return roles.Worker, metaRoot, nil
 }
 
+func workModeCurrentMemoryHash(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
+}
+
 func (a *App) workModeMemoryResponse(metaRoot, continuedPath, message string) (workModeMemoryResponse, error) {
 	activeContent := ""
 	if data, err := os.ReadFile(continuedPath); err == nil {
 		activeContent = string(data)
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return workModeMemoryResponse{}, err
 	}
 	saved, err := listWorkModeMemoryFiles(metaRoot)
 	if err != nil {
 		return workModeMemoryResponse{}, err
 	}
-	return workModeMemoryResponse{ActiveExists: strings.TrimSpace(activeContent) != "", ActiveBytes: int64(len(activeContent)), ActiveContent: activeContent, Saved: saved, Message: message}, nil
+	resp := workModeMemoryResponse{ActiveExists: strings.TrimSpace(activeContent) != "", ActiveBytes: int64(len(activeContent)), ActiveContent: activeContent, Saved: saved, Message: message}
+	if resp.ActiveExists {
+		resp.ActiveHash = workModeCurrentMemoryHash([]byte(activeContent))
+	}
+	return resp, nil
 }
 
 func resolveWorkModeRequestMemory(metaRoot, continuedPath string, req workModeRequest) ([]byte, string, string, bool, error) {
@@ -4971,6 +4986,89 @@ func (a *App) handleWorkModeMemoryDelete(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	resp, err := a.workModeMemoryResponse(metaRoot, continuedPath, "Deleted memory: "+displayName)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// Current Memory is project-scoped, unlike the named memories stored per Builder.
+// Keep mutations on a dedicated route so they cannot accidentally target a saved
+// memory or an arbitrary project file. Require the hash read by the editor to
+// prevent stale windows from overwriting a newer memory revision.
+func (a *App) handleWorkModeCurrentMemorySave(w http.ResponseWriter, r *http.Request) {
+	a.handleWorkModeCurrentMemoryMutation(w, r, false)
+}
+
+func (a *App) handleWorkModeCurrentMemoryDelete(w http.ResponseWriter, r *http.Request) {
+	a.handleWorkModeCurrentMemoryMutation(w, r, true)
+}
+
+func (a *App) handleWorkModeCurrentMemoryMutation(w http.ResponseWriter, r *http.Request, deleteMemory bool) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	req, projectName, metaRoot, err := a.decodeWorkModeMemoryRequest(w, r)
+	if err != nil {
+		return
+	}
+	if strings.TrimSpace(req.CurrentHash) == "" || (!deleteMemory && req.Content == nil) {
+		http.Error(w, "current memory content and version are required", http.StatusBadRequest)
+		return
+	}
+	if !deleteMemory && strings.TrimSpace(*req.Content) == "" {
+		http.Error(w, "use Delete to remove Current Memory", http.StatusBadRequest)
+		return
+	}
+	continuedPath, err := a.workModeContinuedMemoryPath(projectName)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Work Mode updates its continued memory after a successful AI response.
+	// A manual edit/delete during an active or paused run could be immediately
+	// overwritten. Hold the session lock while checking the state and writing.
+	a.mu.Lock()
+	state, hasState := a.workModeSessionsByProject[projectName]
+	if hasState && (state.Status == workModeStatusRunning || state.Status == workModeStatusPausedAfterCurrent || state.Status == workModeStatusFinalizing) {
+		a.mu.Unlock()
+		http.Error(w, "finish the current Work Mode run before changing Current Memory", http.StatusConflict)
+		return
+	}
+	current, err := os.ReadFile(continuedPath)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		a.mu.Unlock()
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if strings.TrimSpace(string(current)) == "" {
+		a.mu.Unlock()
+		http.Error(w, "Current Memory no longer exists; refresh the memory menu", http.StatusNotFound)
+		return
+	}
+	if !strings.EqualFold(req.CurrentHash, workModeCurrentMemoryHash(current)) {
+		a.mu.Unlock()
+		http.Error(w, "Current Memory has changed; reopen it before editing or deleting", http.StatusConflict)
+		return
+	}
+	message := "Saved Current Memory."
+	if deleteMemory {
+		// The project-settings loader may recreate this as an empty file later.
+		// An empty/missing file is never displayed as a Current Memory entry.
+		err = os.Remove(continuedPath)
+		message = "Deleted Current Memory."
+	} else {
+		err = writeWorkModeMemoryFile(continuedPath, *req.Content)
+	}
+	a.mu.Unlock()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	resp, err := a.workModeMemoryResponse(metaRoot, continuedPath, message)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

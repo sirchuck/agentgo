@@ -8148,7 +8148,7 @@ let workModeMemoryFreshPending = false;
 let workModeAllowAIHTMLReplies = false;
 let workModeSettings = createDefaultWorkModeSettings ? createDefaultWorkModeSettings() : { includeRoleContext: false, useMemory: false, responseMode: 'auto', autoReadReplies: false, agentGOStyling: true, autoCompressImages: true, smallModelPolishPass: false };
 let workModeMemoryMenuOpen = '';
-let workModeMemoryState = { activeExists: false, activeBytes: 0, activeContent: '', saved: [] };
+let workModeMemoryState = { activeExists: false, activeBytes: 0, activeContent: '', activeHash: '', saved: [] };
 let workModeMemoryDefaultState = { memoryDefault: 'off', defaultMemoryFile: '', defaultMemoryModelId: '', allowAIHTMLReplies: false, saved: [], continuedExists: false, continuedContent: '', message: '' };
 let workModeMemoryBusy = false;
 const workModeDefaultGuidance = "Select files in the projectwork tree if you want to send it to AI, click the filename to view/edit here.\nClick settings icon for more options. Enable Memory Mode if you want your AI to keep track of your chat, but this does use slightly more tokens per chat message.";
@@ -10235,7 +10235,7 @@ function renderFileModal() {
   const buttons = [];
   if (!file.readOnly) {
     if (file.isText) buttons.push('<button type="button" class="file-action-btn" id="saveFileBtn">Save</button>');
-    if (file.kind !== 'memory') {
+    if (file.kind !== 'memory' && file.kind !== 'current-memory') {
       if (file.path) buttons.push('<button type="button" class="file-action-btn" id="renameFileBtn">Rename</button>');
       if (file.path) buttons.push('<button type="button" class="file-action-btn" id="downloadFileBtn">Download</button>');
       buttons.push('<button type="button" class="file-action-btn danger" id="deleteFileBtn">Delete</button>');
@@ -10367,6 +10367,21 @@ async function renameCurrentFile() {
 async function saveCurrentFile() {
   const editor = document.getElementById('fileEditor');
   if (!editor || !fileModalState.path) return;
+  if (fileModalState.kind === 'current-memory') {
+    if (isAnyWorkModeTabSending()) throw new Error('Finish the current Work Mode request before editing Current Memory.');
+    const modelId = String(fileModalState.memoryModelId || '').trim();
+    if (!modelId || !fileModalState.memoryHash) throw new Error('Reopen Current Memory before saving.');
+    if (!editor.value.trim()) throw new Error('Use Delete in the Memory menu to remove Current Memory.');
+    const data = await api('/api/work-mode/memory/current/save', { method: 'POST', body: JSON.stringify({ modelId, currentHash: fileModalState.memoryHash, content: editor.value }) });
+    fileModalState.content = editor.value;
+    fileModalState.memoryHash = String(data.activeHash || '');
+    workModeMemoryState = normalizeWorkModeMemoryFiles(data);
+    syncContinuedWorkModeMemory(editor.value);
+    saveActiveWorkModeTabState();
+    updateWorkModeSettingsStatus();
+    showToast('Current Memory saved.');
+    return;
+  }
   if (fileModalState.kind === 'memory') {
     const modelId = String(fileModalState.memoryModelId || '').trim();
     const name = String(fileModalState.memoryName || '').trim();
@@ -24503,6 +24518,7 @@ function normalizeWorkModeMemoryFiles(data) {
     activeExists: !!(data && data.activeExists),
     activeBytes: Number((data && data.activeBytes) || 0) || 0,
     activeContent: String((data && data.activeContent) || ''),
+    activeHash: String((data && data.activeHash) || ''),
     saved: saved.map(item => ({
       name: String((item && item.name) || '').trim(),
       fileName: String((item && item.fileName) || '').trim()
@@ -24630,7 +24646,11 @@ function renderWorkModeMemoryMenu() {
   const saved = Array.isArray(state.saved) ? state.saved : [];
   const rows = [];
   rows.push(`<button class="work-mode-memory-menu-btn" data-work-memory-new type="button">New Memory</button>`);
-  if (String(workModeMemoryContent || '').trim() || state.activeExists) rows.push(`<button class="work-mode-memory-menu-btn" data-work-memory-continue type="button">Continue Last Memory</button>`);
+  if (state.activeExists) {
+    rows.push(`<div class="work-mode-memory-menu-row"><button class="work-mode-memory-menu-btn" data-work-memory-continue type="button">Continue Last Memory</button><button class="work-mode-memory-open-btn" data-work-memory-open-current type="button" aria-label="Open Current Memory" title="Open/edit Current Memory"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"></circle><path d="m16 16 4 4"></path></svg></button><button class="work-mode-memory-delete-btn" data-work-memory-delete-current type="button" aria-label="Delete Current Memory" title="Delete Current Memory">×</button></div>`);
+  } else if (String(workModeMemoryContent || '').trim() && workModeSettings.useMemory) {
+    rows.push(`<button class="work-mode-memory-menu-btn" data-work-memory-continue type="button">Continue Last Memory</button>`);
+  }
   if (saved.length) {
     saved.forEach(item => {
       rows.push(`<div class="work-mode-memory-menu-row"><button class="work-mode-memory-menu-btn" data-work-memory-load="${escapeHtml(item.name)}" type="button" title="Load ${escapeHtml(item.name)}">Load: ${escapeHtml(item.name)}</button><button class="work-mode-memory-open-btn" data-work-memory-open="${escapeHtml(item.name)}" type="button" aria-label="Open ${escapeHtml(item.name)}" title="Open/edit ${escapeHtml(item.name)}"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"></circle><path d="m16 16 4 4"></path></svg></button><button class="work-mode-memory-delete-btn" data-work-memory-delete="${escapeHtml(item.name)}" type="button" aria-label="Delete ${escapeHtml(item.name)}" title="Delete ${escapeHtml(item.name)}">×</button></div>`);
@@ -24638,8 +24658,9 @@ function renderWorkModeMemoryMenu() {
   } else {
     rows.push(`<div class="work-mode-memory-menu-note">No saved memory files yet.</div>`);
   }
+  if (workModeSettings.useMemory) rows.push(`<button class="work-mode-memory-menu-btn" data-work-memory-turn-off type="button">Turn Memory Off</button>`);
   if (workModeMemoryBusy) rows.push(`<div class="work-mode-memory-menu-note">Loading memories…</div>`);
-  return `<div class="work-mode-memory-menu" data-work-memory-menu><div class="work-mode-memory-menu-title">Start memory</div><div class="work-mode-memory-menu-list">${rows.join('')}</div></div>`;
+  return `<div class="work-mode-memory-menu" data-work-memory-menu><div class="work-mode-memory-menu-title">${workModeSettings.useMemory ? 'Manage memory' : 'Start memory'}</div><div class="work-mode-memory-menu-list">${rows.join('')}</div></div>`;
 }
 function updateWorkModeSettingsStatus() {
   const mode = getResponseModeOption(workModeSettings.responseMode);
@@ -24757,16 +24778,6 @@ function closeWorkModeMemoryMenu() {
 async function openWorkModeMemoryMenu() {
   if (!activeProject) return showToast('Select a project first before using Work Mode Memory.', 'warning', 3200);
   if (activeBuilderCount() !== 1) return showToast('Work Mode Memory requires exactly one active Builder AI.', 'warning', 3400);
-  if (workModeSettings.useMemory && !workModeMemoryFreshPending) {
-    if (String(workModeMemoryName || '').trim()) {
-      turnOffWorkModeMemoryWithoutSaving();
-      return;
-    }
-    workModeMemoryMenuOpen = 'disable';
-    updateWorkModeSettingsStatus();
-    setTimeout(() => document.querySelector('[data-work-memory-save-name]')?.focus(), 0);
-    return;
-  }
   workModeMemoryMenuOpen = 'enable';
   workModeMemoryBusy = true;
   updateWorkModeSettingsStatus();
@@ -24778,6 +24789,20 @@ async function openWorkModeMemoryMenu() {
     workModeMemoryBusy = false;
     updateWorkModeSettingsStatus();
   }
+}
+function requestTurnOffWorkModeMemory() {
+  if (!workModeSettings.useMemory) return closeWorkModeMemoryMenu();
+  if (workModeSettings.useMemory && !workModeMemoryFreshPending) {
+    if (String(workModeMemoryName || '').trim()) {
+      turnOffWorkModeMemoryWithoutSaving();
+      return;
+    }
+    workModeMemoryMenuOpen = 'disable';
+    updateWorkModeSettingsStatus();
+    setTimeout(() => document.querySelector('[data-work-memory-save-name]')?.focus(), 0);
+    return;
+  }
+  turnOffWorkModeMemoryWithoutSaving();
 }
 async function postWorkModeMemoryAction(url, body = {}) {
   const modelId = getActiveBuilderModelId();
@@ -24851,6 +24876,52 @@ async function openWorkModeMemoryFileEditor(name) {
   }
 }
 
+async function openCurrentWorkModeMemoryEditor() {
+  const modelId = getActiveBuilderModelId();
+  if (!modelId) return;
+  if (isAnyWorkModeTabSending()) return showToast('Finish the current Work Mode request before editing Current Memory.', 'warning', 3800);
+  try {
+    const state = await refreshWorkModeMemoryState();
+    if (!state.activeExists || !state.activeHash) throw new Error('No Current Memory exists.');
+    workModeMemoryMenuOpen = '';
+    updateWorkModeSettingsStatus();
+    fileModalState = { path: 'memory:Current Memory', content: state.activeContent, isText: true, imageDataUrl: '', contentType: 'text/markdown', readOnly: false, kind: 'current-memory', memoryName: '', memoryModelId: modelId, memoryHash: state.activeHash };
+    document.getElementById('modalTitle').textContent = 'Current Memory';
+    renderFileModal();
+    document.getElementById('fileModal').classList.add('open');
+  } catch (err) {
+    showToast(err.message || 'Could not open Current Memory.', 'warning', 3800);
+  }
+}
+async function deleteCurrentWorkModeMemory() {
+  if (isAnyWorkModeTabSending()) return showToast('Finish the current Work Mode request before deleting Current Memory.', 'warning', 3800);
+  const currentHash = String(workModeMemoryState.activeHash || '');
+  if (!currentHash) return showToast('Current Memory no longer exists.', 'warning', 3000);
+  const confirmed = await openConfirmModal({ title: 'Delete Current Memory?', message: 'Delete the Current Memory for this project? Saved memory files will not be affected.', confirmLabel: 'Delete Memory', destructive: true });
+  if (!confirmed) return;
+  if (isAnyWorkModeTabSending()) return showToast('Finish the current Work Mode request before deleting Current Memory.', 'warning', 3800);
+  try {
+    const data = await postWorkModeMemoryAction('/api/work-mode/memory/current/delete', { currentHash });
+    workModeTabs.forEach(tab => {
+      if (String(tab.memoryName || '').trim()) return;
+      tab.memoryContent = '';
+      tab.memoryFreshPending = false;
+      if (tab.settings) tab.settings.useMemory = false;
+    });
+    if (!String(workModeMemoryName || '').trim()) {
+      workModeMemoryContent = '';
+      workModeMemoryFreshPending = false;
+      workModeSettings.useMemory = false;
+    }
+    if (fileModalState.kind === 'current-memory') closeFileModal();
+    workModeMemoryMenuOpen = 'enable';
+    saveActiveWorkModeTabState();
+    updateWorkModeSettingsStatus();
+    showToast(data.message || 'Deleted Current Memory.', 'success', 2800);
+  } catch (err) {
+    showToast(err.message || 'Could not delete Current Memory.', 'warning', 3800);
+  }
+}
 async function deleteWorkModeMemoryFile(name) {
   const clean = String(name || '').trim();
   if (!clean) return;
@@ -25748,7 +25819,6 @@ async function openWorkModeAgentGOStylingEditor() {
     sizeBytes: String((data && data.content) || '').length
   };
   renderWorkModeActiveFile();
-  setWorkModeStatus('Editing AgentGO Styling. Click Save to keep changes, Default to load the built-in text, or X to close.');
 }
 async function openWorkModeFile(path) {
   const clean = String(path || '').trim();
@@ -29209,10 +29279,13 @@ if (workModePromptStatus) workModePromptStatus.addEventListener('click', event =
   const loadMemory = event.target.closest('[data-work-memory-load]');
   const openMemory = event.target.closest('[data-work-memory-open]');
   const deleteMemory = event.target.closest('[data-work-memory-delete]');
+  const openCurrentMemory = event.target.closest('[data-work-memory-open-current]');
+  const deleteCurrentMemory = event.target.closest('[data-work-memory-delete-current]');
+  const turnOffMemory = event.target.closest('[data-work-memory-turn-off]');
   const saveMemory = event.target.closest('[data-work-memory-save]');
   const dontSaveMemory = event.target.closest('[data-work-memory-dont-save]');
   const cancelMemory = event.target.closest('[data-work-memory-cancel]');
-  if (!maxReturn && !toggle && !newMemory && !continueMemory && !loadMemory && !openMemory && !deleteMemory && !saveMemory && !dontSaveMemory && !cancelMemory) return;
+  if (!maxReturn && !toggle && !newMemory && !continueMemory && !loadMemory && !openMemory && !deleteMemory && !openCurrentMemory && !deleteCurrentMemory && !turnOffMemory && !saveMemory && !dontSaveMemory && !cancelMemory) return;
   event.preventDefault();
   event.stopPropagation();
   if (maxReturn) return openWorkModeMaxTokensModal();
@@ -29222,6 +29295,9 @@ if (workModePromptStatus) workModePromptStatus.addEventListener('click', event =
   if (loadMemory) return loadWorkModeMemoryFile(loadMemory.getAttribute('data-work-memory-load') || '');
   if (openMemory) return openWorkModeMemoryFileEditor(openMemory.getAttribute('data-work-memory-open') || '');
   if (deleteMemory) return deleteWorkModeMemoryFile(deleteMemory.getAttribute('data-work-memory-delete') || '');
+  if (openCurrentMemory) return openCurrentWorkModeMemoryEditor();
+  if (deleteCurrentMemory) return deleteCurrentWorkModeMemory();
+  if (turnOffMemory) return requestTurnOffWorkModeMemory();
   if (saveMemory) return saveCurrentWorkModeMemory();
   if (dontSaveMemory) return turnOffWorkModeMemoryWithoutSaving();
   if (cancelMemory) return cancelTurnOffWorkModeMemory();
