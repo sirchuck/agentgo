@@ -12,6 +12,12 @@ Subheaders: use <h4 style="color:#8aa6c9">.
 
 If you choose to use color for additional emphasis, warnings, attention, or another useful distinction, first draw from the AgentGO accent palette: green #7EE7A8, yellow #FFE27C, orange #FF9900, and red #FF9696. Apply color with <span style="color:#RRGGBB">text</span>. Other six-digit hexadecimal colors may be used when they better serve the response, but preserve the normal AgentGO reply styling as the default.
 
+Note: AgentGO triggers code highlighting only when a `<span>` includes the `agentgo-code-change` class. All other HTML inside code blocks is displayed as literal, unrendered code.
+Example 1 — default code-block highlight:
+`<span class="agentgo-code-change">...</span>`
+Example 2 — custom code-block highlight color:
+`<span class="agentgo-code-change" style="color:#FFFFFF;">...</span>`
+
 Body text: use <p>.
 
 Bullets: use <ul><li>. Use <ol><li> only when order matters.

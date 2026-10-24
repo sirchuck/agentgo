@@ -94,6 +94,7 @@ type AppConfig struct {
 	PromptVersion               int           `json:"prompt_version"`
 	WireTap                     WireTapLimits `json:"wiretap"`
 	Monitor                     MonitorConfig `json:"monitor,omitempty"`
+	Mail                        MailConfig    `json:"mail,omitempty"`
 	AutoMergeSingleBuilderWaves *bool         `json:"auto_merge_single_builder_waves,omitempty"`
 	Models                      []ModelConfig `json:"-"`
 }
@@ -159,6 +160,7 @@ type ModelConfig struct {
 	ModelName                           string                          `json:"model_name"`
 	Headers                             map[string]string               `json:"headers"`
 	MaxOutputTokens                     int                             `json:"max_output_tokens,omitempty"`
+	WorkModeRetries                     int                             `json:"work_mode_retries,omitempty"`
 	TimeoutSeconds                      int                             `json:"timeout_seconds,omitempty"`
 	RequestDefaults                     RequestDefaults                 `json:"request_defaults"`
 	ProviderOptions                     map[string]any                  `json:"provider_options"`
@@ -380,6 +382,7 @@ type App struct {
 	kokoro                      *kokoroManager
 	monitor                     *monitorManager
 	monitorAI                   *monitorAIManager
+	mail                        *mailManager
 }
 
 type LogEntry struct {
@@ -3072,6 +3075,7 @@ func main() {
 	app.monitorAI = newMonitorAIManager(app, monitorRoot)
 	app.monitorAI.Start()
 	defer app.monitorAI.Stop()
+	app.mail = newMailManager(app, filepath.Join(app.appRoot, "mail"))
 
 	mux := http.NewServeMux()
 	mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
@@ -3142,6 +3146,7 @@ func main() {
 	mux.HandleFunc("/api/work-mode/styling", app.withWorkModeRecovery("/api/work-mode/styling", app.handleWorkModeStyling))
 	mux.HandleFunc("/api/work-mode/settings", app.withWorkModeRecovery("/api/work-mode/settings", app.handleWorkModeSettings))
 	mux.HandleFunc("/api/work-mode/memory", app.withWorkModeRecovery("/api/work-mode/memory", app.handleWorkModeMemory))
+	mux.HandleFunc("/api/work-mode/memory/file", app.withWorkModeRecovery("/api/work-mode/memory/file", app.handleWorkModeMemoryFile))
 	mux.HandleFunc("/api/work-mode/memory/new", app.withWorkModeRecovery("/api/work-mode/memory/new", app.handleWorkModeMemoryNew))
 	mux.HandleFunc("/api/work-mode/memory/load", app.withWorkModeRecovery("/api/work-mode/memory/load", app.handleWorkModeMemoryLoad))
 	mux.HandleFunc("/api/work-mode/memory/save", app.withWorkModeRecovery("/api/work-mode/memory/save", app.handleWorkModeMemorySave))
@@ -3167,6 +3172,7 @@ func main() {
 	mux.HandleFunc("/api/monitor/ai/state", app.handleMonitorAIState)
 	mux.HandleFunc("/api/monitor/ai/report", app.handleMonitorAIReport)
 	mux.HandleFunc("/api/monitor/ai/chat", app.handleMonitorAIChat)
+	mux.HandleFunc("/api/monitor/ai/clear", app.handleMonitorAIClear)
 	mux.HandleFunc("/api/monitor/ai/memory", app.handleMonitorAIMemory)
 	mux.HandleFunc("/api/monitor/item/details", app.handleMonitorItemDetails)
 	mux.HandleFunc("/api/monitor/item/hash", app.handleMonitorItemHash)
@@ -3174,6 +3180,22 @@ func main() {
 	mux.HandleFunc("/api/monitor/item/ai", app.handleMonitorItemAI)
 	mux.HandleFunc("/api/monitor/item/known", app.handleMonitorItemKnown)
 	mux.HandleFunc("/api/monitor/item/virustotal", app.handleMonitorItemVirusTotal)
+	mux.HandleFunc("/api/email/state", app.handleMailState)
+	mux.HandleFunc("/api/email/clear-local", app.handleMailClearLocal)
+	mux.HandleFunc("/api/email/messages/delete", app.handleMailMessagesDelete)
+	mux.HandleFunc("/api/email/settings", app.handleMailSettings)
+	mux.HandleFunc("/api/email/accounts/save", app.handleMailAccountSave)
+	mux.HandleFunc("/api/email/accounts/toggle", app.handleMailAccountToggle)
+	mux.HandleFunc("/api/email/accounts/delete", app.handleMailAccountDelete)
+	mux.HandleFunc("/api/email/accounts/test", app.handleMailAccountTest)
+	mux.HandleFunc("/api/email/new-count", app.handleMailNewCount)
+	mux.HandleFunc("/api/email/check", app.handleMailCheck)
+	mux.HandleFunc("/api/email/rescan", app.handleMailRescan)
+	mux.HandleFunc("/api/email/cancel", app.handleMailCancel)
+	mux.HandleFunc("/api/email/message", app.handleMailMessage)
+	mux.HandleFunc("/api/email/ai/check", app.handleMailAICheck)
+	mux.HandleFunc("/api/email/ai/analyze", app.handleMailAnalyze)
+	mux.HandleFunc("/api/email/reply", app.handleMailCreateReply)
 	mux.HandleFunc("/api/diagnostics/stream", app.handleDiagnosticsStream)
 	mux.HandleFunc("/api/diagnostics/file", app.handleDiagnosticsFile)
 	mux.HandleFunc("/api/files", app.handleListFiles)
@@ -3460,6 +3482,7 @@ func applyConfigDefaults(cfg *AppConfig) {
 	}
 	cfg.WireTap = normalizeWireTapLimits(cfg.WireTap)
 	cfg.Monitor = normalizeMonitorConfig(cfg.Monitor)
+	cfg.Mail = normalizeMailConfig(cfg.Mail)
 	if cfg.RiskModeMaxIterations <= 0 {
 		cfg.RiskModeMaxIterations = 10
 	}
@@ -3616,7 +3639,7 @@ func isProtectedFileManagerFile(rel string) bool {
 }
 
 func handleFavicon(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/assets/frostcandy_logo_font.png", http.StatusTemporaryRedirect)
+	http.ServeFile(w, r, filepath.Join("assets", "favicon.ico"))
 }
 
 // loadReleaseInfo loads the visible app release tag from version.json.
@@ -4702,6 +4725,49 @@ func (a *App) handleWorkModeMemory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+func (a *App) handleWorkModeMemoryFile(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	projectName, err := a.requireActiveProject()
+	if err != nil {
+		http.Error(w, "Select an active project first.", http.StatusBadRequest)
+		return
+	}
+	modelID := strings.TrimSpace(r.URL.Query().Get("modelId"))
+	_, metaRoot, err := a.workModeMemoryMetaRoot(modelID, projectName)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	displayName, fileName, err := normalizeWorkModeMemoryFileName(r.URL.Query().Get("name"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	memoriesRoot, err := workModeMemoriesRoot(metaRoot)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	full, err := safeJoin(memoriesRoot, fileName)
+	if err != nil {
+		http.Error(w, "invalid memory file", http.StatusBadRequest)
+		return
+	}
+	data, err := os.ReadFile(full)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			http.Error(w, "saved memory file was not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, workModeMemoryResponse{Name: displayName, Content: string(data)})
 }
 
 func (a *App) decodeWorkModeMemoryRequest(w http.ResponseWriter, r *http.Request) (workModeMemoryRequest, string, string, error) {
@@ -6092,6 +6158,75 @@ func normalizeLiteralLineBreaksInJSONStringValues(raw string) (string, bool) {
 	return normalized.String(), changed
 }
 
+func normalizeRepairedWorkModeReplyNewlines(reply string) (string, bool) {
+	if !strings.Contains(reply, `\n`) && !strings.Contains(reply, `\r\n`) {
+		return reply, false
+	}
+
+	var normalized strings.Builder
+	normalized.Grow(len(reply))
+	codeDepth := 0
+	inFence := false
+	inInlineCode := false
+	changed := false
+
+	for i := 0; i < len(reply); {
+		if reply[i] == '<' {
+			if offset := strings.IndexByte(reply[i:], '>'); offset >= 0 {
+				end := i + offset + 1
+				tag := reply[i:end]
+				lowerTag := strings.ToLower(strings.TrimSpace(tag))
+				if strings.HasPrefix(lowerTag, "<code") && len(lowerTag) > 5 && (lowerTag[5] == ' ' || lowerTag[5] == '\t' || lowerTag[5] == '>') {
+					codeDepth++
+				} else if strings.HasPrefix(lowerTag, "</code") && codeDepth > 0 {
+					codeDepth--
+				}
+				normalized.WriteString(tag)
+				i = end
+				continue
+			}
+		}
+
+		if codeDepth == 0 {
+			if strings.HasPrefix(reply[i:], "```") {
+				inFence = !inFence
+				normalized.WriteString("```")
+				i += 3
+				continue
+			}
+			if !inFence && reply[i] == '`' {
+				inInlineCode = !inInlineCode
+				normalized.WriteByte(reply[i])
+				i++
+				continue
+			}
+		}
+
+		if codeDepth == 0 && !inFence && !inInlineCode && reply[i] == '\\' && (i == 0 || reply[i-1] != '\\') {
+			if strings.HasPrefix(reply[i:], `\r\n`) {
+				normalized.WriteByte('\n')
+				i += len(`\r\n`)
+				changed = true
+				continue
+			}
+			if strings.HasPrefix(reply[i:], `\n`) {
+				normalized.WriteByte('\n')
+				i += len(`\n`)
+				changed = true
+				continue
+			}
+		}
+
+		normalized.WriteByte(reply[i])
+		i++
+	}
+
+	if !changed {
+		return reply, false
+	}
+	return normalized.String(), true
+}
+
 func workModeJSONRepairPayload(original adapterRequestPayload, rawResponse string, parseErr error) adapterRequestPayload {
 	parseText := "unknown parse error"
 	if parseErr != nil {
@@ -6101,7 +6236,7 @@ func workModeJSONRepairPayload(original adapterRequestPayload, rawResponse strin
 
 Return exactly one valid AgentGO Work Mode JSON envelope and no text outside it. Preserve the user's visible reply, files, artifacts, memory, warnings, and review fields from the raw response when possible. Repair only JSON syntax and schema-shape problems. Do not invent new project facts, do not add new files, and do not summarize the response.
 
-The first non-whitespace character must be { and the last non-whitespace character must be }. Escape inner double quotes as \", escape backslashes as \\, and encode line breaks as \n inside string values.`)
+The first non-whitespace character must be { and the last non-whitespace character must be }. Escape inner double quotes as \". For intended line breaks inside JSON string values, use exactly one JSON newline escape (\n). Escape a backslash as \\ only when the visible value itself needs a literal backslash. Do not turn an existing newline escape into \\n unless the visible value intentionally needs the literal characters backslash+n.`)
 	repairText := strings.TrimSpace("JSON PARSE ERROR:\n" + parseText + "\n\nRAW WORK MODE RESPONSE TO REPAIR:\n" + rawResponse)
 	return adapterRequestPayload{
 		Instructions: instructions,
@@ -6132,6 +6267,10 @@ func (a *App) repairAndParseWorkModeAdapterResponse(ctx context.Context, model M
 			RepairResponse:     repairResp.Text,
 			RepairRawBody:      repairResp.RawBody,
 		}
+	}
+	if normalizedReply, changed := normalizeRepairedWorkModeReplyNewlines(parsed.Reply); changed {
+		parsed.Reply = normalizedReply
+		parsed.Normalizations = append(parsed.Normalizations, "AgentGO normalized double-escaped newline markers in the repaired Work Mode reply while preserving code literals.")
 	}
 	parsed.RepairDetail = &workModeJSONRepairDetail{
 		OriginalParseError: errorString(originalErr),
@@ -6412,28 +6551,6 @@ func normalizeWorkModeSelectedFiles(input []string, projectName string) ([]strin
 	return out, seen, nil
 }
 
-const agentGOHighlighterMarker = "Help the user quickly identify changes you make to user-provided code or"
-
-func splitAgentGOStylingPrompt(agentGOStyling string) (string, string) {
-	trimmed := strings.TrimSpace(agentGOStyling)
-	if trimmed == "" {
-		return "", ""
-	}
-	marker := "\n" + agentGOHighlighterMarker
-	index := strings.LastIndex(trimmed, marker)
-	if index < 0 {
-		if strings.HasPrefix(trimmed, agentGOHighlighterMarker) {
-			return "", trimmed
-		}
-		return trimmed, ""
-	}
-	return strings.TrimSpace(trimmed[:index]), strings.TrimSpace(trimmed[index+1:])
-}
-
-func appendAgentGOHighlighter(instructions, highlighter string) string {
-	return joinNonEmptyWithDoubleNewlines(strings.TrimSpace(instructions), strings.TrimSpace(highlighter))
-}
-
 func workModeStructuredOutputContract(promptEnforcedJSON bool) string {
 	if !promptEnforcedJSON {
 		return strings.TrimSpace(`STRUCTURED OUTPUT
@@ -6463,7 +6580,7 @@ When an artifact is required, use exactly "encoding": "base64".
 For file actions, use exactly "create" or "overwrite". Include one file object for each individual file operation.`)
 }
 
-func buildWorkModeInstructionParts(model ModelConfig, includeRoleContext, useMemory bool, responseMode string, updateableFiles []string, agentGOStyling, modelCorrections string) (string, string) {
+func buildWorkModeInstructionParts(model ModelConfig, includeRoleContext, useMemory bool, responseMode string, updateableFiles []string, agentGOStyling, modelCorrections string) string {
 	fileMode := strings.TrimSpace(`WORK MODE FILE OPERATIONS
 
 ` + workModeStructuredOutputContract(model.PromptEnforcedJSON) + `
@@ -6517,23 +6634,21 @@ CONTEXT LIMITS
 	if modeInstruction := chatResponseModeInstruction(responseMode); modeInstruction != "" {
 		instructions += "\n\nRESPONSE MODE\n- " + modeInstruction
 	}
-	styleText, highlighter := splitAgentGOStylingPrompt(agentGOStyling)
-	if styleText != "" {
+	if styleText := strings.TrimSpace(agentGOStyling); styleText != "" {
 		instructions += "\n\nAGENTGO STYLING\n" + styleText
 	}
 	if modelCorrections = strings.TrimSpace(modelCorrections); modelCorrections != "" {
 		instructions += "\n\nMODEL CORRECTIONS (WORK MODE BUILDER ONLY)\nThese user-approved instructions apply only while this configured model is acting as an AI Builder in Work Mode.\n" + modelCorrections
 	}
-	return appendModelUggProtocol(instructions, model), highlighter
+	return appendModelUggProtocol(instructions, model)
 }
 
 func buildWorkModeInstructions(model ModelConfig, includeRoleContext, useMemory bool, responseMode string, updateableFiles []string, agentGOStyling, modelCorrections string) string {
-	instructions, highlighter := buildWorkModeInstructionParts(model, includeRoleContext, useMemory, responseMode, updateableFiles, agentGOStyling, modelCorrections)
-	return appendAgentGOHighlighter(instructions, highlighter)
+	return buildWorkModeInstructionParts(model, includeRoleContext, useMemory, responseMode, updateableFiles, agentGOStyling, modelCorrections)
 }
 
 func workModeObserverReviewWorkerInstructions(model ModelConfig, includeRoleContext, useMemory bool, responseMode string, updateableFiles []string, agentGOStyling, modelCorrections string) string {
-	instructions, highlighter := buildWorkModeInstructionParts(model, includeRoleContext, useMemory, responseMode, updateableFiles, agentGOStyling, modelCorrections)
+	instructions := buildWorkModeInstructionParts(model, includeRoleContext, useMemory, responseMode, updateableFiles, agentGOStyling, modelCorrections)
 	instructions += strings.TrimSpace(`
 
 OBSERVER REVIEW MODE
@@ -6570,7 +6685,7 @@ OBSERVER REVIEW MEMORY OWNERSHIP
 - Keep durable user/project decisions, final chosen direction, important file/path facts, and next-step context likely needed for follow-up.
 - Return the complete updated compact memory.md content in the JSON memory field on every Worker pass while memory is enabled.`)
 	}
-	return appendAgentGOHighlighter(instructions, highlighter)
+	return instructions
 }
 
 func workModeObserverInstructions(model ModelConfig) string {
@@ -7067,6 +7182,59 @@ func (a *App) workModeOutputLimitWarning(model ModelConfig, resp adapters.Respon
 		return ""
 	}
 	return "The Builder response is close to your custom Max Output guardrail. Choose Automatic Maximum or raise the custom token limit if responses are cut off."
+}
+
+const maxWorkModeRetries = 10
+
+func normalizeWorkModeRetries(value int) int {
+	if value <= 0 {
+		return 0
+	}
+	if value > maxWorkModeRetries {
+		return maxWorkModeRetries
+	}
+	return value
+}
+
+func workModeRetryStageMessage(base string, retryIndex, retryLimit int) string {
+	base = strings.TrimSpace(base)
+	if retryLimit <= 0 {
+		return base
+	}
+	return fmt.Sprintf("%s · Retry %d of %d", base, retryIndex, retryLimit)
+}
+
+func workModeProviderErrorRetryable(err error) bool {
+	if err == nil || errors.Is(err, context.Canceled) {
+		return false
+	}
+	text := strings.ToLower(strings.TrimSpace(err.Error()))
+	if text == "" {
+		return false
+	}
+	for _, marker := range []string{
+		"unauthorized", "forbidden", "authentication", "invalid api key", "api key is invalid",
+		"status 400", "returned 400", "status 401", "returned 401", "status 403", "returned 403",
+		"status 404", "returned 404", "not found", "unknown model", "model does not exist",
+		"unsupported", "invalid request", "malformed request", "context length", "context window",
+		"too many tokens", "maximum context", "payload too large", "request too large",
+	} {
+		if strings.Contains(text, marker) {
+			return false
+		}
+	}
+	return true
+}
+
+func workModeResponseErrorRetryable(err error) bool {
+	if err == nil {
+		return false
+	}
+	text := strings.ToLower(strings.TrimSpace(err.Error()))
+	if strings.Contains(text, "context canceled") || strings.Contains(text, "request canceled") {
+		return false
+	}
+	return true
 }
 
 func normalizeWorkModeMaxPasses(value int) int {
@@ -8443,6 +8611,10 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 	}
 	model := roles.Worker
 	enforceWorkModeAgenticContextIsolation(&req, &model)
+	retryLimit := 0
+	if !req.Agentic.Enabled {
+		retryLimit = normalizeWorkModeRetries(model.WorkModeRetries)
+	}
 	projectworkRoot, err := a.projectWorkRoot(projectName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -8618,6 +8790,7 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 		a.setActiveCancelLocked(agenticBuilderCancelKey(agenticTaskID), projectName, executionID, cancel)
 	}
 	normalState := newWorkModeSessionState(projectName, roles, false, 3, req.Prompt)
+	normalState.StageMessage = workModeRetryStageMessage("Sending Work Mode prompt...", 0, retryLimit)
 	if req.Agentic.Enabled {
 		normalState.Mode = workModeModeAgenticStaged
 	}
@@ -8651,25 +8824,59 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 	}
 	instructions = appendWorkModeFinalOutputRequirement(instructions)
 	requestPayload.Instructions = strings.TrimSpace(instructions)
-	adapterResp, err := a.executeAdapterResponse(ctx, model, requestPayload)
-	if err != nil {
-		if req.Agentic.Enabled && agenticTaskID != "" {
-			agenticManualDecisionMu.Lock()
-			if _, usageErr := a.recordAgenticBuilderCallUsage(projectName, agenticTaskID, requestPayload, nil); usageErr != nil {
-				a.logf("system", "warn", "Could not preserve agentic Builder token estimate after request failure: %v", usageErr)
-			}
-			agenticManualDecisionMu.Unlock()
+	var adapterResp adapters.Response
+	var parsed workModeAIResponse
+	parsedReady := false
+	retryIndex := 0
+	for {
+		stage := workModeRetryStageMessage("Sending Work Mode prompt...", retryIndex, retryLimit)
+		if retryIndex > 0 {
+			stage = workModeRetryStageMessage("Retrying Work Mode prompt...", retryIndex, retryLimit)
 		}
-		if errors.Is(err, context.Canceled) {
-			a.mu.Lock()
-			a.updateWorkModeSessionStatusLocked(projectName, workModeStatusEmergencyStopped, workModeCallOwnerNone)
-			a.mu.Unlock()
-			http.Error(w, "Work Mode request canceled", http.StatusGatewayTimeout)
+		a.updateWorkModeSessionStage(projectName, executionID, stage, workModeCallOwnerWorker)
+		adapterResp, err = a.executeAdapterResponse(ctx, model, requestPayload)
+		if err != nil {
+			if req.Agentic.Enabled && agenticTaskID != "" {
+				agenticManualDecisionMu.Lock()
+				if _, usageErr := a.recordAgenticBuilderCallUsage(projectName, agenticTaskID, requestPayload, nil); usageErr != nil {
+					a.logf("system", "warn", "Could not preserve agentic Builder token estimate after request failure: %v", usageErr)
+				}
+				agenticManualDecisionMu.Unlock()
+			}
+			if errors.Is(err, context.Canceled) {
+				a.mu.Lock()
+				a.updateWorkModeSessionStatusLocked(projectName, workModeStatusEmergencyStopped, workModeCallOwnerNone)
+				a.mu.Unlock()
+				http.Error(w, "Work Mode request canceled", http.StatusGatewayTimeout)
+				return
+			}
+			if !req.Agentic.Enabled && retryIndex < retryLimit && workModeProviderErrorRetryable(err) {
+				retryIndex++
+				a.logf(modelIDString(model.ID), "warn", "Work Mode provider request failed for project %s; Retry %d of %d: %v", projectName, retryIndex, retryLimit, err)
+				continue
+			}
+			diagnostic := a.publishWorkModeFailureDiagnostic(projectName, model, executionID, "Request Failed", "provider execution", http.StatusBadGateway, err, requestPayload, adapters.Response{}, nil)
+			writeWorkModeFailure(w, http.StatusBadGateway, "work_mode_provider_failed", err.Error(), diagnostic, nil)
 			return
 		}
-		diagnostic := a.publishWorkModeFailureDiagnostic(projectName, model, executionID, "Request Failed", "provider execution", http.StatusBadGateway, err, requestPayload, adapters.Response{}, nil)
-		writeWorkModeFailure(w, http.StatusBadGateway, "work_mode_provider_failed", err.Error(), diagnostic, nil)
-		return
+		if !req.Agentic.Enabled {
+			var repairedResp adapters.Response
+			parsed, repairedResp, err = a.parseOrRepairWorkModeAdapterResponse(ctx, model, requestPayload, adapterResp, projectworkRoot, projectName)
+			if err != nil {
+				if retryIndex < retryLimit && workModeResponseErrorRetryable(err) {
+					retryIndex++
+					a.logf(modelIDString(model.ID), "warn", "Work Mode response could not be read for project %s; Retry %d of %d: %v", projectName, retryIndex, retryLimit, err)
+					continue
+				}
+				a.logf(modelIDString(model.ID), "warn", "Work Mode response parse failed: %v", err)
+				diagnostic := a.publishWorkModeFailureDiagnostic(projectName, model, executionID, "Response Rejected", "response parsing or schema validation", http.StatusBadGateway, err, requestPayload, repairedResp, nil)
+				writeWorkModeJSONError(w, err, repairedResp.Text, diagnostic, newWorkModeCorrectionCandidate(model, "Invalid Work Mode JSON response", "Return exactly one valid AgentGO Work Mode JSON envelope matching the schema.", err.Error(), repairedResp.Text, diagnostic))
+				return
+			}
+			adapterResp = repairedResp
+			parsedReady = true
+		}
+		break
 	}
 	responsePayload := requestPayload
 	responsePass := 1
@@ -8716,7 +8923,6 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	var parsed workModeAIResponse
 	normalizationDiagnostics := []diagnosticsEntry{}
 	var correctionCandidate *workModeCorrectionCandidate
 	var agenticResult *workModeAgenticResult
@@ -8788,16 +8994,9 @@ func (a *App) handleWorkModeSend(w http.ResponseWriter, r *http.Request) {
 			auditRecord.Command = cloneWorkModeAgenticCommand(result.Command)
 		}
 		_, _ = a.appendAgenticAuditRecord(projectName, agenticTaskID, auditRecord)
-	} else {
-		var repairedResp adapters.Response
-		parsed, repairedResp, err = a.parseOrRepairWorkModeAdapterResponse(ctx, model, responsePayload, adapterResp, projectworkRoot, projectName)
-		if err != nil {
-			a.logf(modelIDString(model.ID), "warn", "Work Mode response parse failed: %v", err)
-			diagnostic := a.publishWorkModeFailureDiagnostic(projectName, model, executionID, "Response Rejected", "response parsing or schema validation", http.StatusBadGateway, err, responsePayload, repairedResp, nil)
-			writeWorkModeJSONError(w, err, repairedResp.Text, diagnostic, newWorkModeCorrectionCandidate(model, "Invalid Work Mode JSON response", "Return exactly one valid AgentGO Work Mode JSON envelope matching the schema.", err.Error(), repairedResp.Text, diagnostic))
-			return
-		}
-		adapterResp = repairedResp
+	} else if !parsedReady {
+		http.Error(w, "Work Mode response parsing did not complete", http.StatusInternalServerError)
+		return
 	}
 	if parsed.MemoryIssue != "" {
 		a.logf(modelIDString(model.ID), "warn", "%s", parsed.MemoryIssue)
@@ -13192,6 +13391,10 @@ func (a *App) handleStop(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	mailCanceled := 0
+	if a.mail != nil {
+		mailCanceled = a.mail.EmergencyStop()
+	}
 	type stoppedDoubleTapRef struct {
 		ProjectName string
 		ExecutionID string
@@ -13260,7 +13463,7 @@ func (a *App) handleStop(w http.ResponseWriter, r *http.Request) {
 	if wasRisk {
 		a.logRiskf("system", "warn", "RISK MODE ENDED: Emergency Stop canceled %d active request(s)", count)
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "canceled": count, "riskModeStopped": wasRisk, "resetAIContexts": resetCount})
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "canceled": count + mailCanceled, "mailCanceled": mailCanceled, "riskModeStopped": wasRisk, "resetAIContexts": resetCount})
 }
 
 func (a *App) handleEndWorkflowEnd(w http.ResponseWriter, r *http.Request) {
@@ -25503,6 +25706,12 @@ Subheaders: use <h4 style="color:#8aa6c9">.
 
 If you choose to use color for additional emphasis, warnings, attention, or another useful distinction, first draw from the AgentGO accent palette: green #7EE7A8, yellow #FFE27C, orange #FF9900, and red #FF9696. Apply color with <span style="color:#RRGGBB">text</span>. Other six-digit hexadecimal colors may be used when they better serve the response, but preserve the normal AgentGO reply styling as the default.
 
+Note: AgentGO triggers code highlighting only when a ` + "`<span>`" + ` includes the ` + "`agentgo-code-change`" + ` class. All other HTML inside code blocks is displayed as literal, unrendered code.
+Example 1 — default code-block highlight:
+` + "`<span class=\"agentgo-code-change\">...</span>`" + `
+Example 2 — custom code-block highlight color:
+` + "`<span class=\"agentgo-code-change\" style=\"color:#FFFFFF;\">...</span>`" + `
+
 Body text: use <p>.
 
 Bullets: use <ul><li>. Use <ol><li> only when order matters.
@@ -25976,6 +26185,7 @@ type modelDefinitionView struct {
 	APIPath                             string                          `json:"api_path"`
 	ModelName                           string                          `json:"model_name"`
 	MaxOutputTokens                     int                             `json:"max_output_tokens,omitempty"`
+	WorkModeRetries                     int                             `json:"work_mode_retries"`
 	MaxOutputMode                       string                          `json:"max_output_mode"`
 	KnownMaxOutputTokens                int                             `json:"known_max_output_tokens,omitempty"`
 	EffectiveMaxOutputTokens            int                             `json:"effective_max_output_tokens,omitempty"`
@@ -26038,6 +26248,7 @@ type modelMutationRequest struct {
 	Headers                       map[string]string `json:"headers"`
 	ClearHeaders                  bool              `json:"clear_headers,omitempty"`
 	MaxOutputTokens               int               `json:"max_output_tokens"`
+	WorkModeRetries               int               `json:"work_mode_retries"`
 	TimeoutSeconds                int               `json:"timeout_seconds"`
 	RequestDefaults               RequestDefaults   `json:"request_defaults"`
 	ProviderOptions               map[string]any    `json:"provider_options"`
@@ -26165,6 +26376,9 @@ func validateModelMutation(req modelMutationRequest) error {
 	}
 	if req.MaxOutputTokens < 0 || req.MaxOutputTokens > 2000000 {
 		return errors.New("max output tokens must be between 0 and 2000000")
+	}
+	if req.WorkModeRetries < 0 || req.WorkModeRetries > 10 {
+		return errors.New("work mode retries must be between 0 and 10")
 	}
 	switch req.AuthType {
 	case "none", "bearer", "basic", "header_key", "fal_key", "google_adc":
@@ -26782,6 +26996,7 @@ func (a *App) sanitizeModelDefinition(model ModelConfig) modelDefinitionView {
 		APIPath:                             model.APIPath,
 		ModelName:                           model.ModelName,
 		MaxOutputTokens:                     model.MaxOutputTokens,
+		WorkModeRetries:                     model.WorkModeRetries,
 		MaxOutputMode:                       resolution.Mode,
 		KnownMaxOutputTokens:                resolution.KnownTokens,
 		EffectiveMaxOutputTokens:            resolution.EffectiveTokens,
@@ -27475,6 +27690,7 @@ func (a *App) handleCreateModel(w http.ResponseWriter, r *http.Request) {
 		ModelName:                     req.ModelName,
 		Headers:                       req.Headers,
 		MaxOutputTokens:               req.MaxOutputTokens,
+		WorkModeRetries:               req.WorkModeRetries,
 		TimeoutSeconds:                req.TimeoutSeconds,
 		RequestDefaults:               req.RequestDefaults,
 		ProviderOptions:               req.ProviderOptions,
@@ -27607,6 +27823,7 @@ func (a *App) handleUpdateModel(w http.ResponseWriter, r *http.Request) {
 			a.cfg.Models[i].Headers = req.Headers
 		}
 		a.cfg.Models[i].MaxOutputTokens = req.MaxOutputTokens
+		a.cfg.Models[i].WorkModeRetries = req.WorkModeRetries
 		a.cfg.Models[i].TimeoutSeconds = req.TimeoutSeconds
 		a.cfg.Models[i].RequestDefaults = req.RequestDefaults
 		a.cfg.Models[i].ProviderOptions = req.ProviderOptions

@@ -814,10 +814,17 @@
 }
 .monitor-topbar>.monitor-close-btn{
   position:absolute;
-  right:4px;
-  top:50%;
-  transform:translateY(-50%);
-  margin:0;
+  right:3px;
+  top:0;
+  bottom:0;
+  margin:auto 0;
+  height:41px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  line-height:1;
+  transform:none;
+  box-sizing:border-box;
 }
 
 /* The left navigation now floats directly over the Yeti artwork. */
@@ -1469,3 +1476,8 @@
   text-overflow:clip;
   overflow-wrap:anywhere;
 }
+
+/* Shared Yeti star layer */
+.agentgo-monitor-overlay::before{z-index:0}
+.agentgo-monitor-overlay .yeti-stars-canvas{z-index:1}
+.monitor-shell{z-index:2}

@@ -164,6 +164,7 @@
     overlay.className = 'agentgo-monitor-overlay';
     overlay.setAttribute('aria-hidden', 'true');
     overlay.innerHTML = `
+      <canvas class="yeti-stars-canvas" data-yeti-stars aria-hidden="true"></canvas>
       <div class="monitor-shell">
         <aside class="monitor-sidebar" aria-label="AgentGO Monitor navigation">
           <button class="monitor-side-btn" type="button" data-monitor-nav="desktop"><span class="monitor-side-icon">▣</span><span>Desktop</span></button>
@@ -217,7 +218,7 @@
                 <div class="monitor-event-list" id="monitorEventList"><div class="monitor-empty">No Monitor events yet.</div></div>
               </section>
               <section class="monitor-ai-panel monitor-glass" id="monitorAIPanel">
-                <div class="monitor-ai-head"><h3>AI Chat &amp; Reports</h3><span class="monitor-ai-status" id="monitorAIStatus">AI idle</span><div class="monitor-ai-actions"><button class="monitor-ai-head-btn primary" id="monitorReportNowBtn" type="button">Report Now</button><button class="monitor-ai-head-btn" id="monitorScheduleBtn" type="button">Schedule</button><button class="monitor-ai-head-btn maximize" id="monitorAIMaximizeBtn" type="button" aria-label="Maximize AI Chat & Reports" title="Maximize AI Chat & Reports">⛶</button></div></div>
+                <div class="monitor-ai-head"><h3>AI Chat &amp; Reports</h3><span class="monitor-ai-status" id="monitorAIStatus">AI idle</span><div class="monitor-ai-actions"><button class="monitor-ai-head-btn primary" id="monitorReportNowBtn" type="button">Report Now</button><button class="monitor-ai-head-btn" id="monitorScheduleBtn" type="button">Schedule</button><button class="monitor-ai-head-btn" id="monitorAIClearBtn" type="button" title="Clear AI chat and report history">Clear</button><button class="monitor-ai-head-btn maximize" id="monitorAIMaximizeBtn" type="button" aria-label="Maximize AI Chat & Reports" title="Maximize AI Chat & Reports">⛶</button></div></div>
                 <div class="monitor-ai-feed" id="monitorAIFeed"><div class="monitor-ai-message monitor-ai-system"><strong>AgentGO Monitor</strong>Select an AI model to enable on-demand questions and system reviews. Scheduled reports are off by default.<span class="monitor-phase-badge">Phase 3 AI analyst</span></div></div>
                 <div class="monitor-ai-compose"><input id="monitorAIInput" type="text" placeholder="Ask a question about your system…"/><button class="monitor-ai-send" id="monitorAISendBtn" type="button">➤</button></div>
               </section>
@@ -226,6 +227,7 @@
         </main>
       </div>`;
     document.body.appendChild(overlay);
+    if (window.AgentGOYetiStars?.refresh) window.AgentGOYetiStars.refresh();
 
     const settings = document.createElement('div');
     settings.id = 'agentGOMonitorSettings';
@@ -501,6 +503,7 @@
     monitor.overlay.addEventListener('click', event => {
       if (event.target.closest('#monitorReportNowBtn')) return reportNow();
       if (event.target.closest('#monitorScheduleBtn')) return openSchedule();
+      if (event.target.closest('#monitorAIClearBtn')) return clearMonitorAIHistory();
       if (event.target.closest('#monitorAIMaximizeBtn')) return toggleAIMaximize();
       if (event.target.closest('#monitorAISendBtn')) return sendMonitorAIQuestion();
     });
@@ -736,9 +739,11 @@
     const busy = !!monitor.aiState?.summary?.busy;
     const hasModel = aiModelSelected();
     const report = document.getElementById('monitorReportNowBtn');
+    const clear = document.getElementById('monitorAIClearBtn');
     const send = document.getElementById('monitorAISendBtn');
     const input = document.getElementById('monitorAIInput');
     if (report) report.disabled = !hasModel || busy;
+    if (clear) clear.disabled = busy;
     if (send) send.disabled = !hasModel || busy;
     if (input) input.disabled = !hasModel || busy;
     const aiSummary = monitor.aiState?.summary || {};
@@ -819,6 +824,23 @@
     const status = document.getElementById('monitorAIStatus');
     if (status && working) status.textContent = label;
     renderAIControls();
+  }
+
+  async function clearMonitorAIHistory() {
+    if (monitor.aiState?.summary?.busy) return;
+    const button = document.getElementById('monitorAIClearBtn');
+    const previous = button?.textContent || 'Clear';
+    if (button) { button.disabled = true; button.textContent = 'Clearing…'; }
+    try {
+      await window.api('/api/monitor/ai/clear', { method:'DELETE', timeoutMs:10000 });
+      await loadAIState({ silent:true });
+      if (typeof window.showToast === 'function') window.showToast('Monitor AI chat and reports cleared.', 'success', 2600);
+    } catch (err) {
+      if (typeof window.showToast === 'function') window.showToast(err?.message || 'Could not clear Monitor AI chat and reports.', 'warning', 4200);
+    } finally {
+      if (button) button.textContent = previous;
+      renderAIControls();
+    }
   }
 
   async function reportNow() {
@@ -2490,6 +2512,7 @@
     monitor.open = true;
     monitor.overlay.classList.add('open');
     monitor.overlay.setAttribute('aria-hidden','false');
+    window.syncDiagnosticsDesktopAvailability?.();
     await sendPresence();
     await loadState({ toast:true });
     await loadAIModels();
@@ -2502,6 +2525,7 @@
     monitor.open = false;
     monitor.overlay.classList.remove('open');
     monitor.overlay.setAttribute('aria-hidden','true');
+    window.syncDiagnosticsDesktopAvailability?.();
     closeSettings();
     closeSchedule();
     closeMemoryViewer();

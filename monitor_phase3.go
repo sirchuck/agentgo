@@ -1317,6 +1317,29 @@ func (m *monitorAIManager) RunChat(ctx context.Context, cfg MonitorConfig, promp
 	return m.runModel(ctx, cfg, prompt, false, false)
 }
 
+func (m *monitorAIManager) ClearHistory() error {
+	if m == nil {
+		return errors.New("Monitor AI is unavailable")
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.inFlight {
+		return errors.New("Monitor AI is busy")
+	}
+	m.conversation = nil
+	if err := atomicWriteFile(m.conversationPath, []byte("[]\n"), 0o644); err != nil {
+		return err
+	}
+	m.state.LastReportAt = ""
+	m.state.LastReportStatus = ""
+	m.state.ActiveFindingKeys = nil
+	m.state.LastWarningFingerprint = ""
+	m.state.LatestNotification = nil
+	m.state.Sequence++
+	m.persistStateLocked()
+	return nil
+}
+
 func (m *monitorAIManager) ClearMemory() error {
 	if m == nil {
 		return errors.New("Monitor AI is unavailable")
@@ -1389,6 +1412,26 @@ func (a *App) handleMonitorAIChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, response)
+}
+
+func (a *App) handleMonitorAIClear(w http.ResponseWriter, r *http.Request) {
+	if a.monitorAI == nil {
+		http.Error(w, "Monitor AI unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := a.monitorAI.ClearHistory(); err != nil {
+		status := http.StatusInternalServerError
+		if strings.Contains(strings.ToLower(err.Error()), "busy") {
+			status = http.StatusConflict
+		}
+		http.Error(w, err.Error(), status)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
 func (a *App) handleMonitorAIMemory(w http.ResponseWriter, r *http.Request) {

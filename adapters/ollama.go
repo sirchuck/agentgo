@@ -14,10 +14,7 @@ import (
 
 type ollamaGenerateAdapter struct{}
 
-const (
-	defaultOllamaContextTokens = 16384
-	defaultOllamaOutputTokens  = 2048
-)
+const defaultOllamaContextTokens = 32768
 
 type ollamaGenerateRequest struct {
 	Model   string         `json:"model"`
@@ -31,8 +28,7 @@ type ollamaGenerateRequest struct {
 
 func ollamaRequestOptions(model ModelConfig) map[string]any {
 	options := map[string]any{
-		"num_ctx":     defaultOllamaContextTokens,
-		"num_predict": defaultOllamaOutputTokens,
+		"num_ctx": defaultOllamaContextTokens,
 	}
 	if nested := providerOptionMap(model, "options"); len(nested) > 0 {
 		for key, value := range nested {
@@ -47,8 +43,8 @@ func ollamaRequestOptions(model ModelConfig) map[string]any {
 	if _, exists := options["temperature"]; !exists && model.RequestDefaults.Temperature > 0 {
 		options["temperature"] = model.RequestDefaults.Temperature
 	}
-	// AgentGO's explicit Maximum Output control remains the final authority when
-	// the user selects a custom shared output limit.
+	// AgentGO's resolved Maximum Output value remains the final authority when
+	// a known model maximum or user-selected custom guardrail is available.
 	if model.MaxOutputTokens > 0 {
 		options["num_predict"] = model.MaxOutputTokens
 	}
