@@ -21393,16 +21393,38 @@ function renderWorkModeMarkdownFragment(value) {
   return html.join('');
 }
 function protectAgentGOHTMLCodeBody(value) {
-  const markers = [];
-  let raw = String(value || '');
-  raw = raw.replace(/<span\b[^>]*class\s*=\s*(?:"[^"]*\bagentgo-code-change\b[^"]*"|'[^']*\bagentgo-code-change\b[^']*')[^>]*>[\s\S]*?<\/span\s*>/gi, marker => {
-    const token = `\uE220${markers.length}\uE221`;
-    markers.push(marker);
-    return token;
-  });
-  raw = raw.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  markers.forEach((marker, index) => { raw = raw.replace(`\uE220${index}\uE221`, marker); });
-  return raw;
+  const raw = String(value || '');
+  const escapeCodeTags = text => String(text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // Only the explicitly marked change span is live markup inside code. Its
+  // contents (including ordinary nested HTML spans) must remain literal code.
+  // Match the marker's closing span by depth rather than stopping at the first
+  // </span>, which may belong to code nested inside the highlighted region.
+  const spanTags = /<\/?span\b(?:[^"'<>]|"[^"]*"|'[^']*')*>/gi;
+  let output = '';
+  let cursor = 0;
+  let tag;
+  while ((tag = spanTags.exec(raw))) {
+    const opening = tag[0];
+    if (!/^<span\b/i.test(opening)) continue;
+    const classAttr = opening.match(/\sclass\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
+    if (!classAttr || !String(classAttr[1] || classAttr[2] || '').split(/\s+/).includes('agentgo-code-change')) continue;
+    if (/\/\s*>$/.test(opening)) continue;
+    const openEnd = spanTags.lastIndex;
+    let depth = 1;
+    let closeTag = null;
+    let nested;
+    while ((nested = spanTags.exec(raw))) {
+      if (/^<\/span\b/i.test(nested[0])) depth--;
+      else if (!/\/\s*>$/.test(nested[0])) depth++;
+      if (!depth) { closeTag = nested; break; }
+    }
+    // An incomplete marker is source text, not permission to render HTML.
+    if (!closeTag) break;
+    output += escapeCodeTags(raw.slice(cursor, tag.index));
+    output += opening + escapeCodeTags(raw.slice(openEnd, closeTag.index)) + closeTag[0];
+    cursor = spanTags.lastIndex;
+  }
+  return output + escapeCodeTags(raw.slice(cursor));
 }
 function protectWorkModeMarkdownCodeForHTMLParse(value) {
   const htmlCodeSegments = [];
