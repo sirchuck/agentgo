@@ -3091,6 +3091,7 @@ func main() {
 	mux.HandleFunc("/api/models/definitions", app.handleModelDefinitions)
 	mux.HandleFunc("/api/model-names", func(w http.ResponseWriter, r *http.Request) { handleKnownModelNames(w, r, modelNamesPath) })
 	mux.HandleFunc("/api/models/discover", app.handleModelDiscovery)
+	mux.HandleFunc("/api/models/test-openrouter", app.handleOpenRouterModelTest)
 	mux.HandleFunc("/api/models/create", app.handleCreateModel)
 	mux.HandleFunc("/api/models/update", app.handleUpdateModel)
 	mux.HandleFunc("/api/models/max-output-tokens", app.handleModelMaxOutputTokens)

@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -47,6 +49,15 @@ type discoveredModel struct {
 	Notes           string   `json:"notes,omitempty"`
 	MaxOutputTokens int      `json:"max_output_tokens,omitempty"`
 	Capabilities    []string `json:"capabilities,omitempty"`
+	// Optional OpenRouter catalog metadata. Missing is never interpreted as unsupported.
+	Developer       string            `json:"developer,omitempty"`
+	ContextLength   int               `json:"context_length,omitempty"`
+	Created         int64             `json:"created,omitempty"`
+	InputPrice      *float64          `json:"input_price_per_million,omitempty"`
+	OutputPrice     *float64          `json:"output_price_per_million,omitempty"`
+	PriceCategory   string            `json:"price_category,omitempty"`
+	FeatureStatus   map[string]string `json:"feature_status,omitempty"`
+	SupportedParams []string          `json:"supported_parameters,omitempty"`
 }
 
 type modelDiscoveryResponse struct {
@@ -139,6 +150,96 @@ func (a *App) handleModelDiscovery(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, result)
 }
 
+// handleOpenRouterModelTest runs only after an explicit user click. It never
+// submits project content, stores credentials, or modifies saved model settings.
+func (a *App) handleOpenRouterModelTest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	defer r.Body.Close()
+	var payload struct {
+		modelDiscoveryRequest
+		ModelName string `json:"model_name"`
+		APIPath   string `json:"api_path"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&payload); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid model test request."})
+		return
+	}
+	req := normalizeModelDiscoveryRequest(payload.modelDiscoveryRequest)
+	if req.Provider != "openrouter" || req.Adapter != "openai_compatible" || strings.TrimSpace(payload.ModelName) == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Select an OpenRouter model first."})
+		return
+	}
+	base, err := validateDiscoveryBaseURL(req.BaseURL)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid OpenRouter URL."})
+		return
+	}
+	parsed, _ := url.Parse(base)
+	if parsed.Scheme != "https" || !strings.EqualFold(parsed.Host, "openrouter.ai") || (parsed.Path != "/api" && parsed.Path != "/api/v1") {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Model Test only supports the official OpenRouter endpoint."})
+		return
+	}
+	if req.ModelID != "" {
+		a.mu.RLock()
+		for i := range a.cfg.Models {
+			if modelIDString(a.cfg.Models[i].ID) == req.ModelID {
+				copyModel := a.cfg.Models[i]
+				applySavedDiscoverySecrets(&req, &copyModel)
+				break
+			}
+		}
+		a.mu.RUnlock()
+	}
+	if resolveModelDiscoveryAPIKey(req) == "" && !discoveryRequestHasExplicitAuthHeader(req) {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Enter an OpenRouter API key or configured environment variable to test this model."})
+		return
+	}
+	path := strings.TrimSpace(payload.APIPath)
+	if path == "/v1/responses" || path == "/responses" {
+		path = "/responses"
+	} else if path == "/v1/chat/completions" || path == "/chat/completions" {
+		path = "/chat/completions"
+	} else {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Model Test supports Chat Completions or Responses API paths."})
+		return
+	}
+	body := map[string]any{"model": strings.TrimSpace(payload.ModelName)}
+	if path == "/responses" {
+		body["input"] = "Reply with OK only."
+		body["max_output_tokens"] = 16
+	} else {
+		body["messages"] = []map[string]string{{"role": "user", "content": "Reply with OK only."}}
+		body["max_tokens"] = 16
+	}
+	encoded, _ := json.Marshal(body)
+	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+	defer cancel()
+	target := "https://openrouter.ai/api/v1" + path
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, target, bytes.NewReader(encoded))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Could not prepare model test."})
+		return
+	}
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Accept", "application/json")
+	applyModelDiscoveryHeaders(request, req)
+	response, err := (&http.Client{Timeout: 20 * time.Second}).Do(request)
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "OpenRouter model test could not connect."})
+		return
+	}
+	defer response.Body.Close()
+	_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 64<<10))
+	if response.StatusCode >= 300 {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": fmt.Sprintf("OpenRouter model test failed (HTTP %d). Check model compatibility, credentials, and credits.", response.StatusCode)})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": "OpenRouter accepted the synthetic 16-token test. This does not verify Work Mode, tools, or structured output.", "status": response.StatusCode})
+}
+
 func normalizeModelDiscoveryRequest(req modelDiscoveryRequest) modelDiscoveryRequest {
 	req.ModelID = strings.TrimSpace(req.ModelID)
 	req.Provider = strings.ToLower(strings.TrimSpace(req.Provider))
@@ -164,6 +265,17 @@ func normalizeModelDiscoveryRequest(req modelDiscoveryRequest) modelDiscoveryReq
 
 func applySavedDiscoverySecrets(req *modelDiscoveryRequest, saved *ModelConfig) {
 	if req == nil || saved == nil {
+		return
+	}
+	// Never forward saved credentials from one provider/endpoint to another
+	// while editing a model. Explicitly entered unsaved credentials still work.
+	if saved.Provider != "" && !strings.EqualFold(strings.TrimSpace(saved.Provider), req.Provider) {
+		return
+	}
+	if saved.Adapter != "" && !strings.EqualFold(strings.TrimSpace(saved.Adapter), req.Adapter) {
+		return
+	}
+	if saved.BaseURL != "" && !strings.EqualFold(strings.TrimRight(strings.TrimSpace(saved.BaseURL), "/"), strings.TrimRight(req.BaseURL, "/")) {
 		return
 	}
 	if req.APIKey == "" && !req.ClearAPIKey {
@@ -306,7 +418,7 @@ func buildModelDiscoverySpec(provider, adapter, rawBaseURL string) (modelDiscove
 	case provider == "deepseek":
 		return modelDiscoverySpec{Endpoint: appendDiscoveryPath(base, "/models", ""), Kind: "common"}, nil
 	case provider == "openrouter":
-		return modelDiscoverySpec{Endpoint: appendDiscoveryPath(base, "/v1/models", "/v1"), Kind: "common"}, nil
+		return modelDiscoverySpec{Endpoint: appendDiscoveryPath(base, "/v1/models?output_modalities=all", "/v1"), Kind: "common"}, nil
 	case provider == "openai":
 		return modelDiscoverySpec{Endpoint: appendDiscoveryPath(base, "/v1/models", "/v1"), Kind: "common"}, nil
 	case provider == "claude":
@@ -532,7 +644,7 @@ func normalizeDiscoveredModel(kind, provider, adapter string, item map[string]an
 		}
 	}
 	capabilities := discoveryCapabilities(item)
-	return discoveredModel{
+	entry := discoveredModel{
 		Provider:        provider,
 		Adapter:         adapter,
 		Label:           label,
@@ -540,7 +652,121 @@ func normalizeDiscoveredModel(kind, provider, adapter string, item map[string]an
 		Notes:           notes,
 		MaxOutputTokens: discoveryInt(item, "outputTokenLimit", "output_token_limit", "max_output_tokens", "max_completion_tokens"),
 		Capabilities:    capabilities,
-	}, true
+	}
+	if provider == "openrouter" {
+		applyOpenRouterCatalogMetadata(&entry, item)
+	}
+	return entry, true
+}
+
+// applyOpenRouterCatalogMetadata uses the advertised catalog fields as guidance,
+// not a guarantee of end-to-end AgentGO compatibility. Unknown fields stay unknown.
+func applyOpenRouterCatalogMetadata(entry *discoveredModel, item map[string]any) {
+	if entry == nil {
+		return
+	}
+	if slash := strings.IndexByte(entry.ModelName, '/'); slash > 0 {
+		entry.Developer = entry.ModelName[:slash]
+	}
+	entry.ContextLength = discoveryPositiveInt(item["context_length"], 100000000)
+	entry.Created = int64(discoveryPositiveInt(item["created"], 9999999999))
+	if architecture, ok := item["architecture"].(map[string]any); ok {
+		if input, present := architecture["input_modalities"].([]any); present {
+			for _, modality := range discoveryStringSlice(input) {
+				entry.Capabilities = appendUniqueDiscoveryString(entry.Capabilities, strings.ToLower(modality))
+			}
+		}
+	}
+	entry.FeatureStatus = map[string]string{
+		"tools": "unknown", "structured_json": "unknown", "vision": "unknown", "text": "unknown",
+	}
+	if params, present := item["supported_parameters"].([]any); present {
+		entry.SupportedParams = discoveryStringSlice(params)
+		entry.FeatureStatus["tools"] = capabilityStatusForParams(entry.SupportedParams, "tools")
+		// response_format advertises JSON mode, while structured_outputs advertises schema support.
+		entry.FeatureStatus["structured_json"] = capabilityStatusForParams(entry.SupportedParams, "structured_outputs", "response_format")
+	}
+	if architecture, ok := item["architecture"].(map[string]any); ok {
+		if modalities, present := architecture["input_modalities"].([]any); present {
+			entry.FeatureStatus["vision"] = capabilityStatusForParams(discoveryStringSlice(modalities), "image")
+		}
+		if modalities, present := architecture["output_modalities"].([]any); present {
+			entry.FeatureStatus["text"] = capabilityStatusForParams(discoveryStringSlice(modalities), "text")
+		}
+	}
+	if pricing, ok := item["pricing"].(map[string]any); ok {
+		entry.InputPrice = discoveryPricePerMillion(pricing["prompt"])
+		entry.OutputPrice = discoveryPricePerMillion(pricing["completion"])
+		if entry.InputPrice != nil && entry.OutputPrice != nil {
+			if *entry.InputPrice == 0 && *entry.OutputPrice == 0 {
+				requestPrice := discoveryPricePerMillion(pricing["request"])
+				if requestPrice == nil || *requestPrice == 0 {
+					entry.PriceCategory = "free"
+				} else {
+					entry.PriceCategory = "paid"
+				}
+			} else {
+				entry.PriceCategory = "paid"
+			}
+		}
+	}
+}
+
+func discoveryPositiveInt(value any, max int64) int {
+	var n int64
+	switch v := value.(type) {
+	case float64:
+		if v < 0 || v > float64(max) {
+			return 0
+		}
+		n = int64(v)
+	case json.Number:
+		var err error
+		n, err = v.Int64()
+		if err != nil {
+			return 0
+		}
+	default:
+		return 0
+	}
+	if n <= 0 || n > max {
+		return 0
+	}
+	return int(n)
+}
+func discoveryPricePerMillion(value any) *float64 {
+	var raw string
+	switch v := value.(type) {
+	case string:
+		raw = v
+	case float64:
+		raw = strconv.FormatFloat(v, 'g', -1, 64)
+	default:
+		return nil
+	}
+	valueFloat, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
+	if err != nil || math.IsNaN(valueFloat) || math.IsInf(valueFloat, 0) || valueFloat < 0 {
+		return nil
+	}
+	result := valueFloat * 1000000
+	if math.IsInf(result, 0) {
+		return nil
+	}
+	return &result
+}
+func capabilityStatusForParams(params []string, names ...string) string {
+	for _, name := range names {
+		if containsFold(params, name) {
+			return "supported"
+		}
+	}
+	return "unsupported"
+}
+func appendUniqueDiscoveryString(values []string, needle string) []string {
+	if needle == "" || containsFold(values, needle) {
+		return values
+	}
+	return append(values, needle)
 }
 
 func discoveryCapabilities(item map[string]any) []string {
