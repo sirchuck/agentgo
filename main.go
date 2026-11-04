@@ -7133,6 +7133,12 @@ func workModeApplyFileOps(projectworkRoot, projectName string, ops []builderFile
 				// Allow intentionally empty new files.
 			}
 		}
+		if action != "delete" {
+			payload, err = sanitizeAIFileHighlightMarkup(payload, rel)
+			if err != nil {
+				return changed, skipped, blocked, diffs, fmt.Errorf("Work Mode rejected unsafe display markup: %w", err)
+			}
+		}
 		if len(payload) > limits.MaxFileSizeKB*1024 {
 			return changed, skipped, blocked, diffs, fmt.Errorf("Work Mode rejected: file %q exceeds max_file_size_kb (%d bytes > %d KB)", rel, len(payload), limits.MaxFileSizeKB)
 		}
@@ -20864,8 +20870,19 @@ func validateCypherActionFileOperations(projectworkRoot string, attachedFile *Cy
 }
 
 func applyCypherActionFileOperations(projectworkRoot string, ops []builderFileOp) (int, error) {
+	cleanOps := append([]builderFileOp(nil), ops...)
+	for i := range cleanOps {
+		if cleanOps[i].Action != "create" && cleanOps[i].Action != "overwrite" {
+			continue
+		}
+		content, err := sanitizeAIFileHighlightMarkup([]byte(cleanOps[i].Content), cleanOps[i].Path)
+		if err != nil {
+			return 0, fmt.Errorf("Cypher Action rejected unsafe display markup: %w", err)
+		}
+		cleanOps[i].Content = string(content)
+	}
 	count := 0
-	for _, op := range ops {
+	for _, op := range cleanOps {
 		clean, target, err := validateCypherActionPath(projectworkRoot, op.Path)
 		if err != nil {
 			return count, err
@@ -25182,6 +25199,28 @@ func applyBuilderResponse(projectRoot, metaRoot string, resp builderResponse, li
 	if err != nil {
 		return 0, err
 	}
+	// Sanitize all AI-generated payloads before applying any file operations.
+	// A malformed wrapper must not leave a partially updated project.
+	for i := range resp.Files {
+		file := &resp.Files[i]
+		if file.Action != "create" && file.Action != "overwrite" {
+			continue
+		}
+		if ref := strings.TrimSpace(file.ArtifactRef); ref != "" {
+			if data, ok := artifactBytes[ref]; ok {
+				artifactBytes[ref], err = sanitizeAIFileHighlightMarkup(data, file.Path)
+				if err != nil {
+					return 0, fmt.Errorf("builder rejected unsafe display markup: %w", err)
+				}
+			}
+		} else {
+			clean, cleanErr := sanitizeAIFileHighlightMarkup([]byte(file.Content), file.Path)
+			if cleanErr != nil {
+				return 0, fmt.Errorf("builder rejected unsafe display markup: %w", cleanErr)
+			}
+			file.Content = string(clean)
+		}
+	}
 	filesToWrite := 0
 	totalPayloadBytes := 0
 	for _, file := range resp.Files {
@@ -25795,7 +25834,7 @@ const defaultAgentGOStylingPrompt = `AgentGO Styling Protocol
 
 Only apply AgentGO Styling Protocol to the user-facing "reply" field inside the required JSON envelope.
 
-Important: Whenever you return or reuse any user-provided prose or code, always wrap only the changes or modifications you make in <span class="agentgo-code-change">...</span>. Always apply this rule so users can quickly identify your edits, whether inside a <pre><code> block or in ordinary prose outside a code block.
+Important: Whenever you return or reuse any user-provided prose or code in the ` + "`reply`" + ` field, always wrap only the changes or modifications you make in <span class="agentgo-code-change">...</span>. This is exclusive to the ` + "`reply`" + ` field and does not apply to ` + "`files[].content`" + `.
 
 Use compact, safe HTML for rendered chat replies.
 
