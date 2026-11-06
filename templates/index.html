@@ -3520,13 +3520,14 @@ body.deaddrop-popover-open {
 .work-mode-card-btn:hover{background:rgba(255,255,255,.14)}
 .work-mode-card-btn.icon{width:36px;height:36px;padding:0;display:inline-flex;align-items:center;justify-content:center}
 .work-mode-card-btn.icon svg{width:19px;height:19px}
+.work-mode-card-btn.icon.copy svg{stroke:currentColor;fill:none;stroke-width:1.9}
 .work-mode-card-btn.danger{border-color:rgba(255,91,119,.52);color:#ffc7d0;background:rgba(255,91,119,.12)}
-.work-mode-card-editor{width:100%;min-height:420px;resize:vertical;border:1px solid rgba(255,255,255,.10);border-radius:16px;background:rgba(0,0,0,.34);color:#fff;padding:12px;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;outline:none}
+.work-mode-card-editor{width:100%;height:470px;min-height:470px;max-height:470px;box-sizing:border-box;overflow:auto;resize:none;border:1px solid rgba(255,255,255,.10);border-radius:16px;background:rgba(0,0,0,.34);color:#fff;padding:12px;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;outline:none}
 .work-mode-diff-toolbar{display:flex;align-items:center;justify-content:flex-start;gap:10px;min-height:34px}
 .work-mode-card-btn.diff{border-color:rgba(74,163,255,.42);color:#d9eeff;background:rgba(74,163,255,.12);padding:6px 10px;font-size:.78rem}
 .work-mode-card-btn.diff:hover{background:rgba(74,163,255,.20)}
 .work-mode-diff-note{color:rgba(245,247,251,.48);font-size:.78rem}
-.work-mode-diff-preview{border:1px solid rgba(255,255,255,.10);border-radius:16px;background:rgba(0,0,0,.34);overflow:auto;max-height:min(72vh,680px);font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.work-mode-diff-preview{border:1px solid rgba(255,255,255,.10);border-radius:16px;background:rgba(0,0,0,.34);height:470px;min-height:470px;max-height:470px;box-sizing:border-box;overflow:auto;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 .work-mode-diff-row{display:grid;grid-template-columns:28px 54px minmax(0,1fr);align-items:start;min-height:22px;color:rgba(245,247,251,.82);white-space:pre-wrap}
 .work-mode-diff-row-code{padding:1px 12px 1px 8px;overflow-wrap:anywhere}
 .work-mode-diff-row-marker{display:flex;align-items:center;justify-content:center;padding-top:3px}
@@ -26066,14 +26067,15 @@ function renderWorkModeActiveFile() {
   const title = escapeHtml(isStylingPrompt ? 'AgentGO Styling' : workModeDisplayTitle(file.path || 'File'));
   const deleteBtn = tmpLocked || isStylingPrompt ? '' : `<button class="work-mode-card-btn danger" id="workModeDeleteFileBtn" type="button">Delete</button>`;
   const mergeBtn = isTmpWork && !tmpLocked && !isStylingPrompt ? `<button class="work-mode-card-btn merge" id="workModeMergeFileBtn" type="button">Merge</button>` : '';
+  const copyBtn = (isStylingPrompt || file.isText || file.kind === 'text') ? `<button aria-label="Copy file contents" class="work-mode-card-btn icon copy" id="workModeCopyFileBtn" title="Copy file contents" type="button">${renderWorkModeCopyIcon()}</button>` : '';
   const downloadBtn = isStylingPrompt ? '' : `<button aria-label="Download" class="work-mode-card-btn icon" id="workModeDownloadFileBtn" title="Download" type="button"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>`;
   const closeBtn = `<button class="work-mode-card-btn" id="workModeCloseFileBtn" type="button">X</button>`;
   const defaultBtn = isStylingPrompt ? `<button class="work-mode-card-btn" id="workModeDefaultStylingBtn" type="button">Default</button>` : '';
   const readonlyNote = tmpLocked ? '<div class="work-mode-readonly-note">tmp-work is read-only while Observer Review is running or paused.</div>' : '';
   let body = '';
-  let actions = mergeBtn + deleteBtn + downloadBtn + closeBtn;
+  let actions = mergeBtn + deleteBtn + copyBtn + downloadBtn + closeBtn;
   if (isStylingPrompt) {
-    actions = `<button class="work-mode-card-btn" id="workModeSaveFileBtn" type="button">Save</button>` + defaultBtn + closeBtn;
+    actions = `<button class="work-mode-card-btn" id="workModeSaveFileBtn" type="button">Save</button>` + defaultBtn + copyBtn + closeBtn;
     body = `<textarea class="work-mode-card-editor" id="workModeFileEditor">${escapeHtml(file.content || '')}</textarea>`;
   } else if (file.isText || file.kind === 'text') {
     const diff = getWorkModeDiffForPath(file.path);
@@ -26095,6 +26097,10 @@ function renderWorkModeActiveFile() {
     body = `<div class="work-mode-message agentgo"><div class="work-mode-message-kicker">AgentGO Says:</div><div><strong>${kindLabel}</strong> file preview is not available in Work Mode yet.</div><div class="work-mode-binary-file-meta">Size: ${sizeLabel}<br>Type: ${typeLabel}</div><div>This file can stay visible in the file list and can be selected for AI context when useful, but AgentGO will not open raw binary data as editable text.</div></div>`;
   }
   feed.innerHTML = `<div class="work-mode-file-card"><div class="work-mode-file-card-head"><div class="work-mode-file-card-title" title="${fullTitle}">${title}</div><div class="work-mode-card-actions">${actions}</div></div>${body}</div>`;
+  // HTML parsing consumes an initial newline in textarea markup. Set the original
+  // value explicitly so editing and Copy retain every byte of leading whitespace.
+  const renderedEditor = document.getElementById('workModeFileEditor');
+  if (renderedEditor) renderedEditor.value = String(file.content ?? '');
   const diffBtn = document.getElementById('workModeDiffToggleBtn');
   if (diffBtn) diffBtn.addEventListener('click', toggleWorkModeActiveDiff);
   const saveBtn = document.getElementById('workModeSaveFileBtn');
@@ -26110,11 +26116,26 @@ function renderWorkModeActiveFile() {
   if (delBtn) delBtn.addEventListener('click', () => deleteWorkModeFile(file.path).catch(err => showToast(err.message || 'Could not delete file.', 'warning')));
   const mergeBtnEl = document.getElementById('workModeMergeFileBtn');
   if (mergeBtnEl) mergeBtnEl.addEventListener('click', () => mergeWorkModeTmpWorkFile(file.path).catch(err => showToast(err.message || 'Could not merge tmp-work file.', 'warning')));
+  const copyBtnEl = document.getElementById('workModeCopyFileBtn');
+  if (copyBtnEl) copyBtnEl.addEventListener('click', copyWorkModeActiveFile);
   const downloadBtnEl = document.getElementById('workModeDownloadFileBtn');
   if (downloadBtnEl) downloadBtnEl.addEventListener('click', downloadWorkModeActiveFile);
   const close = document.getElementById('workModeCloseFileBtn');
   if (close) close.addEventListener('click', () => { workModeActiveFile = null; renderWorkModeDefaultStage(); });
   requestAnimationFrame(updateWorkModeScrollButton);
+}
+async function copyWorkModeActiveFile() {
+  const file = workModeActiveFile;
+  if (!file || !(file.isAgentGOStyling || file.isText || file.kind === 'text')) return;
+  const editor = document.getElementById('workModeFileEditor');
+  // The editor is the source of truth for unsaved edits; Diff mode has no textarea.
+  const contents = editor ? editor.value : String(file.content ?? '');
+  try {
+    await copyTextToClipboard(contents);
+    showToast('File contents copied.', 'success', 1800);
+  } catch (_) {
+    showToast('Could not copy file contents.', 'warning', 2400);
+  }
 }
 function downloadWorkModeActiveFile() {
   if (!workModeActiveFile || !workModeActiveFile.path || workModeActiveFile.isAgentGOStyling) return;
