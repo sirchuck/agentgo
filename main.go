@@ -3189,6 +3189,7 @@ func main() {
 	mux.HandleFunc("/api/email/clear-local", app.handleMailClearLocal)
 	mux.HandleFunc("/api/email/messages/delete", app.handleMailMessagesDelete)
 	mux.HandleFunc("/api/email/settings", app.handleMailSettings)
+	mux.HandleFunc("/api/email/watchlist", app.handleMailWatchlist)
 	mux.HandleFunc("/api/email/accounts/save", app.handleMailAccountSave)
 	mux.HandleFunc("/api/email/accounts/toggle", app.handleMailAccountToggle)
 	mux.HandleFunc("/api/email/accounts/delete", app.handleMailAccountDelete)

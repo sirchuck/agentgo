@@ -12,6 +12,8 @@
     readState: 'all',
     search: '',
     senderFilter: '',
+    watchlistOn: false,
+    watchlistEditType: 'positive',
     dateFrom: '',
     dateTo: '',
     sortColumn: 'time',
@@ -216,7 +218,6 @@
       mailUI.overlay = document.getElementById('agentGOMailOverlay');
       return;
     }
-    const releaseText = (document.querySelector('.build-tag')?.textContent || 'AgentGO').trim();
     const overlay = document.createElement('div');
     overlay.id = 'agentGOMailOverlay';
     overlay.className = 'agentgo-mail-overlay';
@@ -229,11 +230,9 @@
           <button class="mail-side-btn is-active" id="mailUnifiedBtn" type="button"><span>✦</span><span>Unified Account</span><span class="mail-side-count" id="mailUnifiedCount">0</span></button>
           <div class="mail-side-section-title"><span>Connected Inboxes</span><button id="mailAddAccountBtn" type="button" aria-label="Add e-mail account">+</button></div>
           <div id="mailAccountList"></div>
-          <div class="mail-side-spacer"></div>
           <button class="mail-side-btn" id="mailDesktopBtn" type="button"><span>▣</span><span>Desktop</span></button>
           <button class="mail-side-btn" id="mailRescanBtn" type="button" title="Search earlier INBOX mail and add messages not currently indexed by AgentGO. Existing messages are not duplicated and your mail server is not modified."><span>↶</span><span>Rescan Older Mail…</span></button>
           <button class="mail-side-btn" id="mailAccountsBtn" type="button"><span>⚙</span><span>Accounts & Settings</span></button>
-          <div class="mail-side-footer"><strong>${escapeHtml(releaseText)}</strong><br>INBOX only · read-only upstream</div>
         </aside>
         <main class="mail-main">
           <header class="mail-topbar">
@@ -258,6 +257,10 @@
           <section class="mail-query-bar mail-glass" aria-label="Search and sort E-Mail">
             <input id="mailSearchInput" type="search" autocomplete="off" placeholder="Search subject, sender, summary…" aria-label="Search e-mail">
             <input id="mailSenderFilter" type="search" autocomplete="off" placeholder="Sender or domain" aria-label="Filter sender or domain">
+            <div class="mail-watchlist-control" role="group" aria-label="Watchlist filter and settings">
+              <button id="mailWatchlistToggle" type="button" aria-pressed="false" title="Show only messages matching your Watchlist"><svg class="mail-watchlist-eye" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><span>Watchlist</span></button>
+              <button id="mailWatchlistEdit" type="button" aria-label="Edit Watchlist terms" title="Edit Watchlist"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+            </div>
             <label><span>From</span><input id="mailDateFrom" type="date" aria-label="Filter from date"></label>
             <label><span>To</span><input id="mailDateTo" type="date" aria-label="Filter to date"></label>
             <select id="mailReadFilter" aria-label="Read filter"><option value="all">All Read State</option><option value="unread">Unread</option><option value="read">Read</option></select>
@@ -265,7 +268,7 @@
           </section>
           <section class="mail-list-panel mail-glass">
             <div class="mail-list-tools">
-              <div class="mail-selection-copy"><strong id="mailSelectionCount">0 selected</strong><span>Individual Analyze uses the full message. Selected/date-range re-analysis uses the efficient batch classifier.</span></div>
+              <div class="mail-selection-copy"><strong id="mailSelectionCount">0 selected</strong></div>
               <div class="mail-selection-actions"><button class="mail-list-tool-btn" id="mailClearSelectionBtn" type="button" disabled>Clear</button><button class="mail-list-tool-btn danger" id="mailDeleteSelectedBtn" type="button" disabled>Delete Selected</button><button class="mail-list-tool-btn" id="mailReanalyzeSelectedBtn" type="button" disabled>AI Re-analyze</button><button class="mail-list-tool-btn" id="mailReanalyzeDateBtn" type="button">Date Range…</button></div>
             </div>
             <div class="mail-list-head">
@@ -324,6 +327,29 @@
         </div>
       </div>`;
     document.body.appendChild(settingsModal);
+
+    const watchlistModal = document.createElement('div');
+    watchlistModal.id = 'mailWatchlistModal';
+    watchlistModal.className = 'mail-modal';
+    watchlistModal.setAttribute('aria-hidden','true');
+    watchlistModal.innerHTML = `
+      <div class="mail-modal-card mail-glass mail-watchlist-card" role="dialog" aria-modal="true" aria-labelledby="mailWatchlistTitle">
+        <div class="mail-modal-head"><div><h3 id="mailWatchlistTitle">Edit Watchlist</h3><p>Match a positive term in subject or message body, unless a negative term also matches.</p></div><button class="mail-modal-close" data-mail-watchlist-close type="button" aria-label="Close Watchlist">×</button></div>
+        <div class="mail-modal-body">
+          <form id="mailWatchlistForm" class="mail-watchlist-form">
+            <label for="mailWatchlistInput">Keyword or phrase</label>
+            <input id="mailWatchlistInput" type="text" maxlength="160" autocomplete="off" placeholder="Enter keyword or phrase" required>
+            <div class="mail-watchlist-form-actions">
+              <div class="mail-segments" role="group" aria-label="Match type"><button id="mailWatchlistPositive" class="mail-segment is-active" type="button" data-mail-watchlist-type="positive" aria-pressed="true">+ Positive</button><button id="mailWatchlistNegative" class="mail-segment" type="button" data-mail-watchlist-type="negative" aria-pressed="false">− Negative</button></div>
+              <button id="mailWatchlistAddBtn" class="mail-modal-btn primary" type="submit">Add Term</button>
+            </div>
+          </form>
+          <div class="mail-watchlist-term-heading">Positive matches</div><div class="mail-watchlist-term-list" id="mailWatchlistPositiveTerms"></div>
+          <div class="mail-watchlist-term-heading">Negative matches</div><div class="mail-watchlist-term-list" id="mailWatchlistNegativeTerms"></div>
+          <div class="mail-modal-actions"><button class="mail-modal-btn" data-mail-watchlist-close type="button">Close</button></div>
+        </div>
+      </div>`;
+    document.body.appendChild(watchlistModal);
 
     const rescanModal = document.createElement('div');
     rescanModal.id = 'mailRescanModal';
@@ -462,6 +488,18 @@
     document.getElementById('mailDateTo')?.addEventListener('change',event=>{mailUI.dateTo=String(event.target.value||'');resetVisibleLimit();renderMessages();});
     document.getElementById('mailReadFilter')?.addEventListener('change',event=>{mailUI.readState=String(event.target.value||'all');resetVisibleLimit();renderMessages();});
     document.getElementById('mailClearFiltersBtn')?.addEventListener('click',clearMailFilters);
+    document.getElementById('mailWatchlistToggle')?.addEventListener('click',()=>{mailUI.watchlistOn=!mailUI.watchlistOn;renderWatchlistToggle();resetVisibleLimit();renderMessages();});
+    document.getElementById('mailWatchlistEdit')?.addEventListener('click',openWatchlist);
+    document.querySelectorAll('[data-mail-watchlist-close]').forEach(btn=>btn.addEventListener('click',closeWatchlist));
+    document.getElementById('mailWatchlistModal')?.addEventListener('click',event=>{if(event.target.id==='mailWatchlistModal')closeWatchlist();});
+    document.getElementById('mailWatchlistForm')?.addEventListener('submit',addWatchlistTerm);
+    document.getElementById('mailWatchlistModal')?.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();closeWatchlist();}});
+    document.getElementById('mailWatchlistModal')?.addEventListener('click',event=>{
+      const typeBtn=event.target.closest('[data-mail-watchlist-type]');
+      if(typeBtn){mailUI.watchlistEditType=typeBtn.dataset.mailWatchlistType;renderWatchlistType();return;}
+      const removeBtn=event.target.closest('[data-mail-watchlist-remove]');
+      if(removeBtn)removeWatchlistTerm(removeBtn.dataset.mailWatchlistRemove);
+    });
     document.getElementById('mailAccountSaveBtn')?.addEventListener('click',saveAccount);
     document.getElementById('mailAccountTestBtn')?.addEventListener('click',testAccount);
     document.getElementById('mailAccountDeleteBtn')?.addEventListener('click',deleteAccount);
@@ -573,6 +611,8 @@
     renderMessages();
     renderStatus();
     renderAccountHealth();
+    renderWatchlistToggle();
+    if(document.getElementById('mailWatchlistModal')?.classList.contains('open'))renderWatchlistTerms();
     const select = document.getElementById('mailAIModelSelect');
     if (select && select.options.length > 1) select.value = String(mailUI.state?.settings?.ai_model_id || '');
   }
@@ -692,13 +732,89 @@
     renderMessages();
   }
 
+  function watchlistTerms() {
+    return Array.isArray(mailUI.state?.settings?.watchlist_terms) ? mailUI.state.settings.watchlist_terms : [];
+  }
+
+  function renderWatchlistToggle() {
+    const btn=document.getElementById('mailWatchlistToggle');
+    const group=document.querySelector('.mail-watchlist-control');
+    if(btn){btn.setAttribute('aria-pressed',String(mailUI.watchlistOn));btn.title=mailUI.watchlistOn?'Watchlist On — show all mail':'Watchlist Off — show matching mail';}
+    group?.classList.toggle('is-active',mailUI.watchlistOn);
+  }
+
+  function renderWatchlistType() {
+    document.querySelectorAll('[data-mail-watchlist-type]').forEach(btn=>{
+      const active=btn.dataset.mailWatchlistType===mailUI.watchlistEditType;
+      btn.classList.toggle('is-active',active);btn.setAttribute('aria-pressed',String(active));
+    });
+  }
+
+  function renderWatchlistTerms() {
+    const terms=watchlistTerms();
+    for(const type of ['positive','negative']){
+      const host=document.getElementById(type==='positive'?'mailWatchlistPositiveTerms':'mailWatchlistNegativeTerms');
+      if(!host)continue;
+      const matching=terms.map((item,i)=>({...item,index:i})).filter(item=>item.type===type);
+      host.innerHTML=matching.length?matching.map(item=>`<span class="mail-watchlist-badge ${type}"><span>${escapeHtml(item.term)}</span><button type="button" aria-label="Remove ${escapeHtml(item.term)}" title="Remove term" data-mail-watchlist-remove="${item.index}">×</button></span>`).join(''):
+        '<span class="mail-watchlist-empty">No terms yet.</span>';
+    }
+    renderWatchlistType();
+  }
+
+  function openWatchlist() {
+    const modal=document.getElementById('mailWatchlistModal');if(!modal)return;
+    mailUI.modalReturnFocus=document.activeElement;
+    mailUI.watchlistEditType='positive';renderWatchlistTerms();
+    modal.classList.add('open');modal.setAttribute('aria-hidden','false');
+    document.getElementById('mailWatchlistInput')?.focus();
+  }
+
+  function closeWatchlist() {
+    const modal=document.getElementById('mailWatchlistModal');if(!modal?.classList.contains('open'))return;
+    modal.classList.remove('open');modal.setAttribute('aria-hidden','true');
+    document.getElementById('mailWatchlistEdit')?.focus();
+  }
+
+  async function saveWatchlistTerms(next) {
+    const add=document.getElementById('mailWatchlistAddBtn');
+    if(add)add.disabled=true;
+    try{
+      const data=await window.api('/api/email/watchlist',{method:'POST',body:JSON.stringify({terms:next}),timeoutMs:20000});
+      mailUI.state=data;renderFilterCounts();renderWatchlistTerms();resetVisibleLimit();renderMessages();
+      return true;
+    }catch(err){window.showToast?.(err?.message||'Could not update Watchlist.','warning',4200);return false;}
+    finally{if(add)add.disabled=false;}
+  }
+
+  async function addWatchlistTerm(event) {
+    event.preventDefault();
+    const input=document.getElementById('mailWatchlistInput');
+    const term=String(input?.value||'').trim(),type=mailUI.watchlistEditType;
+    if(!term)return;
+    const current=watchlistTerms();
+    if(current.some(item=>String(item.term).toLowerCase()===term.toLowerCase()&&item.type===type)){
+      window.showToast?.('That Watchlist term already exists.','warning');return;
+    }
+    if(current.length>=100){window.showToast?.('Watchlist is limited to 100 terms.','warning');return;}
+    if(await saveWatchlistTerms([...current,{term,type}])){if(input){input.value='';input.focus();}}
+  }
+
+  async function removeWatchlistTerm(index) {
+    const current=watchlistTerms();const n=Number(index);
+    if(!Number.isInteger(n)||n<0||n>=current.length)return;
+    await saveWatchlistTerms(current.filter((_,i)=>i!==n));
+  }
+
   function renderSortHeaders() {
     document.querySelectorAll('.mail-sort-head[data-mail-sort-column]').forEach(button => {
       const active = button.dataset.mailSortColumn === mailUI.sortColumn;
       button.classList.toggle('is-active', active);
       button.setAttribute('aria-pressed', active ? 'true' : 'false');
       const directionLabel = mailUI.sortDirection === 'asc' ? 'ascending' : 'descending';
-      button.title = active ? `Sorted ${directionLabel}. Click to reverse.` : `Sort by ${button.dataset.mailSortColumn}.`;
+      button.title = button.dataset.mailSortColumn === 'subject'
+        ? 'Security level from red to green, AI checks run/not-run, Read/Unread status, Email Priority Level, Subject Line. Click to sort by Subject.'
+        : (active ? `Sorted ${directionLabel}. Click to reverse.` : `Sort by ${button.dataset.mailSortColumn}.`);
       const arrow = button.querySelector('.mail-sort-arrow');
       if (arrow) arrow.textContent = active ? (mailUI.sortDirection === 'asc' ? '▲' : '▼') : '';
     });
@@ -706,6 +822,7 @@
 
   function filteredMessages() {
     let messages = Array.isArray(mailUI.state?.messages) ? [...mailUI.state.messages] : [];
+    if (mailUI.watchlistOn) messages = messages.filter(m=>!!m.watchlist_match);
     if (mailUI.selectedAccounts.size) messages = messages.filter(m=>mailUI.selectedAccounts.has(String(m.account_id)));
     if (mailUI.priority !== 'all') messages = messages.filter(m=>String(m.priority||'').toUpperCase()===mailUI.priority);
     if (mailUI.designation !== 'all') messages = messages.filter(m=>String(m.designation||'')===mailUI.designation);
@@ -742,7 +859,7 @@
   }
 
   function clearMailFilters(){
-    mailUI.priority='all';mailUI.designation='all';mailUI.security='all';mailUI.readState='all';mailUI.search='';mailUI.senderFilter='';mailUI.dateFrom='';mailUI.dateTo='';mailUI.sortColumn='time';mailUI.sortDirection='desc';
+    mailUI.priority='all';mailUI.designation='all';mailUI.security='all';mailUI.readState='all';mailUI.search='';mailUI.senderFilter='';mailUI.dateFrom='';mailUI.dateTo='';mailUI.sortColumn='time';mailUI.sortDirection='desc';mailUI.watchlistOn=false;renderWatchlistToggle();
     const filterValues={mailPriorityFilter:'all',mailDesignationFilter:'all',mailSecurityFilter:'all',mailSearchInput:'',mailSenderFilter:'',mailDateFrom:'',mailDateTo:''};for(const [id,value] of Object.entries(filterValues)){const el=document.getElementById(id);if(el)el.value=value;}
     const read=document.getElementById('mailReadFilter');if(read)read.value='all';
     resetVisibleLimit(); renderMessages();
@@ -1474,7 +1591,7 @@
     await loadState({toast:true,models:true});
     refreshNewMailCount(); startNewMailCountTimer();
   }
-  function closeMail(){if(!mailUI.overlay)return;mailUI.open=false;mailUI.overlay.classList.remove('open');mailUI.overlay.setAttribute('aria-hidden','true');window.syncDiagnosticsDesktopAvailability?.();closeAccountModal();closeSettings();closeRescan();closeReanalyzeModal();closeReplyModal();if(mailUI.aiTimer){clearInterval(mailUI.aiTimer);mailUI.aiTimer=null;}if(mailUI.newMailCountTimer){clearInterval(mailUI.newMailCountTimer);mailUI.newMailCountTimer=null;}window.AgentGOYetiStars?.refresh?.();}
+  function closeMail(){if(!mailUI.overlay)return;mailUI.open=false;mailUI.overlay.classList.remove('open');mailUI.overlay.setAttribute('aria-hidden','true');window.syncDiagnosticsDesktopAvailability?.();closeAccountModal();closeSettings();closeWatchlist();closeRescan();closeReanalyzeModal();closeReplyModal();if(mailUI.aiTimer){clearInterval(mailUI.aiTimer);mailUI.aiTimer=null;}if(mailUI.newMailCountTimer){clearInterval(mailUI.newMailCountTimer);mailUI.newMailCountTimer=null;}window.AgentGOYetiStars?.refresh?.();}
 
   function installYetiEntry(){document.addEventListener('click',event=>{if(event.target.closest('#yetiStartMailBtn')){event.preventDefault();openMail();}});}
 
@@ -1485,7 +1602,7 @@
       const modalOpen=!!document.querySelector('.mail-modal.open');
       if(mailUI.open&&event.key==='/'&&!typing&&!modalOpen){event.preventDefault();document.getElementById('mailSearchInput')?.focus();return;}
       if(event.key!=='Escape')return;
-      if(document.getElementById('mailReplyModal')?.classList.contains('open'))closeReplyModal();else if(document.getElementById('mailReanalyzeModal')?.classList.contains('open'))closeReanalyzeModal();else if(document.getElementById('mailAccountModal')?.classList.contains('open'))closeAccountModal();else if(document.getElementById('mailRescanModal')?.classList.contains('open'))closeRescan();else if(document.getElementById('mailSettingsModal')?.classList.contains('open'))closeSettings();else if(mailUI.open)closeMail();
+      if(document.getElementById('mailWatchlistModal')?.classList.contains('open'))closeWatchlist();else if(document.getElementById('mailReplyModal')?.classList.contains('open'))closeReplyModal();else if(document.getElementById('mailReanalyzeModal')?.classList.contains('open'))closeReanalyzeModal();else if(document.getElementById('mailAccountModal')?.classList.contains('open'))closeAccountModal();else if(document.getElementById('mailRescanModal')?.classList.contains('open'))closeRescan();else if(document.getElementById('mailSettingsModal')?.classList.contains('open'))closeSettings();else if(mailUI.open)closeMail();
     });
     window.AgentGOMail={open:openMail,close:closeMail,refresh:loadState};
   }

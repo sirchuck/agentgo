@@ -131,16 +131,23 @@ type MailRule struct {
 	AccountID string `json:"account_id,omitempty"`
 }
 
+// MailWatchlistTerm is a local-only interest filter. Negative terms take precedence.
+type MailWatchlistTerm struct {
+	Term string `json:"term"`
+	Type string `json:"type"`
+}
+
 type MailConfig struct {
-	AIModelID        string        `json:"ai_model_id,omitempty"`
-	AIBatchSize      int           `json:"ai_batch_size,omitempty"`
-	BodyCacheDays    int           `json:"body_cache_days,omitempty"`
-	ReplyTone        string        `json:"reply_tone,omitempty"`
-	ReplyLength      string        `json:"reply_length,omitempty"`
-	SubjectBlacklist []string      `json:"subject_blacklist,omitempty"`
-	Rules            []MailRule    `json:"rules,omitempty"`
-	DecorateSubjects bool          `json:"decorate_subjects,omitempty"`
-	Accounts         []MailAccount `json:"accounts,omitempty"`
+	AIModelID        string              `json:"ai_model_id,omitempty"`
+	AIBatchSize      int                 `json:"ai_batch_size,omitempty"`
+	BodyCacheDays    int                 `json:"body_cache_days,omitempty"`
+	ReplyTone        string              `json:"reply_tone,omitempty"`
+	ReplyLength      string              `json:"reply_length,omitempty"`
+	SubjectBlacklist []string            `json:"subject_blacklist,omitempty"`
+	Rules            []MailRule          `json:"rules,omitempty"`
+	DecorateSubjects bool                `json:"decorate_subjects,omitempty"`
+	WatchlistTerms   []MailWatchlistTerm `json:"watchlist_terms,omitempty"`
+	Accounts         []MailAccount       `json:"accounts,omitempty"`
 }
 
 func normalizeMailConfig(cfg MailConfig) MailConfig {
@@ -160,6 +167,7 @@ func normalizeMailConfig(cfg MailConfig) MailConfig {
 		cfg.ReplyLength = mailDefaultReplyLength
 	}
 	cfg.SubjectBlacklist = normalizeMailBlacklist(cfg.SubjectBlacklist)
+	cfg.WatchlistTerms = normalizeMailWatchlistTerms(cfg.WatchlistTerms)
 	knownAccounts := map[string]bool{}
 	for i := range cfg.Accounts {
 		cfg.Accounts[i] = normalizeMailAccount(cfg.Accounts[i])
@@ -339,6 +347,8 @@ type MailMessageRecord struct {
 	Subject                string               `json:"subject,omitempty"`
 	Date                   string               `json:"date,omitempty"`
 	Excerpt                string               `json:"excerpt,omitempty"`
+	WatchlistMatch         bool                 `json:"watchlist_match"`
+	watchlistBody          string               // transient cleaned text, never serialized in the mail index/API
 	Attachments            []MailAttachmentMeta `json:"attachments,omitempty"`
 	Security               MailSecurityEvidence `json:"security,omitempty"`
 	Unsubscribe            MailUnsubscribeInfo  `json:"unsubscribe,omitempty"`
@@ -632,6 +642,9 @@ func (m *mailManager) clearLocalData() (int, error) {
 	if err := os.RemoveAll(m.cacheDir()); err != nil {
 		return 0, err
 	}
+	if err := os.RemoveAll(m.watchlistBodyDir()); err != nil {
+		return 0, err
+	}
 	if err := ensureDir(m.cacheDir()); err != nil {
 		return 0, err
 	}
@@ -688,6 +701,7 @@ func (m *mailManager) deleteLocalMessages(ids []string) (int, error) {
 	_ = atomicWriteFile(m.indexPath()+".bak", data, 0o600)
 	for _, record := range removed {
 		_ = os.Remove(m.bodyCachePath(record.ID))
+		_ = os.Remove(m.watchlistBodyPath(record.ID))
 	}
 	return len(removed), nil
 }
@@ -1182,6 +1196,7 @@ func (a *App) handleMailAccountDelete(w http.ResponseWriter, r *http.Request) {
 			for _, message := range index.Messages {
 				if message.AccountID == id {
 					_ = os.Remove(a.mail.bodyCachePath(message.ID))
+					_ = os.Remove(a.mail.watchlistBodyPath(message.ID))
 					continue
 				}
 				messages = append(messages, message)
@@ -1551,6 +1566,11 @@ func (a *App) performMailSync(parent context.Context, rescan *mailRescanRequest)
 		}
 		results = append(results, result)
 		totalAdded += stats.Added
+		// Save the cleaned, local-only body search corpus and derived flags
+		// before persisting each account's new mail index.
+		if err := a.mail.ingestWatchlistBodies(&index, cfg.WatchlistTerms); err != nil {
+			return totalAdded, results, err
+		}
 		// Persist each completed account independently so one later failure cannot
 		// discard already indexed mail or synchronization progress.
 		if err := a.mail.saveIndex(index); err != nil {
@@ -1625,6 +1645,7 @@ func resolveMailRescanSince(req mailRescanRequest, state MailAccountSyncState) (
 
 func (m *mailManager) syncAccount(ctx context.Context, account MailAccount, password string, blacklist []string, index *mailIndexFile, state *MailAccountSyncState, search mailSyncSearch) (mailSyncStats, error) {
 	stats := mailSyncStats{}
+	watchlistTerms := m.app.mailConfigSnapshot().WatchlistTerms
 	if state == nil {
 		return stats, errors.New("mail synchronization state is unavailable")
 	}
@@ -1723,18 +1744,39 @@ func (m *mailManager) syncAccount(ctx context.Context, account MailAccount, pass
 	}
 	for _, uid := range uids {
 		if existingUIDs[uid] {
-			// A deliberate Rescan also backfills the Phase 3 deterministic security
-			// evidence for older r476/r477 records without creating duplicates.
-			if !search.Incremental && mailRecordNeedsSecurityBackfill(index, account.ID, currentUIDValidity, uid) {
-				raw, fetchErr := client.fetchBodyPeek(uid, mailIndexFetchBytes)
-				if fetchErr != nil {
-					stats.IndexErrors++
-				} else if refreshed, parseErr := parseMailRecord(account.ID, currentUIDValidity, uid, raw, blacklist); parseErr != nil {
-					stats.IndexErrors++
-				} else {
-					_, reconciled := mergeMailRecord(index, refreshed)
-					if reconciled {
-						stats.Reconciled++
+			// Rescan also fills missing local search text for older messages,
+			// in addition to backfilling security evidence. No upstream mutation.
+			if !search.Incremental {
+				missingBody := false
+				for i := range index.Messages {
+					rec := &index.Messages[i]
+					if rec.AccountID == account.ID && rec.UID == uid && (currentUIDValidity == 0 || rec.UIDValidity == currentUIDValidity) {
+						_, statErr := os.Stat(m.watchlistBodyPath(rec.ID))
+						missingBody = statErr != nil
+						break
+					}
+				}
+				if missingBody || mailRecordNeedsSecurityBackfill(index, account.ID, currentUIDValidity, uid) {
+					raw, fetchErr := client.fetchBodyPeek(uid, mailIndexFetchBytes)
+					if fetchErr != nil {
+						stats.IndexErrors++
+					} else if refreshed, parseErr := parseMailRecord(account.ID, currentUIDValidity, uid, raw, blacklist); parseErr != nil {
+						stats.IndexErrors++
+					} else {
+						refreshed.WatchlistMatch = mailWatchlistMatches(refreshed.Subject, refreshed.watchlistBody, watchlistTerms)
+						_, reconciled := mergeMailRecord(index, refreshed)
+						if reconciled {
+							stats.Reconciled++
+						} else if missingBody {
+							for i := range index.Messages {
+								rec := &index.Messages[i]
+								if rec.AccountID == account.ID && rec.UID == uid && (currentUIDValidity == 0 || rec.UIDValidity == currentUIDValidity) {
+									rec.watchlistBody = refreshed.watchlistBody
+									rec.WatchlistMatch = refreshed.WatchlistMatch
+									break
+								}
+							}
+						}
 					}
 				}
 			}
@@ -1762,6 +1804,7 @@ func (m *mailManager) syncAccount(ctx context.Context, account MailAccount, pass
 		} else if record.IndexError != "" {
 			stats.IndexErrors++
 		}
+		record.WatchlistMatch = mailWatchlistMatches(record.Subject, record.watchlistBody, watchlistTerms)
 		added, reconciled := mergeMailRecord(index, record)
 		if added {
 			stats.Added++
@@ -2000,7 +2043,8 @@ func parseMailRecord(accountID string, uidValidity, uid uint64, raw []byte, blac
 			}
 			return ""
 		}(),
-		IndexedAt: time.Now().UTC().Format(time.RFC3339Nano),
+		IndexedAt:     time.Now().UTC().Format(time.RFC3339Nano),
+		watchlistBody: body,
 	}
 	// A truncated MIME payload can end mid-boundary. Keep the readable metadata,
 	// deterministic security evidence, and excerpt instead of dropping the entire message.
@@ -2825,6 +2869,10 @@ func (a *App) handleMailMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = a.mail.setMessageLocalSeen(record.ID, true)
+	// A previously indexed message may have only an 800-character excerpt.
+	// When its full body is opened, retain a local searchable copy and update
+	// its Watchlist flag without changing the upstream IMAP mailbox.
+	_ = a.mail.updateWatchlistBodyForMessage(record.ID, body, cfg.WatchlistTerms)
 	updated := record
 	if latest, _, _, latestErr := a.mail.messageAccess(record.ID); latestErr == nil {
 		updated = latest
